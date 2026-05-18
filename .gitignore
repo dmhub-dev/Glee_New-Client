@@ -4,3 +4,4 @@ dist
 .turbo
 *.local
 .DS_Store
+docs/
