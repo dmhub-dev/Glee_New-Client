@@ -1,51 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
-  }
+    /* ── Backgrounds ── */
+    --bg-primary:        #0B0B10;
+    --bg-secondary:      #141419;
+    --background:        240 20% 4%;
+    --secondary:         240 10% 12%;
+    --muted:             240 10% 15%;
 
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    /* ── Borders / Inputs ── */
+    --border:            240 10% 18%;
+    --input:             240 10% 18%;
+
+    /* ── Brand accent ── */
+    --neon-pink:         #FF2D8F;
+    --neon-pink-hover:   #FF4A9F;
+    --primary:           330 100% 59%;
+    --accent:            330 100% 59%;
+    --ring:              330 100% 59%;
+
+    /* ── Text ── */
+    --text-primary:      #F6F6F8;
+    --text-secondary:    #A7A7B2;
+    --foreground:        240 10% 97%;
+    --card-foreground:   240 10% 97%;
+    --primary-foreground:    240 20% 4%;
+    --secondary-foreground:  240 10% 97%;
+    --muted-foreground:      240 5% 65%;
+    --accent-foreground:     240 20% 4%;
+    --popover-foreground:    240 10% 97%;
+
+    /* ── Surfaces ── */
+    --card:              240 10% 8%;
+    --popover:           240 10% 8%;
+
+    /* ── Semantic ── */
+    --destructive:       0 84.2% 60.2%;
+    --destructive-foreground: 240 10% 97%;
+
+    /* ── Shape ── */
+    --radius:            0.5rem;
+
+    /* ── Shadows / Glows ── */
+    --shadow-neon:        0 0 18px rgba(255, 45, 143, 0.35);
+    --shadow-neon-strong: 0 0 28px rgba(255, 45, 143, 0.5);
   }
 }
 
@@ -53,7 +56,70 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
+
+  html {
+    color-scheme: dark;
   }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+  }
+
+  .mono-text {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--neon-pink);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-pink-hover);
+  }
+}
+
+@layer utilities {
+  /* ── Neon glow utilities ── */
+  .shadow-neon {
+    box-shadow: var(--shadow-neon);
+  }
+  .shadow-neon-strong {
+    box-shadow: var(--shadow-neon-strong);
+  }
+  .text-neon {
+    color: var(--neon-pink);
+  }
+  .border-neon {
+    border-color: var(--neon-pink);
+  }
+  .bg-neon {
+    background-color: var(--neon-pink);
+  }
+
+  /* ── Pulsing glow animation ── */
+  .animate-pulse-neon {
+    animation: pulse-neon 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-neon {
+  0%, 100% { box-shadow: var(--shadow-neon); }
+  50%       { box-shadow: var(--shadow-neon-strong); }
 }
