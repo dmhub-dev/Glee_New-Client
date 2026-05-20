@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "types": ["vite/client"],
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@glee/types": ["../../packages/types/src/index.ts"],
