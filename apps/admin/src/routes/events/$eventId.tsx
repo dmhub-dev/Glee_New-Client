@@ -6,11 +6,10 @@ import { z } from 'zod'
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminEvent, useCreateEvent, useUpdateEvent } from '../../lib/queries/events'
+import { useCategories } from '../../lib/queries/categories'
 import { Button, Input, Textarea, Label, Switch, Skeleton } from '@glee/ui'
 import { ArrowLeft, Plus, Trash2, Upload } from 'lucide-react'
 import type { Event } from '@glee/types'
-
-const CATEGORIES = ['Music', 'Fashion', 'Comedy', 'Sports', 'Art', 'Food & Drink', 'Wellness', 'Other'] as const
 
 const tierSchema = z.object({
   id: z.string(),
@@ -24,7 +23,7 @@ const tierSchema = z.object({
 const eventSchema = z.object({
   title: z.string().min(3, 'At least 3 characters').max(120),
   description: z.string().min(10, 'At least 10 characters').max(2000),
-  category: z.enum(CATEGORIES),
+  category: z.string().min(1, 'Category required'),
   status: z.enum(['draft', 'live'] as const),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
@@ -48,6 +47,7 @@ export default function EventFormPage() {
   const { data: existingEvent, isLoading } = useAdminEvent(isNew ? '' : eventId!)
   const createMutation = useCreateEvent()
   const updateMutation = useUpdateEvent()
+  const { data: categoriesData } = useCategories()
 
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null)
   const [squarePreview, setSquarePreview] = useState<string | null>(null)
@@ -66,7 +66,7 @@ export default function EventFormPage() {
     defaultValues: {
       title: '',
       description: '',
-      category: 'Music',
+      category: '',
       status: 'draft',
       date: '',
       startTime: '',
@@ -81,32 +81,30 @@ export default function EventFormPage() {
   const formValues = watch()
 
   useEffect(() => {
-    if (existingEvent) {
-      reset({
-        title: existingEvent.title,
-        description: existingEvent.description,
-        category: (CATEGORIES.includes(existingEvent.venueId as typeof CATEGORIES[number])
-          ? existingEvent.venueId
-          : 'Music') as typeof CATEGORIES[number],
-        status: existingEvent.status === 'live' ? 'live' : 'draft',
-        date: existingEvent.date,
-        startTime: existingEvent.startTime,
-        endTime: existingEvent.endTime ?? '',
-        venueId: existingEvent.venueId,
-        location: existingEvent.location ?? '',
-        ticketTiers: existingEvent.ticketTiers.map(t => ({
-          id: t.id,
-          name: t.name,
-          price: t.price,
-          quantity: t.quantity,
-          quantityRemaining: t.quantityRemaining,
-          description: t.description ?? '',
-        })),
-      })
-      if (existingEvent.flyerPortraitUrl) setPortraitPreview(existingEvent.flyerPortraitUrl)
-      if (existingEvent.flyerSquareUrl) setSquarePreview(existingEvent.flyerSquareUrl)
-    }
-  }, [existingEvent, reset])
+    if (!existingEvent) return
+    const categoryName = categoriesData?.find(c => c.id === existingEvent.categoryId)?.name ?? ''
+    reset({
+      title:       existingEvent.title,
+      description: existingEvent.description,
+      category:    categoryName,
+      status:      existingEvent.status === 'live' ? 'live' : 'draft',
+      date:        existingEvent.date,
+      startTime:   existingEvent.startTime,
+      endTime:     existingEvent.endTime ?? '',
+      venueId:     existingEvent.venueId,
+      location:    existingEvent.location ?? '',
+      ticketTiers: existingEvent.ticketTiers.map(t => ({
+        id:                t.id,
+        name:              t.name,
+        price:             t.price,
+        quantity:          t.quantity,
+        quantityRemaining: t.quantityRemaining,
+        description:       t.description ?? '',
+      })),
+    })
+    if (existingEvent.flyerPortraitUrl) setPortraitPreview(existingEvent.flyerPortraitUrl)
+    if (existingEvent.flyerSquareUrl)   setSquarePreview(existingEvent.flyerSquareUrl)
+  }, [existingEvent, categoriesData, reset])
 
   function handleImageChange(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -117,26 +115,11 @@ export default function EventFormPage() {
   }
 
   async function onSubmit(values: EventFormValues, asDraft = false) {
-    const payload: Omit<Event, 'id' | 'createdAt' | 'updatedAt'> = {
-      vendorId: 'admin-001',
-      venueId: values.venueId,
-      title: values.title,
-      description: values.description,
-      date: values.date,
-      startTime: values.startTime,
-      endTime: values.endTime || undefined,
-      status: asDraft ? 'draft' : (values.status === 'live' ? 'live' : 'draft'),
-      location: values.location,
-      flyerPortraitUrl: portraitPreview ?? undefined,
-      flyerSquareUrl: squarePreview ?? undefined,
-      ticketTiers: values.ticketTiers.map(t => ({
-        id: t.id,
-        name: t.name,
-        price: t.price,
-        quantity: t.quantity,
-        quantityRemaining: isNew ? t.quantity : t.quantityRemaining,
-        description: t.description || undefined,
-      })),
+    const categoryId = categoriesData?.find(c => c.name === values.category)?.id ?? ''
+    const payload = {
+      ...values,
+      categoryId,
+      status: (asDraft ? 'draft' : values.status) as 'draft' | 'live',
     }
 
     if (isNew) {
@@ -228,7 +211,10 @@ export default function EventFormPage() {
                     {...register('category')}
                     className="w-full h-9 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-neon-pink/30"
                   >
-                    {CATEGORIES.map(c => <option key={c} value={c} className="bg-admin-surface">{c}</option>)}
+                    <option value="" className="bg-admin-surface">Select category…</option>
+                    {(categoriesData ?? []).map(c => (
+                      <option key={c.id} value={c.name} className="bg-admin-surface">{c.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-1">
