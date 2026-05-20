@@ -26,6 +26,7 @@ export * from './components/ui/tabs'
 export * from './components/ui/textarea'
 export * from './components/ui/toast'
 export * from './components/ui/toaster'
+export * from './components/ui/carousel'
 
 // hooks
 export * from './hooks/use-toast'
