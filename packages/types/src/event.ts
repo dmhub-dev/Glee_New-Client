@@ -20,6 +20,8 @@ export interface Event {
   flyerPortraitUrl?: string
   flyerSquareUrl?: string
   status: 'draft' | 'pending_approval' | 'live' | 'rejected' | 'past'
+  location?: string
+  dresscode?: string
   createdAt: string
   updatedAt: string
 }

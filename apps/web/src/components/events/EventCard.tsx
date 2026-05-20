@@ -38,7 +38,7 @@ export default function EventCard({ event }: EventCardProps) {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
         />
-        <div className="absolute top-3 right-3 bg-neon-pink text-white text-xs font-mono font-semibold px-2 py-1 rounded">
+        <div className="absolute top-3 right-3 bg-neon-pink text-white text-xs font-mono font-semibold px-3 py-1 rounded-full">
           From KSh {lowestAvailablePrice(event).toLocaleString()}
         </div>
       </div>
@@ -55,7 +55,7 @@ export default function EventCard({ event }: EventCardProps) {
 
         <Button
           size="sm"
-          className="mt-2 w-full bg-neon-pink hover:bg-neon-hover text-white font-semibold"
+          className="mt-2 w-full rounded-full bg-neon-pink hover:bg-neon-hover text-white font-semibold transition-all hover:scale-[1.02] active:scale-95"
           onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`) }}
         >
           View More

@@ -24,7 +24,7 @@ function CardSkeleton() {
 export default function EventGrid({ events, isLoading }: EventGridProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
       </div>
     )
@@ -40,7 +40,7 @@ export default function EventGrid({ events, isLoading }: EventGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {events.map(event => <EventCard key={event.id} event={event} />)}
     </div>
   )

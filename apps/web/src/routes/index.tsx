@@ -16,11 +16,14 @@ export default function LandingPage() {
   )
 
   return (
-    <PageWrapper fullWidthTop={<FeaturedCarousel events={liveEvents.slice(0, 5)} isLoading={isLoading} />}>
-      <section className="mt-10">
-        <h2 className="font-heading font-black text-3xl text-foreground mb-6">Upcoming Events</h2>
-        <EventGrid events={liveEvents} isLoading={isLoading} />
-      </section>
-    </PageWrapper>
+    <PageWrapper
+      fullWidthTop={<FeaturedCarousel events={liveEvents.slice(0, 5)} isLoading={isLoading} />}
+      fullWidthContent={
+        <section className="px-4 sm:px-6 lg:px-8 mt-10 pb-16">
+          <h2 className="font-heading font-black text-3xl text-foreground mb-6">Upcoming Events</h2>
+          <EventGrid events={liveEvents} isLoading={isLoading} />
+        </section>
+      }
+    />
   )
 }
