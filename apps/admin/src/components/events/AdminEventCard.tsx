@@ -1,0 +1,114 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import type { Event } from '@glee/types'
+import { cn, Progress } from '@glee/ui'
+import { Pencil, Trash2, MapPin } from 'lucide-react'
+
+const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
+
+const STATUS_CONFIG = {
+  live: { label: 'Active', dot: 'bg-green-400', text: 'text-green-400' },
+  draft: { label: 'Draft', dot: 'bg-amber-400', text: 'text-amber-400' },
+  pending_approval: { label: 'Pending', dot: 'bg-blue-400', text: 'text-blue-400' },
+  past: { label: 'Past', dot: 'bg-white/30', text: 'text-white/30' },
+  rejected: { label: 'Rejected', dot: 'bg-red-400', text: 'text-red-400' },
+}
+
+function ticketsSoldPercent(event: Event): number {
+  const totalQty = event.ticketTiers.reduce((s, t) => s + t.quantity, 0)
+  const sold = event.ticketTiers.reduce((s, t) => s + (t.quantity - t.quantityRemaining), 0)
+  if (totalQty === 0) return 0
+  return Math.round((sold / totalQty) * 100)
+}
+
+function lowestPrice(event: Event): number {
+  return Math.min(...event.ticketTiers.map(t => t.price))
+}
+
+function formatEventDate(date: string, startTime: string): string {
+  const d = new Date(`${date}T${startTime}`)
+  return (
+    d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' }) +
+    ' · ' +
+    d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  )
+}
+
+interface AdminEventCardProps {
+  event: Event
+  onDelete: (id: string) => void
+}
+
+export default function AdminEventCard({ event, onDelete }: AdminEventCardProps) {
+  const navigate = useNavigate()
+  const [hovered, setHovered] = useState(false)
+  const status = STATUS_CONFIG[event.status] ?? STATUS_CONFIG.draft
+  const soldPercent = ticketsSoldPercent(event)
+
+  return (
+    <div
+      className={cn(
+        'bg-[#0f0f15] border border-white/5 rounded-2xl overflow-hidden transition-all duration-200',
+        hovered && 'border-neon-pink/40 shadow-neon'
+      )}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="relative h-44 overflow-hidden">
+        <img
+          src={event.flyerSquareUrl ?? PLACEHOLDER}
+          alt={event.title}
+          className={cn('w-full h-full object-cover transition-transform duration-300', hovered && 'scale-105')}
+          onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
+        />
+        <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-full px-2 py-0.5">
+          {event.venueId}
+        </div>
+        <div className={cn('absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-medium', status.text)}>
+          <span className={cn('w-1.5 h-1.5 rounded-full', status.dot)} />
+          {status.label}
+        </div>
+        {hovered && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-3">
+            <button
+              onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}/edit`) }}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-neon-pink/80 border border-white/20 flex items-center justify-center text-white transition-colors"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(event.id) }}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-red-500/80 border border-white/20 flex items-center justify-center text-white transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 space-y-2">
+        <h3 className="font-heading font-bold text-sm text-foreground line-clamp-1">{event.title}</h3>
+        <p className="text-xs text-white/40 font-mono">{formatEventDate(event.date, event.startTime)}</p>
+        {event.location && (
+          <p className="text-xs text-white/30 flex items-center gap-1">
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{event.location}</span>
+          </p>
+        )}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="text-white/40">Tickets sold</span>
+            <span className="text-neon-pink font-mono font-semibold">{soldPercent}%</span>
+          </div>
+          <Progress value={soldPercent} className="h-1.5 bg-white/10 [&>div]:bg-neon-pink" />
+        </div>
+        <div className="flex justify-between items-center pt-1">
+          <span className="text-xs text-white/30">From</span>
+          <span className="font-mono font-semibold text-sm text-neon-pink">
+            KSh {lowestPrice(event).toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
