@@ -18,10 +18,24 @@ interface CheckoutState {
   eventDate: string
 }
 
+function isCheckoutState(s: unknown): s is CheckoutState {
+  if (!s || typeof s !== 'object') return false
+  const obj = s as Record<string, unknown>
+  return (
+    typeof obj.eventId === 'string' &&
+    typeof obj.tierId === 'string' &&
+    typeof obj.tierName === 'string' &&
+    typeof obj.tierPrice === 'number' &&
+    typeof obj.eventTitle === 'string' &&
+    typeof obj.eventDate === 'string'
+  )
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as CheckoutState | null
+  const rawState = location.state
+  const state: CheckoutState | null = isCheckoutState(rawState) ? rawState : null
   const { toast } = useToast()
 
   const [isProcessing, setIsProcessing] = useState(false)

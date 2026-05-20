@@ -43,7 +43,7 @@ export default function EventDetailPage() {
     )
   }
 
-  if (!event) {
+  if (!event || event.status !== 'live') {
     navigate('/', { replace: true })
     return null
   }
