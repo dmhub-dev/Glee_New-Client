@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAdminEvent, useUpdateEvent, useDeleteEvent } from '../../lib/queries/events'
+import type { EventApiPayload } from '../../lib/api/events'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { Skeleton, Progress } from '@glee/ui'
 import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown } from 'lucide-react'
@@ -50,10 +51,24 @@ export default function EventDetailPage() {
   const deleteMutation = useDeleteEvent()
   const [statusOpen, setStatusOpen] = useState(false)
 
-  function handleStatusChange(status: Event['status']) {
+  function handleStatusChange(newStatus: Event['status']) {
     if (!event) return
     setStatusOpen(false)
-    updateMutation.mutate({ id: event.id, data: { status } })
+    const apiStatus: 'live' | 'draft' = newStatus === 'live' ? 'live' : 'draft'
+    const payload: EventApiPayload = {
+      title:       event.title,
+      description: event.description,
+      category:    '',
+      categoryId:  event.categoryId ?? '',
+      status:      apiStatus,
+      date:        event.date,
+      startTime:   event.startTime,
+      endTime:     event.endTime,
+      venueId:     event.venueId,
+      location:    event.location ?? '',
+      ticketTiers: event.ticketTiers,
+    }
+    updateMutation.mutate({ id: event.id, data: payload })
   }
 
   function handleDelete() {
