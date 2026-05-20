@@ -1,21 +1,16 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { MOCK_ADMIN_USER, type AdminUser } from '../lib/mock-admin-user'
+import { useAuth } from '../lib/auth/AuthContext'
+import type { AuthUser } from '../lib/api/auth'
 
-// ── Admin user ────────────────────────────────────────────────────────────────
+// ── Admin user (reads from AuthContext — ProtectedRoute guarantees non-null) ──
 
-const AdminUserContext = createContext<AdminUser>(MOCK_ADMIN_USER)
+export type AdminUser = AuthUser
 
 export function useAdminUser(): AdminUser {
-  return useContext(AdminUserContext)
-}
-
-export function AdminUserProvider({ children }: { children: ReactNode }) {
-  return (
-    <AdminUserContext.Provider value={MOCK_ADMIN_USER}>
-      {children}
-    </AdminUserContext.Provider>
-  )
+  const { user } = useAuth()
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return user!
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────

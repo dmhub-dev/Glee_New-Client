@@ -1,7 +1,8 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, CalendarDays, Ticket, FileText, Calendar, BarChart2, Image, MessageSquare, LogOut, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { useAdminUser } from '../../app/providers'
+import { useAuth } from '../../lib/auth/AuthContext'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, active: true },
@@ -23,7 +24,14 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
   const user = useAdminUser()
+  const { logout } = useAuth()
+  const navigate = useNavigate()
   const initials = user.name.split(' ').map((n: string) => n[0]).join('')
+
+  async function handleLogout() {
+    await logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <>
@@ -135,7 +143,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 <p className="text-sm font-medium text-admin-90 truncate">{user.name}</p>
                 <p className="text-xs text-admin-40 capitalize">{user.role}</p>
               </div>
-              <LogOut className="w-4 h-4 text-admin-30 hover:text-neon-pink cursor-pointer shrink-0 transition-colors" />
+              <button onClick={handleLogout} title="Sign out" className="text-admin-30 hover:text-neon-pink transition-colors shrink-0">
+              <LogOut className="w-4 h-4" />
+            </button>
             </div>
           </div>
         )}
