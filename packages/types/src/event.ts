@@ -19,7 +19,7 @@ export interface Event {
   ticketTiers: TicketTier[]
   flyerPortraitUrl?: string
   flyerSquareUrl?: string
-  status: 'draft' | 'pending_approval' | 'live' | 'rejected' | 'past'
+  status: 'draft' | 'pending_approval' | 'live' | 'rejected' | 'past' | 'cancelled' | 'postponed'
   location?: string
   dresscode?: string
   createdAt: string

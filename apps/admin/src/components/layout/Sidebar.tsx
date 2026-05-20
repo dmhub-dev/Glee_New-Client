@@ -41,6 +41,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         isCollapsed ? 'w-14' : 'w-60',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
+        {/* Collapse toggle — floating pill on right edge, desktop only */}
+        <button
+          onClick={onToggleCollapse}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden lg:flex absolute -right-3 top-[72px] w-6 h-6 items-center justify-center rounded-full bg-admin-surface border border-admin text-admin-40 hover:text-neon-pink hover:border-neon-pink/40 shadow-admin transition-colors z-50"
+        >
+          {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        </button>
         {/* Logo */}
         <div className={cn(
           'border-b border-admin flex items-center',
@@ -106,15 +114,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             )
           ))}
         </nav>
-
-        {/* Collapse toggle — desktop only */}
-        <button
-          onClick={onToggleCollapse}
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="hidden lg:flex items-center justify-center py-3 border-t border-admin text-admin-40 hover:text-admin-70 hover:bg-admin-overlay transition-colors"
-        >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
 
         {/* User chip */}
         {isCollapsed ? (

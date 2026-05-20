@@ -8,12 +8,14 @@ import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 
-type StatusTab = 'live' | 'draft' | 'pending_approval' | 'past'
+type StatusTab = 'live' | 'draft' | 'pending_approval' | 'past' | 'cancelled' | 'postponed'
 
 const TABS: { key: StatusTab; label: string }[] = [
   { key: 'live',             label: 'Active'           },
   { key: 'draft',            label: 'Draft'            },
   { key: 'pending_approval', label: 'Pending Approval' },
+  { key: 'postponed',        label: 'Postponed'        },
+  { key: 'cancelled',        label: 'Cancelled'        },
   { key: 'past',             label: 'Past'             },
 ]
 
@@ -22,6 +24,8 @@ const STATUS_DOT: Record<StatusTab, string> = {
   draft:            'bg-amber-400',
   pending_approval: 'bg-blue-400',
   past:             'bg-admin-30',
+  cancelled:        'bg-red-500',
+  postponed:        'bg-orange-400',
 }
 
 const CATEGORY_COLOURS: Record<string, string> = {

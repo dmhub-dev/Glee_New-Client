@@ -10,17 +10,21 @@ import type { Event } from '@glee/types'
 const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
 const STATUS_CONFIG: Record<Event['status'], { label: string; dot: string; badge: string }> = {
-  live:             { label: 'Active',   dot: 'bg-green-400',  badge: 'bg-green-500/15 text-green-400 border-green-500/20'  },
-  draft:            { label: 'Draft',    dot: 'bg-amber-400',  badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20'  },
-  pending_approval: { label: 'Pending',  dot: 'bg-blue-400',   badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20'    },
-  past:             { label: 'Past',     dot: 'bg-admin-30',   badge: 'bg-admin-overlay text-admin-40 border-admin'         },
-  rejected:         { label: 'Rejected', dot: 'bg-red-400',    badge: 'bg-red-500/15 text-red-400 border-red-500/20'        },
+  live:             { label: 'Active',    dot: 'bg-green-400',   badge: 'bg-green-500/15 text-green-400 border-green-500/20'   },
+  draft:            { label: 'Draft',     dot: 'bg-amber-400',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20'   },
+  pending_approval: { label: 'Pending',   dot: 'bg-blue-400',    badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20'     },
+  past:             { label: 'Past',      dot: 'bg-admin-30',    badge: 'bg-admin-overlay text-admin-40 border-admin'          },
+  rejected:         { label: 'Rejected',  dot: 'bg-red-400',     badge: 'bg-red-500/15 text-red-400 border-red-500/20'         },
+  cancelled:        { label: 'Cancelled', dot: 'bg-red-500',     badge: 'bg-red-500/15 text-red-400 border-red-500/20'         },
+  postponed:        { label: 'Postponed', dot: 'bg-orange-400',  badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20'},
 }
 
 const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
   { value: 'live',             label: 'Set Active'         },
   { value: 'draft',            label: 'Move to Draft'      },
   { value: 'pending_approval', label: 'Send for Approval'  },
+  { value: 'postponed',        label: 'Mark as Postponed'  },
+  { value: 'cancelled',        label: 'Cancel Event'       },
   { value: 'past',             label: 'Mark as Ended'      },
   { value: 'rejected',         label: 'Reject'             },
 ]
@@ -63,7 +67,7 @@ export default function EventDetailPage() {
   if (isLoading) {
     return (
       <AdminLayout title="Event Details">
-        <div className="space-y-4 max-w-6xl">
+        <div className="space-y-4 w-full">
           <Skeleton className="h-72 w-full rounded-2xl" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
@@ -103,7 +107,7 @@ export default function EventDetailPage() {
 
   return (
     <AdminLayout title="Event Details">
-      <div className="space-y-5 max-w-6xl">
+      <div className="space-y-5 w-full">
 
         {/* Top bar */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
