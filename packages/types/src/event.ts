@@ -22,6 +22,7 @@ export interface Event {
   status: 'draft' | 'pending_approval' | 'live' | 'rejected' | 'past' | 'cancelled' | 'postponed'
   location?: string
   dresscode?: string
+  categoryId?: string
   createdAt: string
   updatedAt: string
 }
