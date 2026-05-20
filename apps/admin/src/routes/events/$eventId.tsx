@@ -193,7 +193,7 @@ export default function EventFormPage() {
           {/* Back button */}
           <button
             onClick={() => navigate('/events')}
-            className="flex items-center gap-2 text-sm text-white/40 hover:text-white/70 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full px-4 py-1.5 transition-colors"
+            className="flex items-center gap-2 text-sm text-admin-40 hover:text-admin-70 bg-admin-input hover:bg-admin-overlay border border-admin-md rounded-full px-4 py-1.5 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to Events
@@ -208,31 +208,31 @@ export default function EventFormPage() {
           <form onSubmit={handleSubmit(v => onSubmit(v))} className="space-y-6">
 
             {/* Basic info */}
-            <section className="bg-[#0f0f15] border border-white/5 rounded-2xl p-5 space-y-4">
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Basic Info</h2>
               <div className="space-y-1">
-                <Label htmlFor="title" className="text-xs text-white/50">Title *</Label>
-                <Input id="title" {...register('title')} className="bg-white/5 border-white/10 focus-visible:ring-neon-pink/30" placeholder="e.g. Neon Nights Vol. 3" />
+                <Label htmlFor="title" className="text-xs text-admin-50">Title *</Label>
+                <Input id="title" {...register('title')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" placeholder="e.g. Neon Nights Vol. 3" />
                 {errors.title && <p className="text-xs text-red-400">{errors.title.message}</p>}
               </div>
               <div className="space-y-1">
-                <Label htmlFor="description" className="text-xs text-white/50">Description *</Label>
-                <Textarea id="description" {...register('description')} rows={4} className="bg-white/5 border-white/10 focus-visible:ring-neon-pink/30 resize-none" placeholder="Tell people what to expect..." />
+                <Label htmlFor="description" className="text-xs text-admin-50">Description *</Label>
+                <Textarea id="description" {...register('description')} rows={4} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30 resize-none" placeholder="Tell people what to expect..." />
                 {errors.description && <p className="text-xs text-red-400">{errors.description.message}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="category" className="text-xs text-white/50">Category *</Label>
+                  <Label htmlFor="category" className="text-xs text-admin-50">Category *</Label>
                   <select
                     id="category"
                     {...register('category')}
-                    className="w-full h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-neon-pink/30"
+                    className="w-full h-9 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-neon-pink/30"
                   >
-                    {CATEGORIES.map(c => <option key={c} value={c} className="bg-[#0f0f15]">{c}</option>)}
+                    {CATEGORIES.map(c => <option key={c} value={c} className="bg-admin-surface">{c}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-white/50">Status</Label>
+                  <Label className="text-xs text-admin-50">Status</Label>
                   <div className="flex items-center gap-3 h-9">
                     <Controller
                       control={control}
@@ -245,7 +245,7 @@ export default function EventFormPage() {
                         />
                       )}
                     />
-                    <span className="text-sm text-white/60">
+                    <span className="text-sm text-admin-60">
                       {formValues.status === 'live' ? 'Live' : 'Draft'}
                     </span>
                   </div>
@@ -254,61 +254,61 @@ export default function EventFormPage() {
             </section>
 
             {/* Date & time */}
-            <section className="bg-[#0f0f15] border border-white/5 rounded-2xl p-5 space-y-4">
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Date & Time</h2>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="date" className="text-xs text-white/50">Date *</Label>
-                  <Input id="date" type="date" {...register('date')} className="bg-white/5 border-white/10 focus-visible:ring-neon-pink/30" />
+                  <Label htmlFor="date" className="text-xs text-admin-50">Date *</Label>
+                  <Input id="date" type="date" {...register('date')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
                   {errors.date && <p className="text-xs text-red-400">{errors.date.message}</p>}
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="startTime" className="text-xs text-white/50">Start Time *</Label>
-                  <Input id="startTime" type="time" {...register('startTime')} className="bg-white/5 border-white/10 focus-visible:ring-neon-pink/30" />
+                  <Label htmlFor="startTime" className="text-xs text-admin-50">Start Time *</Label>
+                  <Input id="startTime" type="time" {...register('startTime')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
                   {errors.startTime && <p className="text-xs text-red-400">{errors.startTime.message}</p>}
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="endTime" className="text-xs text-white/50">End Time</Label>
-                  <Input id="endTime" type="time" {...register('endTime')} className="bg-white/5 border-white/10 focus-visible:ring-neon-pink/30" />
+                  <Label htmlFor="endTime" className="text-xs text-admin-50">End Time</Label>
+                  <Input id="endTime" type="time" {...register('endTime')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
                 </div>
               </div>
             </section>
 
             {/* Location */}
-            <section className="bg-[#0f0f15] border border-white/5 rounded-2xl p-5 space-y-4">
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Location</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="venueId" className="text-xs text-white/50">Venue Name *</Label>
-                  <Input id="venueId" {...register('venueId')} className="bg-white/5 border-white/10 focus-visible:ring-neon-pink/30" placeholder="e.g. Club Privé" />
+                  <Label htmlFor="venueId" className="text-xs text-admin-50">Venue Name *</Label>
+                  <Input id="venueId" {...register('venueId')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" placeholder="e.g. Club Privé" />
                   {errors.venueId && <p className="text-xs text-red-400">{errors.venueId.message}</p>}
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="location" className="text-xs text-white/50">Address *</Label>
-                  <Input id="location" {...register('location')} className="bg-white/5 border-white/10 focus-visible:ring-neon-pink/30" placeholder="e.g. Westlands, Nairobi" />
+                  <Label htmlFor="location" className="text-xs text-admin-50">Address *</Label>
+                  <Input id="location" {...register('location')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" placeholder="e.g. Westlands, Nairobi" />
                   {errors.location && <p className="text-xs text-red-400">{errors.location.message}</p>}
                 </div>
               </div>
             </section>
 
             {/* Media */}
-            <section className="bg-[#0f0f15] border border-white/5 rounded-2xl p-5 space-y-4">
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Event Flyers</h2>
               <div className="grid grid-cols-2 gap-4">
                 {/* Portrait flyer */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-white/50">Portrait Flyer</Label>
+                  <Label className="text-xs text-admin-50">Portrait Flyer</Label>
                   <div
-                    className="h-40 rounded-xl border border-dashed border-white/10 hover:border-neon-pink/40 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative bg-white/[0.03]"
+                    className="h-40 rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative bg-admin-overlay"
                     onClick={() => portraitInputRef.current?.click()}
                   >
                     {portraitPreview ? (
                       <img src={portraitPreview} alt="Portrait" className="w-full h-full object-cover" />
                     ) : (
                       <div className="text-center">
-                        <Upload className="w-5 h-5 text-white/20 mx-auto mb-1" />
-                        <p className="text-xs text-white/20">Click to upload</p>
-                        <p className="text-[11px] text-white/10">JPEG, PNG, WebP · max 5MB</p>
+                        <Upload className="w-5 h-5 text-admin-20 mx-auto mb-1" />
+                        <p className="text-xs text-admin-20">Click to upload</p>
+                        <p className="text-[11px] text-admin-20">JPEG, PNG, WebP · max 5MB</p>
                       </div>
                     )}
                   </div>
@@ -316,18 +316,18 @@ export default function EventFormPage() {
                 </div>
                 {/* Square flyer */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-white/50">Square Flyer</Label>
+                  <Label className="text-xs text-admin-50">Square Flyer</Label>
                   <div
-                    className="h-40 rounded-xl border border-dashed border-white/10 hover:border-neon-pink/40 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative bg-white/[0.03]"
+                    className="h-40 rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative bg-admin-overlay"
                     onClick={() => squareInputRef.current?.click()}
                   >
                     {squarePreview ? (
                       <img src={squarePreview} alt="Square" className="w-full h-full object-cover" />
                     ) : (
                       <div className="text-center">
-                        <Upload className="w-5 h-5 text-white/20 mx-auto mb-1" />
-                        <p className="text-xs text-white/20">Click to upload</p>
-                        <p className="text-[11px] text-white/10">JPEG, PNG, WebP · max 5MB</p>
+                        <Upload className="w-5 h-5 text-admin-20 mx-auto mb-1" />
+                        <p className="text-xs text-admin-20">Click to upload</p>
+                        <p className="text-[11px] text-admin-20">JPEG, PNG, WebP · max 5MB</p>
                       </div>
                     )}
                   </div>
@@ -337,55 +337,55 @@ export default function EventFormPage() {
             </section>
 
             {/* Ticket tiers */}
-            <section className="bg-[#0f0f15] border border-white/5 rounded-2xl p-5 space-y-4">
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Ticket Tiers</h2>
               <div className="space-y-3">
                 {fields.map((field, index) => (
-                  <div key={field.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-4 space-y-3">
+                  <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-white/40 font-mono">Tier {index + 1}</span>
+                      <span className="text-xs text-admin-40 font-mono">Tier {index + 1}</span>
                       <button
                         type="button"
                         onClick={() => remove(index)}
                         disabled={fields.length === 1}
-                        className="w-6 h-6 rounded flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-6 h-6 rounded flex items-center justify-center text-admin-20 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-xs text-white/50">Name *</Label>
+                        <Label className="text-xs text-admin-50">Name *</Label>
                         <Input
                           {...register(`ticketTiers.${index}.name`)}
                           placeholder="e.g. Regular"
-                          className="h-8 text-sm bg-white/5 border-white/10 focus-visible:ring-neon-pink/30"
+                          className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
                         />
                         {errors.ticketTiers?.[index]?.name && (
                           <p className="text-xs text-red-400">{errors.ticketTiers[index]?.name?.message}</p>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-white/50">Price (KSh) *</Label>
+                        <Label className="text-xs text-admin-50">Price (KSh) *</Label>
                         <Input
                           type="number"
                           min={0}
                           {...register(`ticketTiers.${index}.price`, { valueAsNumber: true })}
                           placeholder="0"
-                          className="h-8 text-sm bg-white/5 border-white/10 focus-visible:ring-neon-pink/30"
+                          className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
                         />
                         {errors.ticketTiers?.[index]?.price && (
                           <p className="text-xs text-red-400">{errors.ticketTiers[index]?.price?.message}</p>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-white/50">Quantity *</Label>
+                        <Label className="text-xs text-admin-50">Quantity *</Label>
                         <Input
                           type="number"
                           min={1}
                           {...register(`ticketTiers.${index}.quantity`, { valueAsNumber: true })}
                           placeholder="100"
-                          className="h-8 text-sm bg-white/5 border-white/10 focus-visible:ring-neon-pink/30"
+                          className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
                         />
                         {errors.ticketTiers?.[index]?.quantity && (
                           <p className="text-xs text-red-400">{errors.ticketTiers[index]?.quantity?.message}</p>
@@ -393,11 +393,11 @@ export default function EventFormPage() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-white/50">Description (optional)</Label>
+                      <Label className="text-xs text-admin-50">Description (optional)</Label>
                       <Input
                         {...register(`ticketTiers.${index}.description`)}
                         placeholder="e.g. Includes welcome drink and priority entry"
-                        className="h-8 text-sm bg-white/5 border-white/10 focus-visible:ring-neon-pink/30"
+                        className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
                       />
                     </div>
                   </div>
@@ -419,11 +419,11 @@ export default function EventFormPage() {
             </section>
 
             {/* Action bar */}
-            <div className="flex items-center justify-between py-4 border-t border-white/5 sticky bottom-0 bg-glee-bg">
+            <div className="flex items-center justify-between py-4 border-t border-admin sticky bottom-0 bg-admin-body">
               <button
                 type="button"
                 onClick={() => navigate('/events')}
-                className="text-sm text-white/30 hover:text-white/60 transition-colors"
+                className="text-sm text-admin-30 hover:text-admin-60 transition-colors"
               >
                 Discard changes
               </button>
@@ -433,7 +433,7 @@ export default function EventFormPage() {
                   variant="outline"
                   onClick={handleSubmit(v => onSubmit(v, true))}
                   disabled={isSubmitting}
-                  className="rounded-full border-white/20 text-white/70 hover:bg-white/5 hover:border-white/40"
+                  className="rounded-full border-white/20 text-admin-70 hover:bg-admin-input hover:border-white/40"
                 >
                   Save as Draft
                 </Button>
@@ -453,8 +453,8 @@ export default function EventFormPage() {
         {/* PREVIEW — right 40% */}
         <div className="w-72 shrink-0">
           <div className="sticky top-20 space-y-3">
-            <p className="text-xs text-white/30 uppercase tracking-wider font-medium">Preview</p>
-            <p className="text-[11px] text-white/20">How this event appears on the site</p>
+            <p className="text-xs text-admin-30 uppercase tracking-wider font-medium">Preview</p>
+            <p className="text-[11px] text-admin-20">How this event appears on the site</p>
             <AdminEventCard event={previewEvent} onDelete={() => {}} />
           </div>
         </div>

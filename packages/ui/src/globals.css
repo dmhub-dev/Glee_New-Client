@@ -49,6 +49,75 @@
     /* ── Shadows / Glows ── */
     --shadow-neon:        0 0 18px rgba(255, 45, 143, 0.35);
     --shadow-neon-strong: 0 0 28px rgba(255, 45, 143, 0.5);
+
+    /* ── Admin theme surface tokens (dark defaults) ── */
+    --admin-surface:     #0f0f15;
+    --admin-surface-2:   #13131c;
+    --admin-body:        #0B0B10;
+    --admin-border:      rgba(255,255,255,0.05);
+    --admin-border-md:   rgba(255,255,255,0.10);
+    --admin-t20:         rgba(255,255,255,0.20);
+    --admin-t30:         rgba(255,255,255,0.30);
+    --admin-t40:         rgba(255,255,255,0.40);
+    --admin-t50:         rgba(255,255,255,0.50);
+    --admin-t60:         rgba(255,255,255,0.60);
+    --admin-t70:         rgba(255,255,255,0.70);
+    --admin-t80:         rgba(255,255,255,0.80);
+    --admin-t90:         rgba(255,255,255,0.90);
+    --admin-overlay-sm:  rgba(255,255,255,0.04);
+    --admin-overlay-md:  rgba(255,255,255,0.08);
+    --admin-overlay-lg:  rgba(255,255,255,0.12);
+    --admin-input-bg:    rgba(255,255,255,0.05);
+    --admin-shadow:      0 1px 3px rgba(0,0,0,0.4);
+    --admin-card-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+
+  /* ── Light theme overrides ── */
+  html[data-theme="light"] {
+    color-scheme: light;
+
+    /* shadcn tokens */
+    --background:        0 0% 96%;
+    --foreground:        240 20% 8%;
+    --card:              0 0% 100%;
+    --card-foreground:   240 20% 8%;
+    --popover:           0 0% 100%;
+    --popover-foreground: 240 20% 8%;
+    --border:            240 6% 86%;
+    --input:             240 6% 86%;
+    --muted:             240 6% 92%;
+    --muted-foreground:  240 5% 46%;
+    --secondary:         240 6% 92%;
+    --secondary-foreground: 240 20% 8%;
+    --primary-foreground: 0 0% 100%;
+    --accent-foreground:  240 20% 8%;
+
+    /* Glee base */
+    --bg-primary:        #F0F0F5;
+    --bg-secondary:      #FFFFFF;
+    --text-primary:      #0B0B10;
+    --text-secondary:    #6B6B7B;
+
+    /* Admin surface tokens */
+    --admin-surface:     #FFFFFF;
+    --admin-surface-2:   #F8F8FC;
+    --admin-body:        #F0F0F5;
+    --admin-border:      rgba(0,0,0,0.07);
+    --admin-border-md:   rgba(0,0,0,0.11);
+    --admin-t20:         rgba(0,0,0,0.22);
+    --admin-t30:         rgba(0,0,0,0.32);
+    --admin-t40:         rgba(0,0,0,0.45);
+    --admin-t50:         rgba(0,0,0,0.52);
+    --admin-t60:         rgba(0,0,0,0.60);
+    --admin-t70:         rgba(0,0,0,0.70);
+    --admin-t80:         rgba(0,0,0,0.80);
+    --admin-t90:         rgba(0,0,0,0.90);
+    --admin-overlay-sm:  rgba(0,0,0,0.03);
+    --admin-overlay-md:  rgba(0,0,0,0.06);
+    --admin-overlay-lg:  rgba(0,0,0,0.10);
+    --admin-input-bg:    rgba(0,0,0,0.04);
+    --admin-shadow:      0 1px 4px rgba(0,0,0,0.10);
+    --admin-card-shadow: 0 4px 24px rgba(0,0,0,0.08);
   }
 }
 
@@ -59,6 +128,10 @@
 
   html {
     color-scheme: dark;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
   }
 
   body {
@@ -96,6 +169,28 @@
 }
 
 @layer utilities {
+  /* ── Admin theme-aware utility classes ── */
+  .bg-admin-surface   { background-color: var(--admin-surface); }
+  .bg-admin-body      { background-color: var(--admin-body); }
+  .border-admin       { border-color: var(--admin-border); }
+  .border-admin-md    { border-color: var(--admin-border-md); }
+  .text-admin-20      { color: var(--admin-t20); }
+  .text-admin-30      { color: var(--admin-t30); }
+  .text-admin-40      { color: var(--admin-t40); }
+  .text-admin-50      { color: var(--admin-t50); }
+  .text-admin-60      { color: var(--admin-t60); }
+  .text-admin-70      { color: var(--admin-t70); }
+  .text-admin-80      { color: var(--admin-t80); }
+  .text-admin-90      { color: var(--admin-t90); }
+  .bg-admin-overlay   { background-color: var(--admin-overlay-sm); }
+  .bg-admin-input     { background-color: var(--admin-input-bg); }
+  .shadow-admin       { box-shadow: var(--admin-shadow); }
+  .shadow-admin-card  { box-shadow: var(--admin-card-shadow); }
+
+  /* hover variants */
+  .hover\:bg-admin-overlay:hover  { background-color: var(--admin-overlay-md); }
+  .hover\:bg-admin-overlay-lg:hover { background-color: var(--admin-overlay-lg); }
+
   /* ── Neon glow utilities ── */
   .shadow-neon {
     box-shadow: var(--shadow-neon);
