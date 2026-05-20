@@ -294,51 +294,51 @@ export default function EventFormPage() {
             </section>
 
             {/* Media */}
-            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-5">
-              <div>
+            <section className="bg-admin-surface border border-admin rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
                 <h2 className="font-heading font-bold text-sm text-foreground">Event Posters</h2>
-                <p className="text-[11px] text-admin-30 mt-0.5">JPEG, PNG, WebP · max 5MB each · 2 per format</p>
+                <span className="text-[11px] text-admin-30">JPEG, PNG, WebP · max 5MB · 2 per format</span>
               </div>
 
-              {(
-                [
-                  { key: 'landscape', label: 'Landscape', sub: 'Desktop carousel', dim: '1920 × 1080px', ratio: 'aspect-video',    list: landscapes },
-                  { key: 'portrait',  label: 'Portrait',  sub: 'Mobile screens',   dim: '1080 × 1920px', ratio: 'aspect-[9/16]',   list: portraits  },
-                  { key: 'medium',    label: 'Medium',    sub: 'Tablet screens',   dim: '1200 × 900px',  ratio: 'aspect-[4/3]',    list: mediums    },
-                ] as const
-              ).map(({ key, label, sub, dim, ratio, list }) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-medium text-foreground">{label}</span>
-                    <span className="text-[11px] text-admin-30">{sub} · {dim} · {list.length}/2</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {list.map((url, i) => (
-                      <div key={i} className={`relative group ${ratio} rounded-xl overflow-hidden bg-admin-overlay border border-admin`}>
-                        <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="grid grid-cols-3 gap-3">
+                {(
+                  [
+                    { key: 'landscape', label: 'Landscape', dim: '1920×1080', list: landscapes },
+                    { key: 'portrait',  label: 'Portrait',  dim: '1080×1920', list: portraits  },
+                    { key: 'medium',    label: 'Medium',    dim: '1200×900',  list: mediums    },
+                  ] as const
+                ).map(({ key, label, dim, list }) => (
+                  <div key={key} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-medium text-admin-50">{label}</span>
+                      <span className="text-[10px] text-admin-30">{dim} · {list.length}/2</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {list.map((url, i) => (
+                        <div key={i} className="relative group h-14 flex-1 rounded-lg overflow-hidden bg-admin-overlay border border-admin">
+                          <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
                           <button
                             type="button"
                             onClick={() => handlePosterRemove(key, i)}
-                            className="w-8 h-8 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white transition-colors"
+                            className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 hover:bg-red-500 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-2.5 h-2.5" />
                           </button>
                         </div>
-                      </div>
-                    ))}
-                    {list.length < 2 && (
-                      <div
-                        className={`${ratio} rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-admin-overlay gap-1`}
-                        onClick={() => triggerPosterPick(key)}
-                      >
-                        <Upload className="w-4 h-4 text-admin-20" />
-                        <p className="text-[11px] text-admin-20">{dim}</p>
-                      </div>
-                    )}
+                      ))}
+                      {list.length < 2 && (
+                        <div
+                          className="h-14 flex-1 rounded-lg border border-dashed border-admin-md hover:border-neon-pink/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-admin-overlay gap-0.5"
+                          onClick={() => triggerPosterPick(key)}
+                        >
+                          <Upload className="w-3.5 h-3.5 text-admin-20" />
+                          <span className="text-[9px] text-admin-20 leading-tight text-center">{dim}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
 
               <input
                 ref={posterInputRef}
