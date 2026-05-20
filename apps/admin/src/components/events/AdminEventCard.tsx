@@ -48,8 +48,12 @@ export default function AdminEventCard({ event, onDelete }: AdminEventCardProps)
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(`/events/${event.id}`)}
+      onKeyDown={e => e.key === 'Enter' && navigate(`/events/${event.id}`)}
       className={cn(
-        'bg-admin-surface border border-admin rounded-2xl overflow-hidden transition-all duration-200 shadow-admin',
+        'bg-admin-surface border border-admin rounded-2xl overflow-hidden transition-all duration-200 shadow-admin cursor-pointer',
         hovered && 'border-neon-pink/40 shadow-neon'
       )}
       onMouseEnter={() => setHovered(true)}

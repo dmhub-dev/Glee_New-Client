@@ -5,6 +5,7 @@ import { Skeleton } from '@glee/ui'
 const DashboardPage = lazy(() => import('../routes/index'))
 const EventsListPage = lazy(() => import('../routes/events/index'))
 const EventFormPage = lazy(() => import('../routes/events/$eventId'))
+const EventDetailPage = lazy(() => import('../routes/events/EventDetail'))
 
 function PageSkeleton() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/events" element={<EventsListPage />} />
         <Route path="/events/new" element={<EventFormPage />} />
         <Route path="/events/:eventId/edit" element={<EventFormPage />} />
+        <Route path="/events/:eventId" element={<EventDetailPage />} />
       </Routes>
     </Suspense>
   )

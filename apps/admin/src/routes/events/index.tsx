@@ -204,7 +204,11 @@ export default function EventsListPage() {
               return (
                 <div
                   key={event.id}
-                  className="bg-admin-surface border border-admin rounded-2xl overflow-hidden hover:border-neon-pink/30 hover:shadow-admin transition-all duration-150 group"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/events/${event.id}`)}
+                  onKeyDown={e => e.key === 'Enter' && navigate(`/events/${event.id}`)}
+                  className="bg-admin-surface border border-admin rounded-2xl overflow-hidden hover:border-neon-pink/30 hover:shadow-admin transition-all duration-150 group cursor-pointer"
                 >
                   <div className="flex items-stretch gap-0">
                     {/* Thumbnail */}
@@ -272,14 +276,14 @@ export default function EventsListPage() {
                         {/* Actions */}
                         <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => navigate(`/events/${event.id}/edit`)}
+                            onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}/edit`) }}
                             className="w-8 h-8 rounded-lg bg-admin-overlay border border-admin hover:bg-neon-pink/10 hover:border-neon-pink/30 hover:text-neon-pink text-admin-50 flex items-center justify-center transition-colors"
                             title="Edit"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDelete(event.id)}
+                            onClick={e => { e.stopPropagation(); handleDelete(event.id) }}
                             className="w-8 h-8 rounded-lg bg-admin-overlay border border-admin hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-admin-50 flex items-center justify-center transition-colors"
                             title="Delete"
                           >
