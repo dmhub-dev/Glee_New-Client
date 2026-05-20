@@ -49,8 +49,11 @@ export default function EventFormPage() {
   const updateMutation = useUpdateEvent()
   const { data: categoriesData } = useCategories()
 
-  const [posters, setPosters] = useState<string[]>([])
-  const posterInputRef = useRef<HTMLInputElement>(null)
+  const [landscapes, setLandscapes] = useState<string[]>([])
+  const [portraits,  setPortraits]  = useState<string[]>([])
+  const [mediums,    setMediums]    = useState<string[]>([])
+  const posterInputRef  = useRef<HTMLInputElement>(null)
+  const posterTargetRef = useRef<'landscape' | 'portrait' | 'medium'>('landscape')
 
   const {
     register,
@@ -100,19 +103,31 @@ export default function EventFormPage() {
         description:       t.description ?? '',
       })),
     })
-    const imgs = [existingEvent.flyerSquareUrl, existingEvent.flyerPortraitUrl].filter(Boolean) as string[]
-    setPosters(imgs)
+    if (existingEvent.flyerSquareUrl)   setLandscapes([existingEvent.flyerSquareUrl])
+    if (existingEvent.flyerPortraitUrl) setPortraits([existingEvent.flyerPortraitUrl])
   }, [existingEvent, categoriesData, reset])
+
+  const POSTER_SETTERS = {
+    landscape: setLandscapes,
+    portrait:  setPortraits,
+    medium:    setMediums,
+  } as const
+
+  function triggerPosterPick(category: 'landscape' | 'portrait' | 'medium') {
+    posterTargetRef.current = category
+    posterInputRef.current?.click()
+  }
 
   function handlePosterAdd(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setPosters(prev => prev.length < 6 ? [...prev, URL.createObjectURL(file)] : prev)
+    const url = URL.createObjectURL(file)
+    POSTER_SETTERS[posterTargetRef.current](prev => prev.length < 2 ? [...prev, url] : prev)
     e.target.value = ''
   }
 
-  function handlePosterRemove(index: number) {
-    setPosters(prev => prev.filter((_, i) => i !== index))
+  function handlePosterRemove(category: 'landscape' | 'portrait' | 'medium', index: number) {
+    POSTER_SETTERS[category](prev => prev.filter((_, i) => i !== index))
   }
 
   async function onSubmit(values: EventFormValues, asDraft = false) {
@@ -153,8 +168,8 @@ export default function EventFormPage() {
     endTime: formValues.endTime || undefined,
     status: formValues.status === 'live' ? 'live' : 'draft',
     location: formValues.location,
-    flyerSquareUrl:   posters[0] ?? undefined,
-    flyerPortraitUrl: posters[1] ?? undefined,
+    flyerSquareUrl:   landscapes[0] ?? undefined,
+    flyerPortraitUrl: portraits[0] ?? undefined,
     ticketTiers: (formValues.ticketTiers ?? []).map(t => ({
       id: t.id,
       name: t.name || 'Wave',
@@ -279,45 +294,52 @@ export default function EventFormPage() {
             </section>
 
             {/* Media */}
-            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="font-heading font-bold text-sm text-foreground">Event Posters</h2>
-                  <p className="text-[11px] text-admin-30 mt-0.5">Up to 6 posters · JPEG, PNG, WebP · max 5MB each</p>
-                </div>
-                <span className="text-xs text-admin-30">{posters.length}/6</span>
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-5">
+              <div>
+                <h2 className="font-heading font-bold text-sm text-foreground">Event Posters</h2>
+                <p className="text-[11px] text-admin-30 mt-0.5">JPEG, PNG, WebP · max 5MB each · 2 per format</p>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                {posters.map((url, i) => (
-                  <div key={i} className="relative group aspect-[3/4] rounded-xl overflow-hidden bg-admin-overlay border border-admin">
-                    <img src={url} alt={`Poster ${i + 1}`} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button
-                        type="button"
-                        onClick={() => handlePosterRemove(i)}
-                        className="w-8 h-8 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white transition-colors"
+
+              {(
+                [
+                  { key: 'landscape', label: 'Landscape', sub: 'Desktop carousel', dim: '1920 × 1080px', ratio: 'aspect-video',    list: landscapes },
+                  { key: 'portrait',  label: 'Portrait',  sub: 'Mobile screens',   dim: '1080 × 1920px', ratio: 'aspect-[9/16]',   list: portraits  },
+                  { key: 'medium',    label: 'Medium',    sub: 'Tablet screens',   dim: '1200 × 900px',  ratio: 'aspect-[4/3]',    list: mediums    },
+                ] as const
+              ).map(({ key, label, sub, dim, ratio, list }) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-medium text-foreground">{label}</span>
+                    <span className="text-[11px] text-admin-30">{sub} · {dim} · {list.length}/2</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {list.map((url, i) => (
+                      <div key={i} className={`relative group ${ratio} rounded-xl overflow-hidden bg-admin-overlay border border-admin`}>
+                        <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handlePosterRemove(key, i)}
+                            className="w-8 h-8 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {list.length < 2 && (
+                      <div
+                        className={`${ratio} rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-admin-overlay gap-1`}
+                        onClick={() => triggerPosterPick(key)}
                       >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-black/60 text-[10px] text-white/70 text-center">
-                      {i === 0 ? '1080 × 1080px' : i === 1 ? '1080 × 1620px' : 'Any ratio'}
-                    </div>
+                        <Upload className="w-4 h-4 text-admin-20" />
+                        <p className="text-[11px] text-admin-20">{dim}</p>
+                      </div>
+                    )}
                   </div>
-                ))}
-                {posters.length < 6 && (
-                  <div
-                    className="aspect-[3/4] rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-admin-overlay gap-1.5"
-                    onClick={() => posterInputRef.current?.click()}
-                  >
-                    <Upload className="w-5 h-5 text-admin-20" />
-                    <p className="text-xs text-admin-20">Add poster</p>
-                    <p className="text-[10px] text-admin-20 text-center px-2">
-                      {posters.length === 0 ? '1080 × 1080px\n(square)' : posters.length === 1 ? '1080 × 1620px\n(portrait)' : 'Any ratio'}
-                    </p>
-                  </div>
-                )}
-              </div>
+                </div>
+              ))}
+
               <input
                 ref={posterInputRef}
                 type="file"
