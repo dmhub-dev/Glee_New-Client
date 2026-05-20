@@ -8,7 +8,7 @@ import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminEvent, useCreateEvent, useUpdateEvent } from '../../lib/queries/events'
 import { useCategories } from '../../lib/queries/categories'
 import { Button, Input, Textarea, Label, Switch, Skeleton } from '@glee/ui'
-import { ArrowLeft, Plus, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
 
 const tierSchema = z.object({
@@ -30,13 +30,13 @@ const eventSchema = z.object({
   endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')),
   venueId: z.string().min(1, 'Venue required'),
   location: z.string().min(3, 'Location required'),
-  ticketTiers: z.array(tierSchema).min(1, 'At least one tier required'),
+  ticketTiers: z.array(tierSchema).min(1, 'At least one wave required'),
 })
 
 type EventFormValues = z.infer<typeof eventSchema>
 
 function newTier(): EventFormValues['ticketTiers'][number] {
-  return { id: `tier-${Date.now()}`, name: '', price: 0, quantity: 1, quantityRemaining: 1, description: '' }
+  return { id: `wave-${Date.now()}`, name: '', price: 0, quantity: 1, quantityRemaining: 1, description: '' }
 }
 
 export default function EventFormPage() {
@@ -49,10 +49,8 @@ export default function EventFormPage() {
   const updateMutation = useUpdateEvent()
   const { data: categoriesData } = useCategories()
 
-  const [portraitPreview, setPortraitPreview] = useState<string | null>(null)
-  const [squarePreview, setSquarePreview] = useState<string | null>(null)
-  const portraitInputRef = useRef<HTMLInputElement>(null)
-  const squareInputRef = useRef<HTMLInputElement>(null)
+  const [posters, setPosters] = useState<string[]>([])
+  const posterInputRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -102,16 +100,19 @@ export default function EventFormPage() {
         description:       t.description ?? '',
       })),
     })
-    if (existingEvent.flyerPortraitUrl) setPortraitPreview(existingEvent.flyerPortraitUrl)
-    if (existingEvent.flyerSquareUrl)   setSquarePreview(existingEvent.flyerSquareUrl)
+    const imgs = [existingEvent.flyerSquareUrl, existingEvent.flyerPortraitUrl].filter(Boolean) as string[]
+    setPosters(imgs)
   }, [existingEvent, categoriesData, reset])
 
-  function handleImageChange(
-    e: React.ChangeEvent<HTMLInputElement>,
-    setter: (url: string) => void
-  ) {
+  function handlePosterAdd(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) setter(URL.createObjectURL(file))
+    if (!file) return
+    setPosters(prev => prev.length < 6 ? [...prev, URL.createObjectURL(file)] : prev)
+    e.target.value = ''
+  }
+
+  function handlePosterRemove(index: number) {
+    setPosters(prev => prev.filter((_, i) => i !== index))
   }
 
   async function onSubmit(values: EventFormValues, asDraft = false) {
@@ -152,11 +153,11 @@ export default function EventFormPage() {
     endTime: formValues.endTime || undefined,
     status: formValues.status === 'live' ? 'live' : 'draft',
     location: formValues.location,
-    flyerSquareUrl: squarePreview ?? undefined,
-    flyerPortraitUrl: portraitPreview ?? undefined,
+    flyerSquareUrl:   posters[0] ?? undefined,
+    flyerPortraitUrl: posters[1] ?? undefined,
     ticketTiers: (formValues.ticketTiers ?? []).map(t => ({
       id: t.id,
-      name: t.name || 'Tier',
+      name: t.name || 'Wave',
       price: t.price || 0,
       quantity: t.quantity || 1,
       quantityRemaining: t.quantity || 1,
@@ -279,57 +280,61 @@ export default function EventFormPage() {
 
             {/* Media */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <h2 className="font-heading font-bold text-sm text-foreground">Event Flyers</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {/* Portrait flyer */}
-                <div className="space-y-2">
-                  <Label className="text-xs text-admin-50">Portrait Flyer</Label>
-                  <div
-                    className="h-40 rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative bg-admin-overlay"
-                    onClick={() => portraitInputRef.current?.click()}
-                  >
-                    {portraitPreview ? (
-                      <img src={portraitPreview} alt="Portrait" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center">
-                        <Upload className="w-5 h-5 text-admin-20 mx-auto mb-1" />
-                        <p className="text-xs text-admin-20">Click to upload</p>
-                        <p className="text-[11px] text-admin-20">JPEG, PNG, WebP · max 5MB</p>
-                      </div>
-                    )}
-                  </div>
-                  <input ref={portraitInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => handleImageChange(e, setPortraitPreview)} />
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-heading font-bold text-sm text-foreground">Event Posters</h2>
+                  <p className="text-[11px] text-admin-30 mt-0.5">Up to 6 posters · JPEG, PNG, WebP · max 5MB each</p>
                 </div>
-                {/* Square flyer */}
-                <div className="space-y-2">
-                  <Label className="text-xs text-admin-50">Square Flyer</Label>
-                  <div
-                    className="h-40 rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative bg-admin-overlay"
-                    onClick={() => squareInputRef.current?.click()}
-                  >
-                    {squarePreview ? (
-                      <img src={squarePreview} alt="Square" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center">
-                        <Upload className="w-5 h-5 text-admin-20 mx-auto mb-1" />
-                        <p className="text-xs text-admin-20">Click to upload</p>
-                        <p className="text-[11px] text-admin-20">JPEG, PNG, WebP · max 5MB</p>
-                      </div>
-                    )}
-                  </div>
-                  <input ref={squareInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => handleImageChange(e, setSquarePreview)} />
-                </div>
+                <span className="text-xs text-admin-30">{posters.length}/6</span>
               </div>
+              <div className="grid grid-cols-3 gap-3">
+                {posters.map((url, i) => (
+                  <div key={i} className="relative group aspect-[3/4] rounded-xl overflow-hidden bg-admin-overlay border border-admin">
+                    <img src={url} alt={`Poster ${i + 1}`} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => handlePosterRemove(i)}
+                        className="w-8 h-8 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center text-white transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-black/60 text-[10px] text-white/70 text-center">
+                      {i === 0 ? '1080 × 1080px' : i === 1 ? '1080 × 1620px' : 'Any ratio'}
+                    </div>
+                  </div>
+                ))}
+                {posters.length < 6 && (
+                  <div
+                    className="aspect-[3/4] rounded-xl border border-dashed border-admin-md hover:border-neon-pink/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-admin-overlay gap-1.5"
+                    onClick={() => posterInputRef.current?.click()}
+                  >
+                    <Upload className="w-5 h-5 text-admin-20" />
+                    <p className="text-xs text-admin-20">Add poster</p>
+                    <p className="text-[10px] text-admin-20 text-center px-2">
+                      {posters.length === 0 ? '1080 × 1080px\n(square)' : posters.length === 1 ? '1080 × 1620px\n(portrait)' : 'Any ratio'}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={posterInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handlePosterAdd}
+              />
             </section>
 
-            {/* Ticket tiers */}
+            {/* Ticket waves */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <h2 className="font-heading font-bold text-sm text-foreground">Ticket Tiers</h2>
+              <h2 className="font-heading font-bold text-sm text-foreground">Ticket Waves</h2>
               <div className="space-y-3">
                 {fields.map((field, index) => (
                   <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-admin-40 font-mono">Tier {index + 1}</span>
+                      <span className="text-xs text-admin-40 font-mono">Wave {index + 1}</span>
                       <button
                         type="button"
                         onClick={() => remove(index)}
@@ -396,7 +401,7 @@ export default function EventFormPage() {
                   className="flex items-center gap-2 text-sm text-neon-pink/70 hover:text-neon-pink transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Tier
+                  Add Wave
                 </button>
               )}
               {errors.ticketTiers?.message && (
