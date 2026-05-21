@@ -5,13 +5,14 @@ import { Button, Skeleton } from '@glee/ui'
 
 const PLACEHOLDER = 'https://placehold.co/1200x700/0B0B10/FF2D8F?text=Glee'
 
-function formatCarouselDate(date: string, startTime: string): string {
-  const d = new Date(`${date}T${startTime}`)
-  return (
-    d.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) +
-    ' · ' +
-    d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
-  )
+function formatCarouselDate(startDate: string, endDate: string, startTime: string): string {
+  const d = new Date(`${startDate}T${startTime}`)
+  const datePart = endDate !== startDate
+    ? new Date(startDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' }) +
+      ' – ' +
+      new Date(endDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
+    : d.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 interface FeaturedCarouselProps {
@@ -75,7 +76,7 @@ export default function FeaturedCarousel({ events, isLoading }: FeaturedCarousel
           {event.title}
         </h2>
         <p className="text-white/60 font-mono text-sm mb-3 tracking-wide">
-          {formatCarouselDate(event.date, event.startTime)}
+          {formatCarouselDate(event.startDate, event.endDate, event.startTime)}
         </p>
         <p className="text-white/80 text-sm md:text-base leading-relaxed mb-8 line-clamp-2">
           {event.description}

@@ -11,7 +11,7 @@ export default function LandingPage() {
     () =>
       events
         .filter(e => e.status === 'live')
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()),
     [events],
   )
 

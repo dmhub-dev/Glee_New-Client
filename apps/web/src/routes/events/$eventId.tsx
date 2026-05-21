@@ -145,9 +145,9 @@ export default function EventDetailPage() {
     }
   }
 
-  const eventDate = new Date(event.date)
-  const startDt = new Date(`${event.date}T${event.startTime}`)
-  const endDt = event.endTime ? new Date(`${event.date}T${event.endTime}`) : null
+  const eventDate = new Date(event.startDate)
+  const startDt = new Date(`${event.startDate}T${event.startTime}`)
+  const endDt = event.endTime ? new Date(`${event.endDate}T${event.endTime}`) : null
   const posterSrc = event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
 
   return (

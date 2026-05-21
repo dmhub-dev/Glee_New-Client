@@ -4,13 +4,14 @@ import { Button } from '@glee/ui'
 
 const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
 
-function formatEventDate(date: string, startTime: string): string {
-  const d = new Date(`${date}T${startTime}`)
-  return (
-    d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' }) +
-    ' · ' +
-    d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
-  )
+function formatEventDate(startDate: string, endDate: string, startTime: string): string {
+  const d = new Date(`${startDate}T${startTime}`)
+  const datePart = endDate !== startDate
+    ? new Date(startDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) +
+      ' – ' +
+      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    : d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })
+  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 function lowestAvailablePrice(event: Event): number {
@@ -48,7 +49,7 @@ export default function EventCard({ event }: EventCardProps) {
           {event.title}
         </h3>
         <p className="text-xs text-muted-foreground font-mono">
-          {formatEventDate(event.date, event.startTime)}
+          {formatEventDate(event.startDate, event.endDate, event.startTime)}
         </p>
         <p className="text-xs text-glee-text-muted">{event.venueId}</p>
         <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{event.description}</p>
