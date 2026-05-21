@@ -1,9 +1,15 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import type { UserRole } from '@glee/types'
 import { useAuth } from '../../lib/auth/AuthContext'
 
-export default function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth()
+interface Props {
+  children: ReactNode
+  roles?: UserRole[]
+}
+
+export default function ProtectedRoute({ children, roles }: Props) {
+  const { isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
@@ -16,6 +22,10 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  if (roles && user && !roles.includes(user.role)) {
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>
