@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Category } from '../../lib/api/categories'
 import {
-  Button, Input, Badge, Switch,
+  Button, Input,
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
   AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
@@ -20,9 +20,7 @@ import {
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 
 const categorySchema = z.object({
-  name:        z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
-  isActive:    z.boolean(),
+  name: z.string().min(1, 'Name is required'),
 })
 type CategoryFormValues = z.infer<typeof categorySchema>
 
@@ -44,9 +42,7 @@ function CategoryFormDialog({
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
-      name:        initial?.name ?? '',
-      description: initial?.description ?? '',
-      isActive:    initial?.isActive ?? true,
+      name: initial?.name ?? '',
     },
   })
 
@@ -74,35 +70,6 @@ function CategoryFormDialog({
                     <Input placeholder="e.g. Afrobeats" className="bg-admin-input border-admin" {...field} />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description <span className="text-admin-30">(optional)</span></FormLabel>
-                  <FormControl>
-                    <Input placeholder="Short description…" className="bg-admin-input border-admin" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-3">
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      className="data-[state=checked]:bg-neon-pink"
-                    />
-                  </FormControl>
-                  <FormLabel className="!mt-0">Active</FormLabel>
                 </FormItem>
               )}
             />
@@ -186,7 +153,7 @@ export default function CategoriesTab() {
             <table className="w-full text-sm min-w-[500px]">
               <thead>
                 <tr className="border-b border-admin">
-                  {['Name', 'Description', 'Status', 'Created', 'Actions'].map(h => (
+                  {['Name', 'Created', 'Actions'].map(h => (
                     <th key={h} className="text-left text-xs text-admin-30 font-medium px-5 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -195,16 +162,6 @@ export default function CategoriesTab() {
                 {(categories ?? []).map(cat => (
                   <tr key={cat.id} className="border-b border-admin hover:bg-admin-overlay transition-colors">
                     <td className="px-5 py-3 text-sm text-admin-80 font-medium">{cat.name}</td>
-                    <td className="px-5 py-3 text-xs text-admin-50 max-w-[200px] truncate">{cat.description || '—'}</td>
-                    <td className="px-5 py-3">
-                      <Badge className={`text-[10px] border ${
-                        cat.isActive
-                          ? 'bg-green-500/10 text-green-500 border-green-500/30'
-                          : 'bg-admin-overlay text-admin-40 border-admin'
-                      }`}>
-                        {cat.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </td>
                     <td className="px-5 py-3 text-xs text-admin-40 whitespace-nowrap">
                       {new Date(cat.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
@@ -248,7 +205,7 @@ export default function CategoriesTab() {
                 ))}
                 {(categories ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-sm text-admin-30">
+                    <td colSpan={3} className="px-5 py-10 text-center text-sm text-admin-30">
                       No categories yet.
                     </td>
                   </tr>

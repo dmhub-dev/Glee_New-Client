@@ -4,21 +4,16 @@ import { apiFetch } from './client'
 export interface Category {
   id: string
   name: string
-  description: string
-  isActive: boolean
   createdAt: string
+  updatedAt: string
 }
 
 export interface CreateCategoryDto {
   name: string
-  description?: string
-  isActive?: boolean
 }
 
 export interface UpdateCategoryDto {
   name?: string
-  description?: string
-  isActive?: boolean
 }
 
 interface CategoriesResponse {
@@ -36,19 +31,19 @@ export function getCategories(): Promise<Category[]> {
 }
 
 export function createCategory(dto: CreateCategoryDto): Promise<Category> {
-  return apiFetch<CategoryResponse>('/api/v1/categories', {
+  return apiFetch<CategoryResponse>('/api/v1/admin/categories', {
     method: 'POST',
     body: JSON.stringify(dto),
   }).then(r => r.data)
 }
 
 export function updateCategory(id: string, dto: UpdateCategoryDto): Promise<Category> {
-  return apiFetch<CategoryResponse>(`/api/v1/categories/${id}`, {
+  return apiFetch<CategoryResponse>(`/api/v1/admin/categories/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(dto),
   }).then(r => r.data)
 }
 
 export function deleteCategory(id: string): Promise<void> {
-  return apiFetch(`/api/v1/categories/${id}`, { method: 'DELETE' })
+  return apiFetch(`/api/v1/admin/categories/${id}`, { method: 'DELETE' })
 }

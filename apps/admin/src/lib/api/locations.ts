@@ -44,19 +44,19 @@ export function getLocations(): Promise<Location[]> {
 }
 
 export function createLocation(dto: CreateLocationDto): Promise<Location> {
-  return apiFetch<LocationResponse>('/api/v1/locations', {
+  return apiFetch<LocationResponse>('/api/v1/admin/locations', {
     method: 'POST',
     body: JSON.stringify(dto),
   }).then(r => r.data)
 }
 
 export function updateLocation(id: string, dto: UpdateLocationDto): Promise<Location> {
-  return apiFetch<LocationResponse>(`/api/v1/locations/${id}`, {
+  return apiFetch<LocationResponse>(`/api/v1/admin/locations/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(dto),
   }).then(r => r.data)
 }
 
 export function deleteLocation(id: string): Promise<void> {
-  return apiFetch(`/api/v1/locations/${id}`, { method: 'DELETE' })
+  return apiFetch(`/api/v1/admin/locations/${id}`, { method: 'DELETE' })
 }
