@@ -13,7 +13,8 @@ export interface Event {
   venueId: string
   title: string
   description: string
-  date: string
+  startDate: string   // YYYY-MM-DD — first day of event
+  endDate: string     // YYYY-MM-DD — last day (equals startDate for single-day events)
   startTime: string
   endTime?: string
   ticketTiers: TicketTier[]

@@ -82,7 +82,8 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     venueId:          locationStr ?? '',
     title:            raw.name,
     description:      raw.description ?? '',
-    date:             start ? start.toISOString().split('T')[0] : '',
+    startDate:        start ? start.toISOString().split('T')[0] : '',
+    endDate:          end   ? end.toISOString().split('T')[0]   : (start ? start.toISOString().split('T')[0] : ''),
     startTime:        start ? start.toTimeString().slice(0, 5) : '',
     endTime:          end   ? end.toTimeString().slice(0, 5)   : undefined,
     ticketTiers,
@@ -103,7 +104,8 @@ export interface EventApiPayload {
   category: string    // display name — not sent to API
   categoryId: string  // CUID sent to API
   status: 'draft' | 'live'
-  date: string
+  startDate: string
+  endDate: string
   startTime: string
   endTime?: string
   venueId: string
@@ -129,9 +131,9 @@ function buildFormData(payload: EventApiPayload): FormData {
 
   if (payload.categoryId) fd.append('category', payload.categoryId)
 
-  const startIso = new Date(`${payload.date}T${payload.startTime}:00`).toISOString()
+  const startIso = new Date(`${payload.startDate}T${payload.startTime}:00`).toISOString()
   const endIso   = payload.endTime
-    ? new Date(`${payload.date}T${payload.endTime}:00`).toISOString()
+    ? new Date(`${payload.endDate}T${payload.endTime}:00`).toISOString()
     : startIso
 
   fd.append('date', JSON.stringify({ start: startIso, end: endIso }))

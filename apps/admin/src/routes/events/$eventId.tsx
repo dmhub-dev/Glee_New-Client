@@ -7,7 +7,7 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminEvent, useCreateEvent, useUpdateEvent } from '../../lib/queries/events'
 import { useCategories } from '../../lib/queries/categories'
-import { Button, Input, Textarea, Label, Switch, Skeleton } from '@glee/ui'
+import { Button, Input, Textarea, Label, Skeleton } from '@glee/ui'
 import { ArrowLeft, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
 
@@ -25,12 +25,16 @@ const eventSchema = z.object({
   description: z.string().min(10, 'At least 10 characters').max(2000),
   category: z.string().min(1, 'Category required'),
   status: z.enum(['draft', 'live'] as const),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
+  endDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
   endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')),
   venueId: z.string().min(1, 'Venue required'),
   location: z.string().min(3, 'Location required'),
   ticketTiers: z.array(tierSchema).min(1, 'At least one wave required'),
+}).refine(data => data.endDate >= data.startDate, {
+  message: 'End date must be on or after start date',
+  path: ['endDate'],
 })
 
 type EventFormValues = z.infer<typeof eventSchema>
@@ -61,6 +65,7 @@ export default function EventFormPage() {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -69,7 +74,8 @@ export default function EventFormPage() {
       description: '',
       category: '',
       status: 'draft',
-      date: '',
+      startDate: '',
+      endDate:   '',
       startTime: '',
       endTime: '',
       venueId: '',
@@ -89,7 +95,8 @@ export default function EventFormPage() {
       description: existingEvent.description,
       category:    categoryName,
       status:      existingEvent.status === 'live' ? 'live' : 'draft',
-      date:        existingEvent.date,
+      startDate:   existingEvent.startDate,
+      endDate:     existingEvent.endDate,
       startTime:   existingEvent.startTime,
       endTime:     existingEvent.endTime ?? '',
       venueId:     existingEvent.venueId,
@@ -173,7 +180,8 @@ export default function EventFormPage() {
     venueId: formValues.venueId || 'Venue',
     title: formValues.title || 'Event Title',
     description: formValues.description || 'Event description will appear here.',
-    date: formValues.date || new Date().toISOString().slice(0, 10),
+    startDate: formValues.startDate || new Date().toISOString().slice(0, 10),
+    endDate:   formValues.endDate   || formValues.startDate || new Date().toISOString().slice(0, 10),
     startTime: formValues.startTime || '20:00',
     endTime: formValues.endTime || undefined,
     status: formValues.status === 'live' ? 'live' : 'draft',
@@ -245,22 +253,36 @@ export default function EventFormPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-admin-50">Status</Label>
-                  <div className="flex items-center gap-3 h-9">
-                    <Controller
-                      control={control}
-                      name="status"
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value === 'live'}
-                          onCheckedChange={checked => field.onChange(checked ? 'live' : 'draft')}
-                          className="data-[state=checked]:bg-neon-pink"
-                        />
-                      )}
-                    />
-                    <span className="text-sm text-admin-60">
-                      {formValues.status === 'live' ? 'Live' : 'Draft'}
-                    </span>
-                  </div>
+                  <Controller
+                    control={control}
+                    name="status"
+                    render={({ field }) => (
+                      <div className="flex rounded-md border border-admin-md overflow-hidden h-9">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange('draft')}
+                          className={`flex-1 px-4 text-sm font-medium transition-colors ${
+                            field.value === 'draft'
+                              ? 'bg-admin-overlay text-foreground'
+                              : 'bg-transparent text-admin-40 hover:text-admin-70'
+                          }`}
+                        >
+                          Draft
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => field.onChange('live')}
+                          className={`flex-1 px-4 text-sm font-medium transition-colors border-l border-admin-md ${
+                            field.value === 'live'
+                              ? 'bg-neon-pink text-white'
+                              : 'bg-transparent text-admin-40 hover:text-admin-70'
+                          }`}
+                        >
+                          Live
+                        </button>
+                      </div>
+                    )}
+                  />
                 </div>
               </div>
             </section>
@@ -268,16 +290,33 @@ export default function EventFormPage() {
             {/* Date & time */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Date & Time</h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="date" className="text-xs text-admin-50">Date *</Label>
-                  <Input id="date" type="date" {...register('date')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
-                  {errors.date && <p className="text-xs text-red-400">{errors.date.message}</p>}
+                  <Label htmlFor="startDate" className="text-xs text-admin-50">Start Date *</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    {...register('startDate', {
+                      onChange: e => {
+                        const val = e.target.value
+                        if (val && !formValues.endDate) {
+                          setValue('endDate', val)
+                        }
+                      },
+                    })}
+                    className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                  />
+                  {errors.startDate && <p className="text-xs text-red-400">{errors.startDate.message}</p>}
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="startTime" className="text-xs text-admin-50">Start Time *</Label>
                   <Input id="startTime" type="time" {...register('startTime')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
                   {errors.startTime && <p className="text-xs text-red-400">{errors.startTime.message}</p>}
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="endDate" className="text-xs text-admin-50">End Date *</Label>
+                  <Input id="endDate" type="date" {...register('endDate')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
+                  {errors.endDate && <p className="text-xs text-red-400">{errors.endDate.message}</p>}
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="endTime" className="text-xs text-admin-50">End Time</Label>
