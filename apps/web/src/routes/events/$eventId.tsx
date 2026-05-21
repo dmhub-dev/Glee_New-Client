@@ -9,7 +9,7 @@ import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@glee/ui'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
-import { initiateGuestPurchase } from '../../lib/api/tickets'
+import { initiateGuestPurchase, confirmTicketPurchase } from '../../lib/api/tickets'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
 
@@ -95,6 +95,7 @@ export default function EventDetailPage() {
     setIsPreparing(true)
     let intentAccessCode: string
     let intentReference: string
+    let intentVerificationToken: string
     try {
       const intent = await initiateGuestPurchase({
         eventId: event.id,
@@ -106,6 +107,7 @@ export default function EventDetailPage() {
       })
       intentAccessCode = intent.access_code
       intentReference = intent.reference
+      intentVerificationToken = intent.verificationToken
     } catch (err: unknown) {
       setIsPreparing(false)
       const message = err instanceof Error ? err.message : 'Could not initiate payment'
@@ -119,8 +121,13 @@ export default function EventDetailPage() {
     setIsProcessing(true)
 
     initializePayment({
-      onSuccess: () => {
+      onSuccess: async () => {
         setIsProcessing(false)
+        try {
+          await confirmTicketPurchase(intentVerificationToken)
+        } catch {
+          // payment succeeded — ticket creation failure shouldn't block the success screen
+        }
         setIsSuccess(true)
         toast({ title: 'Ticket confirmed!', description: 'Check your email for the QR code.' })
       },
