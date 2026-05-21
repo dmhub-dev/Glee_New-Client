@@ -4,6 +4,14 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
 // ── Backend shapes ────────────────────────────────────────────────────────────
 
+interface BackendTicketCategory {
+  id: string
+  name: string
+  price: string | number
+  capacity: number | null
+  available: number | null
+}
+
 interface BackendEvent {
   id: string
   name: string
@@ -22,6 +30,7 @@ interface BackendEvent {
   createdAt: string
   updatedAt: string
   location: { id: string; name: string; address: string } | null
+  ticketCategories: BackendTicketCategory[]
 }
 
 // ── Status map ────────────────────────────────────────────────────────────────
@@ -38,13 +47,25 @@ const BACKEND_TO_STATUS: Record<string, Event['status']> = {
 function mapBackendToEvent(raw: BackendEvent): Event {
   const start     = raw.startDate ? new Date(raw.startDate) : null
   const end       = raw.endDate   ? new Date(raw.endDate)   : null
-  const price     = Number(raw.price) || 0
-  const capacity  = raw.capacity ?? 0
-  const available = raw.availableTickets ?? capacity
   const locationStr = (raw.location?.name
     ?? raw.locationName
     ?? [raw.city, raw.state, raw.country].filter(Boolean).join(', '))
     || undefined
+
+  const ticketTiers = raw.ticketCategories?.length
+    ? raw.ticketCategories.map(tc => ({
+        id:                tc.id,
+        name:              tc.name,
+        price:             Number(tc.price),
+        quantity:          tc.capacity ?? 0,
+        quantityRemaining: tc.available ?? tc.capacity ?? 0,
+      }))
+    : (() => {
+        const price     = Number(raw.price) || 0
+        const capacity  = raw.capacity ?? 0
+        const available = raw.availableTickets ?? capacity
+        return capacity > 0 ? [{ id: raw.id + '_default', name: 'General', price, quantity: capacity, quantityRemaining: available }] : []
+      })()
 
   return {
     id:               raw.id,
@@ -55,13 +76,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     date:             start ? start.toISOString().split('T')[0] : '',
     startTime:        start ? start.toTimeString().slice(0, 5) : '',
     endTime:          end   ? end.toTimeString().slice(0, 5)   : undefined,
-    ticketTiers:      capacity > 0 ? [{
-      id:                raw.id + '_default',
-      name:              'General',
-      price,
-      quantity:          capacity,
-      quantityRemaining: available,
-    }] : [],
+    ticketTiers,
     flyerSquareUrl:   raw.bannerImages[0] ?? undefined,
     flyerPortraitUrl: raw.bannerImages[1] ?? raw.bannerImages[0] ?? undefined,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
