@@ -3,30 +3,24 @@ import { apiFetch } from './client'
 
 // ── Backend shapes ────────────────────────────────────────────────────────────
 
-interface BackendTicketCategory {
-  id: string
-  name: string
-  price: string | number
-  capacity: number | null
-  available: number | null
-}
-
 interface BackendEvent {
   id: string
   name: string
   description: string | null
-  location: string | null
-  vendorId: string | null
-  vendor: { id: string; name: string } | null
-  categoryId: string | null
-  category: { id: string; name: string } | null
+  price: string | number
+  capacity: number | null
+  availableTickets: number | null
+  locationName: string | null
+  city: string | null
+  state: string | null
+  country: string | null
   bannerImages: string[]
   startDate: string | null
   endDate: string | null
   status: string
   createdAt: string
   updatedAt: string
-  ticketCategories: BackendTicketCategory[]
+  location: { id: string; name: string; address: string } | null
 }
 
 // ── Status maps ───────────────────────────────────────────────────────────────
@@ -51,30 +45,36 @@ const STATUS_TO_BACKEND: Record<string, string> = {
 // ── Mappers ───────────────────────────────────────────────────────────────────
 
 function mapBackendToEvent(raw: BackendEvent): Event {
-  const start = raw.startDate ? new Date(raw.startDate) : null
-  const end   = raw.endDate   ? new Date(raw.endDate)   : null
+  const start    = raw.startDate ? new Date(raw.startDate) : null
+  const end      = raw.endDate   ? new Date(raw.endDate)   : null
+  const price    = Number(raw.price) || 0
+  const capacity = raw.capacity ?? 0
+  const available = raw.availableTickets ?? capacity
+  const locationStr = (raw.location?.name
+    ?? raw.locationName
+    ?? [raw.city, raw.state, raw.country].filter(Boolean).join(', '))
+    || undefined
 
   return {
     id:               raw.id,
-    vendorId:         raw.vendorId ?? '',
-    venueId:          raw.vendor?.name ?? raw.location ?? '',
+    vendorId:         '',
+    venueId:          locationStr ?? '',
     title:            raw.name,
     description:      raw.description ?? '',
     date:             start ? start.toISOString().split('T')[0] : '',
     startTime:        start ? start.toTimeString().slice(0, 5) : '',
     endTime:          end   ? end.toTimeString().slice(0, 5)   : undefined,
-    ticketTiers:      raw.ticketCategories.map(tc => ({
-      id:                tc.id,
-      name:              tc.name,
-      price:             Number(tc.price),
-      quantity:          tc.capacity ?? 0,
-      quantityRemaining: tc.available ?? 0,
-    })),
+    ticketTiers:      capacity > 0 ? [{
+      id:                raw.id + '_default',
+      name:              'General',
+      price,
+      quantity:          capacity,
+      quantityRemaining: available,
+    }] : [],
     flyerSquareUrl:   raw.bannerImages[0] ?? undefined,
     flyerPortraitUrl: raw.bannerImages[1] ?? raw.bannerImages[0] ?? undefined,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
-    location:         raw.location ?? undefined,
-    categoryId:       raw.categoryId ?? undefined,
+    location:         locationStr,
     createdAt:        raw.createdAt,
     updatedAt:        raw.updatedAt,
   }
