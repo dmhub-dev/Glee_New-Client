@@ -33,7 +33,7 @@ function formatEventDate(startDate: string, endDate: string, startTime: string):
   const datePart = endDate !== startDate
     ? new Date(startDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) +
       ' – ' +
-      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
+      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
     : d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })
   return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
