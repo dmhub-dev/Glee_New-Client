@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useEffect } from 'react'
 import AdminLayout from '../../components/layout/AdminLayout'
 import UsersTab from './UsersTab'
@@ -21,16 +21,15 @@ const VALID_TABS = new Set<string>(TABS.map(t => t.key))
 
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
   const rawTab = searchParams.get('tab') ?? ''
   const activeTab: TabKey = VALID_TABS.has(rawTab) ? (rawTab as TabKey) : 'users'
 
   // Normalise missing/invalid tab param to default
   useEffect(() => {
     if (!VALID_TABS.has(rawTab)) {
-      navigate('/settings?tab=users', { replace: true })
+      setSearchParams({ tab: 'users' }, { replace: true })
     }
-  }, [rawTab, navigate])
+  }, [rawTab, setSearchParams])
 
   function handleTabChange(key: TabKey) {
     setSearchParams({ tab: key })
@@ -41,7 +40,7 @@ export default function SettingsPage() {
       <div className="space-y-6">
         {/* Tab nav */}
         <div className="border-b border-admin">
-          <nav className="flex gap-1 overflow-x-auto pb-px">
+          <nav className="flex gap-1 overflow-x-auto pb-0.5">
             {TABS.map(tab => (
               <button
                 key={tab.key}
