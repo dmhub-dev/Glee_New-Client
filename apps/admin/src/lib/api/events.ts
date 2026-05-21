@@ -101,6 +101,7 @@ export interface EventApiPayload {
     quantityRemaining: number
     description?: string
   }>
+  posterFiles?: File[]
 }
 
 function buildFormData(payload: EventApiPayload): FormData {
@@ -126,6 +127,12 @@ function buildFormData(payload: EventApiPayload): FormData {
       payload.ticketTiers.map(t => ({ name: t.name, price: t.price, capacity: t.quantity })),
     ),
   )
+
+  if (payload.posterFiles) {
+    for (const file of payload.posterFiles) {
+      fd.append('files', file)
+    }
+  }
 
   return fd
 }

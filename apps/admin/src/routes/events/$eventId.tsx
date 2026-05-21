@@ -49,9 +49,9 @@ export default function EventFormPage() {
   const updateMutation = useUpdateEvent()
   const { data: categoriesData } = useCategories()
 
-  const [landscapes, setLandscapes] = useState<string[]>([])
-  const [portraits,  setPortraits]  = useState<string[]>([])
-  const [mediums,    setMediums]    = useState<string[]>([])
+  const [landscapes, setLandscapes] = useState<{ url: string; file?: File }[]>([])
+  const [portraits,  setPortraits]  = useState<{ url: string; file?: File }[]>([])
+  const [mediums,    setMediums]    = useState<{ url: string; file?: File }[]>([])
   const posterInputRef  = useRef<HTMLInputElement>(null)
   const posterTargetRef = useRef<'landscape' | 'portrait' | 'medium'>('landscape')
 
@@ -103,8 +103,8 @@ export default function EventFormPage() {
         description:       t.description ?? '',
       })),
     })
-    if (existingEvent.flyerSquareUrl)   setLandscapes([existingEvent.flyerSquareUrl])
-    if (existingEvent.flyerPortraitUrl) setPortraits([existingEvent.flyerPortraitUrl])
+    if (existingEvent.flyerSquareUrl)   setLandscapes([{ url: existingEvent.flyerSquareUrl }])
+    if (existingEvent.flyerPortraitUrl) setPortraits([{ url: existingEvent.flyerPortraitUrl }])
   }, [existingEvent, categoriesData, reset])
 
   const POSTER_SETTERS = {
@@ -122,20 +122,30 @@ export default function EventFormPage() {
     const file = e.target.files?.[0]
     if (!file) return
     const url = URL.createObjectURL(file)
-    POSTER_SETTERS[posterTargetRef.current](prev => prev.length < 2 ? [...prev, url] : prev)
+    POSTER_SETTERS[posterTargetRef.current](prev => prev.length < 2 ? [...prev, { url, file }] : prev)
     e.target.value = ''
   }
 
   function handlePosterRemove(category: 'landscape' | 'portrait' | 'medium', index: number) {
-    POSTER_SETTERS[category](prev => prev.filter((_, i) => i !== index))
+    POSTER_SETTERS[category](prev => {
+      const item = prev[index]
+      if (item?.file) URL.revokeObjectURL(item.url)
+      return prev.filter((_, i) => i !== index)
+    })
   }
 
   async function onSubmit(values: EventFormValues, asDraft = false) {
     const categoryId = categoriesData?.find(c => c.name === values.category)?.id ?? ''
+    const posterFiles = [
+      ...landscapes.filter(p => p.file).map(p => p.file!),
+      ...portraits.filter(p => p.file).map(p => p.file!),
+      ...mediums.filter(p => p.file).map(p => p.file!),
+    ]
     const payload = {
       ...values,
       categoryId,
       status: (asDraft ? 'draft' : values.status) as 'draft' | 'live',
+      posterFiles: posterFiles.length > 0 ? posterFiles : undefined,
     }
 
     if (isNew) {
@@ -168,8 +178,8 @@ export default function EventFormPage() {
     endTime: formValues.endTime || undefined,
     status: formValues.status === 'live' ? 'live' : 'draft',
     location: formValues.location,
-    flyerSquareUrl:   landscapes[0] ?? undefined,
-    flyerPortraitUrl: portraits[0] ?? undefined,
+    flyerSquareUrl:   landscapes[0]?.url ?? undefined,
+    flyerPortraitUrl: portraits[0]?.url ?? undefined,
     ticketTiers: (formValues.ticketTiers ?? []).map(t => ({
       id: t.id,
       name: t.name || 'Wave',
@@ -314,7 +324,7 @@ export default function EventFormPage() {
                       <span className="text-[10px] text-admin-30">{dim} · {list.length}/2</span>
                     </div>
                     <div className="flex gap-1.5">
-                      {list.map((url, i) => (
+                      {list.map(({ url }, i) => (
                         <div key={i} className="relative group h-14 flex-1 rounded-lg overflow-hidden bg-admin-overlay border border-admin">
                           <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
                           <button
