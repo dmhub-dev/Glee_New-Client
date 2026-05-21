@@ -141,7 +141,7 @@ export function PasswordForm() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={mutation.isPending}
+                  disabled={mutation.isPending || !form.formState.isDirty}
                   className="bg-neon-pink hover:bg-neon-pink/90 text-white"
                 >
                   {mutation.isPending ? 'Saving…' : 'Update password'}

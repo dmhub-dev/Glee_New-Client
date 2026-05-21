@@ -22,13 +22,17 @@ export function AvatarUpload({ profileData }: AvatarUploadProps) {
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Image must be under 5 MB', variant: 'destructive' })
+      e.target.value = ''
+      return
+    }
     try {
       await avatarMutation.mutateAsync(file)
       toast({ title: 'Avatar updated' })
     } catch {
       toast({ title: 'Failed to upload avatar', variant: 'destructive' })
     }
-    // Reset input so the same file can be re-selected
     e.target.value = ''
   }
 
@@ -54,7 +58,7 @@ export function AvatarUpload({ profileData }: AvatarUploadProps) {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
         className="hidden"
         onChange={handleAvatarChange}
       />

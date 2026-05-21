@@ -28,6 +28,7 @@ export function useUpdateProfile() {
   })
 }
 
+// Error handling intentionally delegated to callers via try/catch — no cache to invalidate.
 export function useChangePassword() {
   return useMutation({
     mutationFn: (dto: ChangePasswordDto) => changePassword(dto),
