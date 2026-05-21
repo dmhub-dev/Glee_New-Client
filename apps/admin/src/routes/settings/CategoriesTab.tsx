@@ -126,6 +126,7 @@ function CategoryFormDialog({
 export default function CategoriesTab() {
   const { toast } = useToast()
   const [createOpen, setCreateOpen]             = useState(false)
+  const [editOpen, setEditOpen]                 = useState(false)
   const [editTarget, setEditTarget]             = useState<Category | null>(null)
 
   const { data: categories, isLoading }         = useCategories()
@@ -212,7 +213,7 @@ export default function CategoriesTab() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setEditTarget(cat)}
+                          onClick={() => { setEditTarget(cat); setEditOpen(true) }}
                           className="h-7 w-7 p-0 text-admin-40 hover:text-admin-80"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -272,8 +273,8 @@ export default function CategoriesTab() {
         <CategoryFormDialog
           mode="edit"
           initial={editTarget}
-          open={editTarget !== null}
-          onOpenChange={open => { if (!open) setEditTarget(null) }}
+          open={editOpen}
+          onOpenChange={open => { setEditOpen(open); if (!open) setEditTarget(null) }}
           onSubmit={handleUpdate}
           isPending={updateMutation.isPending}
         />
