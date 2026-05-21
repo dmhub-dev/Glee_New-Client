@@ -6,20 +6,21 @@ import {
   revokeInvite,
   setUserStatus,
   deleteUser,
+  type UserStatus,
 } from '../api/users'
 import type { UserRole } from '@glee/types'
 
-export const userKeys = {
-  all: ['users'] as const,
-  invites: ['users', 'invites'] as const,
+export const adminUserKeys = {
+  all: ['admin', 'users'] as const,
+  invites: ['admin', 'users', 'invites'] as const,
 }
 
 export function useUsers() {
-  return useQuery({ queryKey: userKeys.all, queryFn: listUsers })
+  return useQuery({ queryKey: adminUserKeys.all, queryFn: listUsers })
 }
 
 export function usePendingInvites() {
-  return useQuery({ queryKey: userKeys.invites, queryFn: listPendingInvites })
+  return useQuery({ queryKey: adminUserKeys.invites, queryFn: listPendingInvites })
 }
 
 export function useInviteUser() {
@@ -27,7 +28,7 @@ export function useInviteUser() {
   return useMutation({
     mutationFn: ({ email, role }: { email: string; role: UserRole }) =>
       inviteUser(email, role),
-    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.invites }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminUserKeys.invites }),
   })
 }
 
@@ -35,16 +36,16 @@ export function useRevokeInvite() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (inviteId: string) => revokeInvite(inviteId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.invites }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminUserKeys.invites }),
   })
 }
 
 export function useSetUserStatus() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ userId, status }: { userId: string; status: 'active' | 'inactive' }) =>
+    mutationFn: ({ userId, status }: { userId: string; status: UserStatus }) =>
       setUserStatus(userId, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminUserKeys.all }),
   })
 }
 
@@ -52,6 +53,6 @@ export function useDeleteUser() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (userId: string) => deleteUser(userId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: adminUserKeys.all }),
   })
 }
