@@ -9,6 +9,7 @@ import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@glee/ui'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
+import { initiateGuestPurchase } from '../../lib/api/tickets'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
 
@@ -23,6 +24,8 @@ export default function EventDetailPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [accessCode, setAccessCode] = useState<string | null>(null)
+  const [isPreparing, setIsPreparing] = useState(false)
   const paymentRef = useRef(`glee-${Date.now()}-${Math.random().toString(36).slice(2)}`)
 
   const form = useForm<CheckoutFormValues>({
@@ -46,14 +49,7 @@ export default function EventDetailPage() {
     amount: totalPrice * 100,
     currency: 'KES',
     publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ?? '',
-    metadata: {
-      custom_fields: [
-        { display_name: 'Full Name', variable_name: 'full_name', value: watchedValues.fullName ?? '' },
-        { display_name: 'Phone', variable_name: 'phone', value: watchedValues.phone ?? '' },
-        { display_name: 'Event', variable_name: 'event_title', value: event?.title ?? '' },
-        { display_name: 'Items', variable_name: 'items', value: selectedItems.map(i => `${i.tier.name}×${i.quantity}`).join(', ') },
-      ],
-    },
+    metadata: { custom_fields: [] },
   })
 
   if (isLoading) {
@@ -92,17 +88,50 @@ export default function EventDetailPage() {
   const handlePayNow = async () => {
     const isValid = await form.trigger()
     if (!isValid) return
+
+    const firstItem = selectedItems[0]
+    if (!firstItem) return
+
+    setIsPreparing(true)
+    let intentAccessCode: string
+    let intentReference: string
+    try {
+      const intent = await initiateGuestPurchase({
+        eventId: event.id,
+        ticketCategoryId: firstItem.tier.id,
+        noOfTickets: firstItem.quantity,
+        guestName: watchedValues.fullName,
+        guestEmail: watchedValues.email,
+        guestPhone: watchedValues.phone,
+      })
+      intentAccessCode = intent.access_code
+      intentReference = intent.reference
+    } catch (err: unknown) {
+      setIsPreparing(false)
+      const message = err instanceof Error ? err.message : 'Could not initiate payment'
+      toast({ title: 'Payment error', description: message, variant: 'destructive' })
+      return
+    }
+
+    setAccessCode(intentAccessCode)
+    paymentRef.current = intentReference
+    setIsPreparing(false)
     setIsProcessing(true)
+
     initializePayment({
       onSuccess: () => {
         setIsProcessing(false)
         setIsSuccess(true)
+        toast({ title: 'Ticket confirmed!', description: 'Check your email for the QR code.' })
       },
       onClose: () => {
         setIsProcessing(false)
+        setAccessCode(null)
         paymentRef.current = `glee-${Date.now()}-${Math.random().toString(36).slice(2)}`
         toast({ title: 'Payment cancelled', description: 'You can try again.', variant: 'destructive' })
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      config: { access_code: intentAccessCode } as any,
     })
   }
 
@@ -346,15 +375,50 @@ export default function EventDetailPage() {
             </div>
 
             {/* Order summary */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-3">
-              <p className="font-semibold text-white">{event.title}</p>
-              {selectedItems.map(({ tier, quantity }) => (
-                <div key={tier.id} className="flex items-center justify-between text-sm">
-                  <span className="text-white/55">{tier.name} × {quantity}</span>
-                  <span className="font-mono text-white">KSh {(tier.price * quantity).toLocaleString()}</span>
+            <div className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-4">
+              {/* Event identity row */}
+              <div className="flex items-center gap-3">
+                {(event.flyerPortraitUrl ?? event.flyerSquareUrl) && (
+                  <img
+                    src={event.flyerPortraitUrl ?? event.flyerSquareUrl}
+                    alt={event.title}
+                    className="h-16 w-12 rounded-lg object-cover shrink-0 border border-white/10"
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                  />
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-white leading-tight truncate">{event.title}</p>
+                  <p className="text-xs text-white/45 mt-0.5 truncate">
+                    📍 {event.location ?? event.venueId}
+                  </p>
+                  <p className="text-xs text-white/45 font-mono mt-0.5">
+                    {startDt.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {' · '}
+                    {startDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </p>
                 </div>
-              ))}
-              <Separator className="bg-white/10 my-1" />
+              </div>
+
+              <Separator className="bg-white/10" />
+
+              {/* Line items */}
+              <div className="flex flex-col gap-2">
+                {selectedItems.map(({ tier, quantity }) => (
+                  <div key={tier.id} className="flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-white/70">{tier.name} × {quantity}</span>
+                      <span className="font-mono text-white">KSh {(tier.price * quantity).toLocaleString()}</span>
+                    </div>
+                    {tier.description && (
+                      <p className="text-xs text-white/35 italic leading-relaxed">{tier.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <Separator className="bg-white/10" />
+
+              {/* Total */}
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-white">Total</span>
                 <span className="font-mono font-bold text-neon-pink text-lg">KSh {totalPrice.toLocaleString()}</span>
@@ -422,10 +486,14 @@ export default function EventDetailPage() {
 
             <Button
               onClick={handlePayNow}
-              disabled={isProcessing}
+              disabled={isPreparing || isProcessing}
               className="rounded-full w-full bg-neon-pink hover:bg-neon-hover text-white font-semibold text-base h-12 shadow-neon disabled:opacity-40 transition-all hover:scale-[1.01] active:scale-[0.99]"
             >
-              {isProcessing ? 'Opening Paystack…' : `Pay KSh ${totalPrice.toLocaleString()} with Paystack`}
+              {isPreparing
+                ? 'Preparing payment…'
+                : isProcessing
+                  ? 'Opening Paystack…'
+                  : `Pay KSh ${totalPrice.toLocaleString()} with Paystack`}
             </Button>
             <p className="text-xs text-white/30 text-center -mt-2">Secured by Paystack</p>
           </div>
@@ -506,8 +574,9 @@ export default function EventDetailPage() {
                 </p>
               ))}
             </div>
-            <p className="text-white/50 text-sm">
-              Confirmation sent to <strong className="text-white">{watchedValues.email}</strong>. See you there!
+            <p className="text-white/50 text-sm max-w-xs">
+              Confirmation email with your QR code sent to{' '}
+              <strong className="text-white">{watchedValues.email}</strong>
             </p>
             <Button
               onClick={() => navigate('/')}
