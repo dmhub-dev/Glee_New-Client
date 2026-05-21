@@ -138,7 +138,7 @@ export default function DashboardPage() {
   const deleteMutation = useDeleteEvent()
 
   const liveEvents = events?.filter(e => e.status === 'live') ?? []
-  const upcomingSorted = [...liveEvents].sort((a, b) => a.date.localeCompare(b.date))
+  const upcomingSorted = [...liveEvents].sort((a, b) => a.startDate.localeCompare(b.startDate))
   const featuredEvent = upcomingSorted[0]
   const miniGridEvents = upcomingSorted.slice(0, 3)
 
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-admin-40 font-mono">
-                      {new Date(`${featuredEvent.date}T${featuredEvent.startTime}`).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(`${featuredEvent.startDate}T${featuredEvent.startTime}`).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                     <button
                       onClick={() => navigate(`/events/${featuredEvent.id}/edit`)}
@@ -361,7 +361,7 @@ export default function DashboardPage() {
             {/* Custom mini calendar */}
             <div className="bg-admin-surface border border-admin rounded-2xl p-4 shadow-admin">
               <h3 className="font-heading font-bold text-xs text-admin-40 uppercase tracking-wider mb-3">Calendar</h3>
-              <MiniCalendar eventDates={upcomingSorted.map(e => new Date(e.date))} />
+              <MiniCalendar eventDates={upcomingSorted.map(e => new Date(e.startDate))} />
             </div>
 
             {/* Next events */}
@@ -369,7 +369,7 @@ export default function DashboardPage() {
               <h3 className="font-heading font-bold text-xs text-admin-40 uppercase tracking-wider mb-3">Next Events</h3>
               <div className="space-y-3">
                 {upcomingSorted.slice(1, 4).map(event => {
-                  const d = new Date(`${event.date}T${event.startTime}`)
+                  const d = new Date(`${event.startDate}T${event.startTime}`)
                   return (
                     <div key={event.id} className="flex gap-3 items-start">
                       <div className="w-9 shrink-0 text-center">

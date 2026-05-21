@@ -32,8 +32,13 @@ const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
 
-function formatEventDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+function formatEventDate(startDate: string, endDate: string): string {
+  if (endDate === startDate) {
+    return new Date(startDate).toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  }
+  const start = new Date(startDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })
+  const end   = new Date(endDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
+  return `${start} – ${end}`
 }
 
 function formatTime(time: string): string {
@@ -61,7 +66,8 @@ export default function EventDetailPage() {
       category:    '',
       categoryId:  event.categoryId ?? '',
       status:      apiStatus,
-      date:        event.date,
+      startDate:   event.startDate,
+      endDate:     event.endDate,
       startTime:   event.startTime,
       endTime:     event.endTime,
       venueId:     event.venueId,
@@ -211,7 +217,7 @@ export default function EventDetailPage() {
               <div className="flex flex-wrap gap-x-5 gap-y-2">
                 <span className="flex items-center gap-2 text-sm text-admin-50">
                   <Calendar className="w-4 h-4 text-neon-pink shrink-0" />
-                  {formatEventDate(event.date)}
+                  {formatEventDate(event.startDate, event.endDate)}
                 </span>
                 <span className="flex items-center gap-2 text-sm text-admin-50">
                   <Clock className="w-4 h-4 text-neon-pink shrink-0" />

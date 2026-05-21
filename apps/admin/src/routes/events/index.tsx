@@ -41,10 +41,14 @@ const CATEGORY_COLOURS: Record<string, string> = {
 
 const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
 
-function formatListDate(date: string, startTime: string): string {
-  const d = new Date(`${date}T${startTime}`)
-  return d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }) +
-    ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+function formatListDate(startDate: string, startTime: string, endDate?: string): string {
+  const d = new Date(`${startDate}T${startTime}`)
+  const datePart = endDate && endDate !== startDate
+    ? new Date(startDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) +
+      ' – ' +
+      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+    : d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 function ticketsSoldPercent(event: Event): number {
@@ -246,7 +250,7 @@ export default function EventsListPage() {
                           )}
                           <span className="flex items-center gap-1 text-xs text-admin-40">
                             <Calendar className="w-3 h-3 shrink-0" />
-                            {formatListDate(event.date, event.startTime)}
+                            {formatListDate(event.startDate, event.startTime, event.endDate)}
                           </span>
                         </div>
                       </div>

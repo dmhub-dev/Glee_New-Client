@@ -28,13 +28,14 @@ function lowestPrice(event: Event): number {
   return Math.min(...event.ticketTiers.map(t => t.price))
 }
 
-function formatEventDate(date: string, startTime: string): string {
-  const d = new Date(`${date}T${startTime}`)
-  return (
-    d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' }) +
-    ' · ' +
-    d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
-  )
+function formatEventDate(startDate: string, endDate: string, startTime: string): string {
+  const d = new Date(`${startDate}T${startTime}`)
+  const datePart = endDate !== startDate
+    ? new Date(startDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) +
+      ' – ' +
+      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })
+    : d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })
+  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
 interface AdminEventCardProps {
@@ -100,7 +101,7 @@ export default function AdminEventCard({ event, onDelete }: AdminEventCardProps)
 
       <div className="p-4 space-y-2">
         <h3 className="font-heading font-bold text-sm text-foreground line-clamp-1">{event.title}</h3>
-        <p className="text-xs text-admin-40 font-mono">{formatEventDate(event.date, event.startTime)}</p>
+        <p className="text-xs text-admin-40 font-mono">{formatEventDate(event.startDate, event.endDate, event.startTime)}</p>
         {event.location && (
           <p className="text-xs text-admin-30 flex items-center gap-1">
             <MapPin className="w-3 h-3 shrink-0" />
