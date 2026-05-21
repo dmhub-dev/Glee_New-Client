@@ -7,15 +7,17 @@
 @layer base {
   :root {
     /* ── Backgrounds ── */
-    --bg-primary:        #0B0B10;
-    --bg-secondary:      #141419;
-    --background:        240 20% 4%;
-    --secondary:         240 10% 12%;
-    --muted:             240 10% 15%;
+    --bg-primary:        #090912;
+    --bg-secondary:      #0F0F1E;
+
+    /* shadcn base tokens — deep indigo-purple dark */
+    --background:        243 38% 5%;
+    --secondary:         243 22% 14%;
+    --muted:             243 18% 17%;
 
     /* ── Borders / Inputs ── */
-    --border:            240 10% 18%;
-    --input:             240 10% 18%;
+    --border:            243 22% 22%;
+    --input:             243 22% 22%;
 
     /* ── Brand accent ── */
     --neon-pink:         #FF2D8F;
@@ -25,23 +27,23 @@
     --ring:              330 100% 59%;
 
     /* ── Text ── */
-    --text-primary:      #F6F6F8;
-    --text-secondary:    #A7A7B2;
-    --foreground:        240 10% 97%;
-    --card-foreground:   240 10% 97%;
-    --primary-foreground:    240 20% 4%;
-    --secondary-foreground:  240 10% 97%;
-    --muted-foreground:      240 5% 65%;
-    --accent-foreground:     240 20% 4%;
-    --popover-foreground:    240 10% 97%;
+    --text-primary:      #EEEEF8;
+    --text-secondary:    #8888B0;
+    --foreground:        244 14% 94%;
+    --card-foreground:   244 14% 94%;
+    --primary-foreground:    243 38% 5%;
+    --secondary-foreground:  244 14% 94%;
+    --muted-foreground:      243 12% 60%;
+    --accent-foreground:     243 38% 5%;
+    --popover-foreground:    244 14% 94%;
 
     /* ── Surfaces ── */
-    --card:              240 10% 8%;
-    --popover:           240 10% 8%;
+    --card:              243 28% 11%;
+    --popover:           243 28% 11%;
 
     /* ── Semantic ── */
     --destructive:       0 84.2% 60.2%;
-    --destructive-foreground: 240 10% 97%;
+    --destructive-foreground: 244 14% 94%;
 
     /* ── Shape ── */
     --radius:            0.5rem;
@@ -50,74 +52,74 @@
     --shadow-neon:        0 0 18px rgba(255, 45, 143, 0.35);
     --shadow-neon-strong: 0 0 28px rgba(255, 45, 143, 0.5);
 
-    /* ── Admin theme surface tokens (dark defaults) ── */
-    --admin-surface:     #0f0f15;
-    --admin-surface-2:   #13131c;
-    --admin-body:        #0B0B10;
-    --admin-border:      rgba(255,255,255,0.05);
-    --admin-border-md:   rgba(255,255,255,0.10);
-    --admin-t20:         rgba(255,255,255,0.20);
-    --admin-t30:         rgba(255,255,255,0.30);
-    --admin-t40:         rgba(255,255,255,0.40);
-    --admin-t50:         rgba(255,255,255,0.50);
-    --admin-t60:         rgba(255,255,255,0.60);
-    --admin-t70:         rgba(255,255,255,0.70);
-    --admin-t80:         rgba(255,255,255,0.80);
-    --admin-t90:         rgba(255,255,255,0.90);
-    --admin-overlay-sm:  rgba(255,255,255,0.04);
-    --admin-overlay-md:  rgba(255,255,255,0.08);
-    --admin-overlay-lg:  rgba(255,255,255,0.12);
-    --admin-input-bg:    rgba(255,255,255,0.05);
-    --admin-shadow:      0 1px 3px rgba(0,0,0,0.4);
-    --admin-card-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    /* ── Admin theme surface tokens (dark defaults — deep indigo) ── */
+    --admin-surface:     #0E0E1C;
+    --admin-surface-2:   #131328;
+    --admin-body:        #090912;
+    --admin-border:      rgba(120, 110, 220, 0.12);
+    --admin-border-md:   rgba(120, 110, 220, 0.20);
+    --admin-t20:         rgba(255, 255, 255, 0.20);
+    --admin-t30:         rgba(255, 255, 255, 0.32);
+    --admin-t40:         rgba(255, 255, 255, 0.44);
+    --admin-t50:         rgba(255, 255, 255, 0.56);
+    --admin-t60:         rgba(255, 255, 255, 0.64);
+    --admin-t70:         rgba(255, 255, 255, 0.72);
+    --admin-t80:         rgba(255, 255, 255, 0.82);
+    --admin-t90:         rgba(255, 255, 255, 0.92);
+    --admin-overlay-sm:  rgba(255, 255, 255, 0.05);
+    --admin-overlay-md:  rgba(255, 255, 255, 0.09);
+    --admin-overlay-lg:  rgba(255, 255, 255, 0.14);
+    --admin-input-bg:    rgba(255, 255, 255, 0.07);
+    --admin-shadow:      0 1px 3px rgba(0, 0, 0, 0.50), 0 0 0 1px rgba(120, 110, 220, 0.08);
+    --admin-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(120, 110, 220, 0.06);
   }
 
-  /* ── Light theme overrides ── */
+  /* ── Light theme overrides — lavender-editorial ── */
   html[data-theme="light"] {
     color-scheme: light;
 
     /* shadcn tokens */
-    --background:        0 0% 96%;
-    --foreground:        240 20% 8%;
-    --card:              0 0% 100%;
-    --card-foreground:   240 20% 8%;
-    --popover:           0 0% 100%;
-    --popover-foreground: 240 20% 8%;
-    --border:            240 6% 86%;
-    --input:             240 6% 86%;
-    --muted:             240 6% 92%;
-    --muted-foreground:  240 5% 46%;
-    --secondary:         240 6% 92%;
-    --secondary-foreground: 240 20% 8%;
+    --background:        248 28% 93%;
+    --foreground:        248 35% 13%;
+    --card:              248 40% 99%;
+    --card-foreground:   248 35% 13%;
+    --popover:           248 40% 99%;
+    --popover-foreground: 248 35% 13%;
+    --border:            248 22% 84%;
+    --input:             248 22% 84%;
+    --muted:             248 22% 89%;
+    --muted-foreground:  248 14% 46%;
+    --secondary:         248 22% 91%;
+    --secondary-foreground: 248 35% 13%;
     --primary-foreground: 0 0% 100%;
-    --accent-foreground:  240 20% 8%;
+    --accent-foreground:  248 35% 13%;
 
     /* Glee base */
-    --bg-primary:        #F0F0F5;
-    --bg-secondary:      #FFFFFF;
-    --text-primary:      #0B0B10;
-    --text-secondary:    #6B6B7B;
+    --bg-primary:        #ECEAF6;
+    --bg-secondary:      #F5F4FC;
+    --text-primary:      #1C1A36;
+    --text-secondary:    #6A6580;
 
     /* Admin surface tokens */
-    --admin-surface:     #FFFFFF;
-    --admin-surface-2:   #F8F8FC;
-    --admin-body:        #F0F0F5;
-    --admin-border:      rgba(0,0,0,0.07);
-    --admin-border-md:   rgba(0,0,0,0.11);
-    --admin-t20:         rgba(0,0,0,0.22);
-    --admin-t30:         rgba(0,0,0,0.32);
-    --admin-t40:         rgba(0,0,0,0.45);
-    --admin-t50:         rgba(0,0,0,0.52);
-    --admin-t60:         rgba(0,0,0,0.60);
-    --admin-t70:         rgba(0,0,0,0.70);
-    --admin-t80:         rgba(0,0,0,0.80);
-    --admin-t90:         rgba(0,0,0,0.90);
-    --admin-overlay-sm:  rgba(0,0,0,0.03);
-    --admin-overlay-md:  rgba(0,0,0,0.06);
-    --admin-overlay-lg:  rgba(0,0,0,0.10);
-    --admin-input-bg:    rgba(0,0,0,0.04);
-    --admin-shadow:      0 1px 4px rgba(0,0,0,0.10);
-    --admin-card-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    --admin-surface:     #F5F4FC;
+    --admin-surface-2:   #ECEAF6;
+    --admin-body:        #E5E3F2;
+    --admin-border:      rgba(70, 55, 160, 0.12);
+    --admin-border-md:   rgba(70, 55, 160, 0.20);
+    --admin-t20:         rgba(28, 26, 54, 0.22);
+    --admin-t30:         rgba(28, 26, 54, 0.34);
+    --admin-t40:         rgba(28, 26, 54, 0.46);
+    --admin-t50:         rgba(28, 26, 54, 0.54);
+    --admin-t60:         rgba(28, 26, 54, 0.62);
+    --admin-t70:         rgba(28, 26, 54, 0.72);
+    --admin-t80:         rgba(28, 26, 54, 0.82);
+    --admin-t90:         rgba(28, 26, 54, 0.92);
+    --admin-overlay-sm:  rgba(60, 40, 140, 0.04);
+    --admin-overlay-md:  rgba(60, 40, 140, 0.08);
+    --admin-overlay-lg:  rgba(60, 40, 140, 0.13);
+    --admin-input-bg:    rgba(60, 40, 140, 0.06);
+    --admin-shadow:      0 1px 4px rgba(20, 15, 60, 0.10), 0 0 0 1px rgba(70, 55, 160, 0.08);
+    --admin-card-shadow: 0 4px 24px rgba(20, 15, 60, 0.12), 0 0 0 1px rgba(70, 55, 160, 0.06);
   }
 }
 

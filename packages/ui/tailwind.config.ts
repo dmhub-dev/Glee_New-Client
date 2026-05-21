@@ -61,10 +61,10 @@ const config: Config = {
           hover: '#FF4A9F',
         },
         glee: {
-          bg:          '#0B0B10',
-          'bg-secondary': '#141419',
-          text:        '#F6F6F8',
-          'text-muted': '#A7A7B2',
+          bg:          '#090912',
+          'bg-secondary': '#0F0F1E',
+          text:        '#EEEEF8',
+          'text-muted': '#8888B0',
         },
       },
 
