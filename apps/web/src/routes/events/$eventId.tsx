@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -26,7 +26,9 @@ export default function EventDetailPage() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [accessCode, setAccessCode] = useState<string | null>(null)
   const [isPreparing, setIsPreparing] = useState(false)
+  const [pendingPayment, setPendingPayment] = useState(false)
   const paymentRef = useRef(`glee-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const verificationTokenRef = useRef<string | null>(null)
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -43,6 +45,7 @@ export default function EventDetailPage() {
     : []
   const totalPrice = selectedItems.reduce((sum, { tier, quantity }) => sum + tier.price * quantity, 0)
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const initializePayment = usePaystackPayment({
     reference: paymentRef.current,
     email: watchedValues.email || 'placeholder@glee.app',
@@ -50,7 +53,35 @@ export default function EventDetailPage() {
     currency: 'KES',
     publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ?? '',
     metadata: { custom_fields: [] },
-  })
+    ...(accessCode ? { access_code: accessCode } : {}),
+  } as any)
+
+  // Runs after state settles — initializePayment closure now has the correct access_code
+  useEffect(() => {
+    if (!pendingPayment || !accessCode) return
+    setPendingPayment(false)
+    setIsProcessing(true)
+    initializePayment({
+      onSuccess: async () => {
+        setIsProcessing(false)
+        try {
+          await confirmTicketPurchase(verificationTokenRef.current!)
+        } catch {
+          // payment succeeded — don't block success screen on ticket creation error
+        }
+        setIsSuccess(true)
+        toast({ title: 'Ticket confirmed!', description: 'Check your email for the QR code.' })
+      },
+      onClose: () => {
+        setIsProcessing(false)
+        setAccessCode(null)
+        paymentRef.current = `glee-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        toast({ title: 'Payment cancelled', description: 'You can try again.', variant: 'destructive' })
+      },
+    })
+  // initializePayment intentionally excluded — calling it from the effect that set up access_code
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPayment, accessCode])
 
   if (isLoading) {
     return (
@@ -93,9 +124,6 @@ export default function EventDetailPage() {
     if (!firstItem) return
 
     setIsPreparing(true)
-    let intentAccessCode: string
-    let intentReference: string
-    let intentVerificationToken: string
     try {
       const intent = await initiateGuestPurchase({
         eventId: event.id,
@@ -105,41 +133,16 @@ export default function EventDetailPage() {
         guestEmail: watchedValues.email,
         guestPhone: watchedValues.phone,
       })
-      intentAccessCode = intent.access_code
-      intentReference = intent.reference
-      intentVerificationToken = intent.verificationToken
+      verificationTokenRef.current = intent.verificationToken
+      paymentRef.current = intent.reference
+      setAccessCode(intent.access_code)  // triggers re-render with access_code in usePaystackPayment
+      setPendingPayment(true)            // useEffect fires after re-render, calls initializePayment
     } catch (err: unknown) {
-      setIsPreparing(false)
       const message = err instanceof Error ? err.message : 'Could not initiate payment'
       toast({ title: 'Payment error', description: message, variant: 'destructive' })
-      return
+    } finally {
+      setIsPreparing(false)
     }
-
-    setAccessCode(intentAccessCode)
-    paymentRef.current = intentReference
-    setIsPreparing(false)
-    setIsProcessing(true)
-
-    initializePayment({
-      onSuccess: async () => {
-        setIsProcessing(false)
-        try {
-          await confirmTicketPurchase(intentVerificationToken)
-        } catch {
-          // payment succeeded — ticket creation failure shouldn't block the success screen
-        }
-        setIsSuccess(true)
-        toast({ title: 'Ticket confirmed!', description: 'Check your email for the QR code.' })
-      },
-      onClose: () => {
-        setIsProcessing(false)
-        setAccessCode(null)
-        paymentRef.current = `glee-${Date.now()}-${Math.random().toString(36).slice(2)}`
-        toast({ title: 'Payment cancelled', description: 'You can try again.', variant: 'destructive' })
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      config: { access_code: intentAccessCode } as any,
-    })
   }
 
   const eventDate = new Date(event.date)
