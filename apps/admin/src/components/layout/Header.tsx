@@ -1,6 +1,7 @@
 import { Bell, Settings, Search, Sun, Moon, Menu } from 'lucide-react'
 import { Input } from '@glee/ui'
 import { useTheme } from '../../app/providers'
+import { useNavigate } from 'react-router-dom'
 
 interface HeaderProps {
   title: string
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, onToggleSidebar }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
+  const navigate = useNavigate()
 
   return (
     <header className="h-16 bg-admin-body border-b border-admin flex items-center gap-3 px-4 lg:px-6 sticky top-0 z-10">
@@ -49,7 +51,11 @@ export default function Header({ title, subtitle, onToggleSidebar }: HeaderProps
         <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-neon-pink rounded-full" />
       </button>
 
-      <button className="hidden sm:flex w-8 h-8 items-center justify-center rounded-full bg-admin-overlay hover:bg-admin-overlay-lg border border-admin text-admin-60 hover:text-foreground transition-colors">
+      <button
+        onClick={() => navigate('/settings?tab=users')}
+        title="Settings"
+        className="hidden sm:flex w-8 h-8 items-center justify-center rounded-full bg-admin-overlay hover:bg-admin-overlay-lg border border-admin text-admin-60 hover:text-foreground transition-colors"
+      >
         <Settings className="w-4 h-4" />
       </button>
     </header>

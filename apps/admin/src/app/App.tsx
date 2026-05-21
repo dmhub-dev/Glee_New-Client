@@ -8,6 +8,7 @@ const DashboardPage   = lazy(() => import('../routes/index'))
 const EventsListPage  = lazy(() => import('../routes/events/index'))
 const EventFormPage   = lazy(() => import('../routes/events/$eventId'))
 const EventDetailPage = lazy(() => import('../routes/events/EventDetail'))
+const SettingsPage    = lazy(() => import('../routes/settings/index'))
 
 function PageSkeleton() {
   return (
@@ -30,6 +31,14 @@ export default function App() {
         <Route path="/events/new" element={<ProtectedRoute><EventFormPage /></ProtectedRoute>} />
         <Route path="/events/:eventId/edit" element={<ProtectedRoute><EventFormPage /></ProtectedRoute>} />
         <Route path="/events/:eventId" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute roles={['super_admin', 'admin']}>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Suspense>
   )
