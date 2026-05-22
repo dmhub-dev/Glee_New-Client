@@ -72,6 +72,9 @@
     --admin-input-bg:    rgba(255, 255, 255, 0.07);
     --admin-shadow:      0 1px 3px rgba(0, 0, 0, 0.50), 0 0 0 1px rgba(120, 110, 220, 0.08);
     --admin-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(120, 110, 220, 0.06);
+    /* floating dialog surface — clearly lighter than the body in dark mode */
+    --admin-dialog-bg:   #252545;
+    --admin-dialog-border: rgba(140, 130, 255, 0.25);
   }
 
   /* ── Light theme overrides — lavender-editorial ── */
@@ -120,6 +123,9 @@
     --admin-input-bg:    rgba(60, 40, 140, 0.06);
     --admin-shadow:      0 1px 4px rgba(20, 15, 60, 0.10), 0 0 0 1px rgba(70, 55, 160, 0.08);
     --admin-card-shadow: 0 4px 24px rgba(20, 15, 60, 0.12), 0 0 0 1px rgba(70, 55, 160, 0.06);
+    /* floating dialog surface — white in light mode */
+    --admin-dialog-bg:   #ffffff;
+    --admin-dialog-border: rgba(70, 55, 160, 0.20);
   }
 }
 
@@ -174,6 +180,8 @@
   /* ── Admin theme-aware utility classes ── */
   .bg-admin-surface   { background-color: var(--admin-surface); }
   .bg-admin-body      { background-color: var(--admin-body); }
+  .bg-admin-dialog    { background-color: var(--admin-dialog-bg); }
+  .border-admin-dialog { border-color: var(--admin-dialog-border); }
   .border-admin       { border-color: var(--admin-border); }
   .border-admin-md    { border-color: var(--admin-border-md); }
   .text-admin-20      { color: var(--admin-t20); }

@@ -122,7 +122,7 @@ export default function RoleReassignPanel() {
         open={pendingReassign !== null}
         onOpenChange={open => { if (!open) setPendingReassign(null) }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm role change</AlertDialogTitle>
             <AlertDialogDescription>

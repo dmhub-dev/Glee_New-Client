@@ -6,7 +6,6 @@ import { z } from 'zod'
 import type { Category } from '../../lib/api/categories'
 import {
   Button, Input,
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
   AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
   AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
@@ -18,24 +17,25 @@ import {
   useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
 } from '../../lib/queries/categories'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { SlidePanel } from '../../components/ui/SlidePanel'
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
 })
 type CategoryFormValues = z.infer<typeof categorySchema>
 
-function CategoryFormDialog({
+function CategoryFormPanel({
   mode,
   initial,
   open,
-  onOpenChange,
+  onClose,
   onSubmit,
   isPending,
 }: {
   mode: 'create' | 'edit'
   initial?: Category
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onClose: () => void
   onSubmit: (values: CategoryFormValues) => Promise<void>
   isPending: boolean
 }) {
@@ -49,17 +49,19 @@ function CategoryFormDialog({
   async function handleSubmit(values: CategoryFormValues) {
     await onSubmit(values)
     form.reset()
-    onOpenChange(false)
+    onClose()
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Add Category' : 'Edit Category'}</DialogTitle>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+    <SlidePanel
+      open={open}
+      onClose={onClose}
+      title={mode === 'create' ? 'Add Category' : 'Edit Category'}
+      width="sm:max-w-md"
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -73,33 +75,33 @@ function CategoryFormDialog({
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="bg-neon-pink hover:bg-neon-pink/90 text-white"
-              >
-                {isPending ? 'Saving…' : mode === 'create' ? 'Create' : 'Save'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          </div>
+
+          <div className="px-6 py-4 border-t border-admin flex justify-end gap-2 shrink-0">
+            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="bg-neon-pink hover:bg-neon-pink/90 text-white"
+            >
+              {isPending ? 'Saving…' : mode === 'create' ? 'Create' : 'Save changes'}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </SlidePanel>
   )
 }
 
 export default function CategoriesTab() {
   const { toast } = useToast()
-  const [createOpen, setCreateOpen]             = useState(false)
-  const [editOpen, setEditOpen]                 = useState(false)
-  const [editTarget, setEditTarget]             = useState<Category | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Category | null>(null)
 
-  const { data: categories, isLoading }         = useCategories()
-  const createMutation                          = useCreateCategory()
-  const updateMutation                          = useUpdateCategory()
-  const deleteMutation                          = useDeleteCategory()
+  const { data: categories, isLoading } = useCategories()
+  const createMutation                  = useCreateCategory()
+  const updateMutation                  = useUpdateCategory()
+  const deleteMutation                  = useDeleteCategory()
 
   async function handleCreate(values: CategoryFormValues) {
     try {
@@ -147,7 +149,9 @@ export default function CategoriesTab() {
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-6 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              ))}
             </div>
           ) : (
             <table className="w-full text-sm min-w-[500px]">
@@ -168,9 +172,8 @@ export default function CategoriesTab() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1">
                         <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => { setEditTarget(cat); setEditOpen(true) }}
+                          size="sm" variant="ghost"
+                          onClick={() => setEditTarget(cat)}
                           className="h-7 w-7 p-0 text-admin-40 hover:text-admin-80"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -181,7 +184,7 @@ export default function CategoriesTab() {
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete "{cat.name}"?</AlertDialogTitle>
                               <AlertDialogDescription>
@@ -216,22 +219,20 @@ export default function CategoriesTab() {
         </div>
       </div>
 
-      {/* Create dialog */}
-      <CategoryFormDialog
+      <CategoryFormPanel
         mode="create"
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onClose={() => setCreateOpen(false)}
         onSubmit={handleCreate}
         isPending={createMutation.isPending}
       />
 
-      {/* Edit dialog */}
       {editTarget && (
-        <CategoryFormDialog
+        <CategoryFormPanel
           mode="edit"
           initial={editTarget}
-          open={editOpen}
-          onOpenChange={open => { setEditOpen(open); if (!open) setEditTarget(null) }}
+          open={true}
+          onClose={() => setEditTarget(null)}
           onSubmit={handleUpdate}
           isPending={updateMutation.isPending}
         />

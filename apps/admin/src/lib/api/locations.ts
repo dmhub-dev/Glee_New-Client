@@ -5,6 +5,7 @@ export interface Location {
   id: string
   name: string
   address: string
+  description: string | null
   capacity: number
   isIndoors: boolean
   isOutdoors: boolean
@@ -19,12 +20,22 @@ export interface Location {
 export interface CreateLocationDto {
   name: string
   address: string
+  description?: string
   capacity: number
   isIndoors: boolean
   isOutdoors: boolean
-  latitude: number
-  longitude: number
+  latitude?: number
+  longitude?: number
   isParkingAvailable: boolean
+}
+
+export function uploadLocationPictures(locationId: string, files: File[]): Promise<Location> {
+  const formData = new FormData()
+  files.forEach(f => formData.append('pictures', f))
+  return apiFetch<{ success: boolean; data: Location }>(`/api/v1/admin/locations/${locationId}/pictures`, {
+    method: 'POST',
+    body: formData,
+  }).then(r => r.data)
 }
 
 export interface UpdateLocationDto extends Partial<CreateLocationDto> {}

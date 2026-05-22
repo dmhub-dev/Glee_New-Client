@@ -157,7 +157,7 @@ export default function UsersTable() {
                             Delete
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete {u.name}?</AlertDialogTitle>
                             <AlertDialogDescription>
