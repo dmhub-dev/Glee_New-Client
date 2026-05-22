@@ -1,4 +1,4 @@
-import type { Event } from '@glee/types'
+import type { Event, EventMenuItem } from '@glee/types'
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
@@ -31,6 +31,13 @@ interface BackendEvent {
   updatedAt: string
   location: { id: string; name: string; address: string } | null
   ticketCategories: BackendTicketCategory[]
+  menuItems: Array<{
+    id: string
+    name: string
+    category: string
+    price: string | number
+    description?: string | null
+  }>
 }
 
 // ── Status map ────────────────────────────────────────────────────────────────
@@ -78,6 +85,13 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     startTime:        start ? start.toTimeString().slice(0, 5) : '',
     endTime:          end   ? end.toTimeString().slice(0, 5)   : undefined,
     ticketTiers,
+    menuItems: raw.menuItems?.map((m): EventMenuItem => ({
+      id:          m.id,
+      name:        m.name,
+      category:    m.category,
+      price:       Number(m.price),
+      description: m.description ?? undefined,
+    })) ?? [],
     flyerSquareUrl:   raw.bannerImages[0] ?? undefined,
     flyerPortraitUrl: raw.bannerImages[1] ?? raw.bannerImages[0] ?? undefined,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
