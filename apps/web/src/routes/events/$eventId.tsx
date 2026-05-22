@@ -21,6 +21,7 @@ export default function EventDetailPage() {
 
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [menuQtys, setMenuQtys] = useState<Record<string, number>>({})
+  const [includeAddOns, setIncludeAddOns] = useState(false)
   const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set())
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -265,65 +266,92 @@ export default function EventDetailPage() {
             <p className="text-white/65 text-sm leading-relaxed">{event.description}</p>
           </div>
 
-          {/* Menu Items */}
-          {(event.menuItems?.length ?? 0) > 0 && (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-white/10" />
-                <span className="text-xs font-mono font-bold text-neon-pink uppercase tracking-widest">Add-ons</span>
-                <div className="h-px flex-1 bg-white/10" />
+          {/* Add-ons toggle — appears only once tickets are selected */}
+          {(event.menuItems?.length ?? 0) > 0 && selectedItems.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setIncludeAddOns(v => !v)
+                if (includeAddOns) setMenuQtys({})
+              }}
+              className={`flex items-center gap-3 w-full rounded-2xl border px-4 py-3 transition-all duration-200 text-left ${
+                includeAddOns
+                  ? 'border-neon-pink bg-neon-pink/10'
+                  : 'border-white/10 bg-white/5 hover:border-white/20'
+              }`}
+            >
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                includeAddOns ? 'border-neon-pink bg-neon-pink' : 'border-white/30'
+              }`}>
+                {includeAddOns && (
+                  <svg viewBox="0 0 10 8" fill="none" className="w-3 h-3">
+                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {event.menuItems!.map(item => {
-                  const qty = menuQtys[item.id] ?? 0
-                  const categoryEmoji = item.category === 'food' ? '🍽️' : item.category === 'drink' ? '🍾' : '✨'
-                  return (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border p-4 flex flex-col gap-2 transition-all duration-200 ${
-                        qty > 0
-                          ? 'border-neon-pink bg-neon-pink/10 shadow-[0_0_20px_rgba(255,45,143,0.15)]'
-                          : 'border-white/10 bg-white/5 hover:border-neon-pink/40'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{categoryEmoji}</span>
-                          <span className="font-heading font-bold text-white text-sm">{item.name}</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-white/40 capitalize bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
-                          {item.category}
-                        </span>
+              <div>
+                <p className="text-sm font-semibold text-white leading-tight">
+                  Want to add drinks or food to your order?
+                </p>
+                <p className="text-xs text-white/45 mt-0.5">
+                  Skip the bar queue — pre-order and pay in one go
+                </p>
+              </div>
+            </button>
+          )}
+
+          {/* Add-on items — only visible when toggle is on */}
+          {(event.menuItems?.length ?? 0) > 0 && includeAddOns && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {event.menuItems!.map(item => {
+                const qty = menuQtys[item.id] ?? 0
+                const categoryEmoji = item.category === 'food' ? '🍽️' : item.category === 'drink' ? '🍾' : '✨'
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-2xl border p-4 flex flex-col gap-2 transition-all duration-200 ${
+                      qty > 0
+                        ? 'border-neon-pink bg-neon-pink/10 shadow-[0_0_20px_rgba(255,45,143,0.15)]'
+                        : 'border-white/10 bg-white/5 hover:border-neon-pink/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{categoryEmoji}</span>
+                        <span className="font-heading font-bold text-white text-sm">{item.name}</span>
                       </div>
-                      {item.description && (
-                        <p className="text-xs text-white/50 leading-relaxed">{item.description}</p>
-                      )}
-                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                        <p className="font-mono font-bold text-white text-sm">KES {item.price.toLocaleString()}.00</p>
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            disabled={qty <= 0}
-                            onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
-                            className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-                          >
-                            −
-                          </button>
-                          <span className="font-mono font-bold text-white w-4 text-center text-sm">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: qty + 1 }))}
-                            className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-                          >
-                            +
-                          </button>
-                        </div>
+                      <span className="text-[10px] font-mono text-white/40 capitalize bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                        {item.category}
+                      </span>
+                    </div>
+                    {item.description && (
+                      <p className="text-xs text-white/50 leading-relaxed">{item.description}</p>
+                    )}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                      <p className="font-mono font-bold text-white text-sm">KES {item.price.toLocaleString()}.00</p>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          disabled={qty <= 0}
+                          onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
+                          className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                        >
+                          −
+                        </button>
+                        <span className="font-mono font-bold text-white w-4 text-center text-sm">{qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: qty + 1 }))}
+                          className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            </>
+                  </div>
+                )
+              })}
+            </div>
           )}
 
           {/* Divider */}
