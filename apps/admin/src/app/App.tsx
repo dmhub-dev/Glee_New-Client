@@ -3,12 +3,13 @@ import { lazy, Suspense } from 'react'
 import { Skeleton } from '@glee/ui'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 
-const LoginPage       = lazy(() => import('../routes/login'))
-const DashboardPage   = lazy(() => import('../routes/index'))
-const EventsListPage  = lazy(() => import('../routes/events/index'))
-const EventFormPage   = lazy(() => import('../routes/events/$eventId'))
-const EventDetailPage = lazy(() => import('../routes/events/EventDetail'))
-const SettingsPage    = lazy(() => import('../routes/settings/index'))
+const LoginPage          = lazy(() => import('../routes/login'))
+const DashboardPage      = lazy(() => import('../routes/index'))
+const EventsListPage     = lazy(() => import('../routes/events/index'))
+const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
+const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
+const SettingsPage       = lazy(() => import('../routes/settings/index'))
+const LocationDetailPage = lazy(() => import('../routes/locations/$locationId'))
 
 function PageSkeleton() {
   return (
@@ -36,6 +37,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['super_admin', 'admin']}>
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/locations/:locationId"
+          element={
+            <ProtectedRoute roles={['super_admin', 'admin']}>
+              <LocationDetailPage />
             </ProtectedRoute>
           }
         />

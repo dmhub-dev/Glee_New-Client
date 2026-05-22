@@ -51,7 +51,11 @@ interface LocationResponse {
 }
 
 export function getLocations(): Promise<Location[]> {
-  return apiFetch<LocationsResponse>('/api/v1/locations').then(r => r.data ?? [])
+  return apiFetch<LocationsResponse>('/api/v1/admin/locations').then(r => r.data ?? [])
+}
+
+export function getLocation(id: string): Promise<Location> {
+  return apiFetch<LocationResponse>(`/api/v1/admin/locations/${id}`).then(r => r.data)
 }
 
 export function createLocation(dto: CreateLocationDto): Promise<Location> {
