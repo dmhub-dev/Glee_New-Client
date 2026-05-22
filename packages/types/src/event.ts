@@ -1,3 +1,11 @@
+export interface EventMenuItem {
+  id: string
+  name: string
+  category: string
+  price: number
+  description?: string
+}
+
 export interface TicketTier {
   id: string
   name: string
@@ -18,6 +26,7 @@ export interface Event {
   startTime: string
   endTime?: string
   ticketTiers: TicketTier[]
+  menuItems?: EventMenuItem[]
   flyerPortraitUrl?: string
   flyerSquareUrl?: string
   status: 'draft' | 'pending_approval' | 'live' | 'rejected' | 'past' | 'cancelled' | 'postponed'

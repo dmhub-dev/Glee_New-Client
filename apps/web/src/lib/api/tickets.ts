@@ -7,6 +7,7 @@ export interface InitiateGuestPurchaseParams {
   guestName: string
   guestEmail: string
   guestPhone: string
+  menuItems?: { id: string; quantity: number }[]
 }
 
 export interface InitiateGuestPurchaseResult {

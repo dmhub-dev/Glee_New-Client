@@ -1,4 +1,4 @@
-import type { Event } from '@glee/types'
+import type { Event, EventMenuItem } from '@glee/types'
 import { apiFetch } from './client'
 
 // ── Backend shapes ────────────────────────────────────────────────────────────
@@ -9,6 +9,14 @@ interface BackendTicketCategory {
   price: string | number
   capacity: number | null
   available: number | null
+}
+
+interface BackendEventMenuItem {
+  id: string
+  name: string
+  category: string
+  price: string | number
+  description?: string | null
 }
 
 interface BackendEvent {
@@ -30,6 +38,7 @@ interface BackendEvent {
   updatedAt: string
   location: { id: string; name: string; address: string } | null
   ticketCategories: BackendTicketCategory[]
+  menuItems: BackendEventMenuItem[]
 }
 
 // ── Status maps ───────────────────────────────────────────────────────────────
@@ -87,6 +96,13 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     startTime:        start ? start.toTimeString().slice(0, 5) : '',
     endTime:          end   ? end.toTimeString().slice(0, 5)   : undefined,
     ticketTiers,
+    menuItems: raw.menuItems?.map((m): EventMenuItem => ({
+      id:          m.id,
+      name:        m.name,
+      category:    m.category,
+      price:       Number(m.price),
+      description: m.description ?? undefined,
+    })) ?? [],
     flyerSquareUrl:   raw.bannerImages[0] ?? undefined,
     flyerPortraitUrl: raw.bannerImages[1] ?? raw.bannerImages[0] ?? undefined,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
@@ -118,6 +134,12 @@ export interface EventApiPayload {
     quantityRemaining: number
     description?: string
   }>
+  menuItems?: Array<{
+    name: string
+    category: string
+    price: number
+    description?: string
+  }>
   posterFiles?: File[]
 }
 
@@ -144,6 +166,10 @@ function buildFormData(payload: EventApiPayload): FormData {
       payload.ticketTiers.map(t => ({ name: t.name, price: t.price, capacity: t.quantity })),
     ),
   )
+
+  if (payload.menuItems?.length) {
+    fd.append('menuItems', JSON.stringify(payload.menuItems))
+  }
 
   if (payload.posterFiles) {
     for (const file of payload.posterFiles) {

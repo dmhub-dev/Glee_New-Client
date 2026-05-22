@@ -20,6 +20,7 @@ export default function EventDetailPage() {
   const { toast } = useToast()
 
   const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [menuQtys, setMenuQtys] = useState<Record<string, number>>({})
   const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set())
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -43,7 +44,14 @@ export default function EventDetailPage() {
         .filter(t => (quantities[t.id] ?? 0) > 0)
         .map(t => ({ tier: t, quantity: quantities[t.id] }))
     : []
-  const totalPrice = selectedItems.reduce((sum, { tier, quantity }) => sum + tier.price * quantity, 0)
+  const selectedMenuItems = event?.menuItems
+    ? event.menuItems
+        .filter(m => (menuQtys[m.id] ?? 0) > 0)
+        .map(m => ({ item: m, quantity: menuQtys[m.id] }))
+    : []
+  const ticketTotal = selectedItems.reduce((sum, { tier, quantity }) => sum + tier.price * quantity, 0)
+  const menuTotal = selectedMenuItems.reduce((sum, { item, quantity }) => sum + item.price * quantity, 0)
+  const totalPrice = ticketTotal + menuTotal
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const initializePayment = usePaystackPayment({
@@ -132,6 +140,9 @@ export default function EventDetailPage() {
         guestName: watchedValues.fullName,
         guestEmail: watchedValues.email,
         guestPhone: watchedValues.phone,
+        menuItems: selectedMenuItems.length
+          ? selectedMenuItems.map(({ item, quantity }) => ({ id: item.id, quantity }))
+          : undefined,
       })
       verificationTokenRef.current = intent.verificationToken
       paymentRef.current = intent.reference
@@ -253,6 +264,67 @@ export default function EventDetailPage() {
             <h3 className="text-xs font-mono font-bold text-neon-pink uppercase tracking-widest mb-2">About</h3>
             <p className="text-white/65 text-sm leading-relaxed">{event.description}</p>
           </div>
+
+          {/* Menu Items */}
+          {(event.menuItems?.length ?? 0) > 0 && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs font-mono font-bold text-neon-pink uppercase tracking-widest">Add-ons</span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {event.menuItems!.map(item => {
+                  const qty = menuQtys[item.id] ?? 0
+                  const categoryEmoji = item.category === 'food' ? '🍽️' : item.category === 'drink' ? '🍾' : '✨'
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl border p-4 flex flex-col gap-2 transition-all duration-200 ${
+                        qty > 0
+                          ? 'border-neon-pink bg-neon-pink/10 shadow-[0_0_20px_rgba(255,45,143,0.15)]'
+                          : 'border-white/10 bg-white/5 hover:border-neon-pink/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{categoryEmoji}</span>
+                          <span className="font-heading font-bold text-white text-sm">{item.name}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-white/40 capitalize bg-white/5 border border-white/10 rounded-full px-2 py-0.5">
+                          {item.category}
+                        </span>
+                      </div>
+                      {item.description && (
+                        <p className="text-xs text-white/50 leading-relaxed">{item.description}</p>
+                      )}
+                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                        <p className="font-mono font-bold text-white text-sm">KES {item.price.toLocaleString()}.00</p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            disabled={qty <= 0}
+                            onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: Math.max(0, qty - 1) }))}
+                            className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                          >
+                            −
+                          </button>
+                          <span className="font-mono font-bold text-white w-4 text-center text-sm">{qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: qty + 1 }))}
+                            className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
 
           {/* Divider */}
           <div className="flex items-center gap-3">
@@ -422,6 +494,12 @@ export default function EventDetailPage() {
                     {tier.description && (
                       <p className="text-xs text-white/35 italic leading-relaxed">{tier.description}</p>
                     )}
+                  </div>
+                ))}
+                {selectedMenuItems.map(({ item, quantity }) => (
+                  <div key={item.id} className="flex items-center justify-between text-sm">
+                    <span className="text-white/70">{item.name} × {quantity}</span>
+                    <span className="font-mono text-white">KSh {(item.price * quantity).toLocaleString()}</span>
                   </div>
                 ))}
               </div>

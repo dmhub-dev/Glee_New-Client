@@ -20,6 +20,13 @@ const tierSchema = z.object({
   description: z.string().optional(),
 })
 
+const menuItemSchema = z.object({
+  name: z.string().min(1, 'Name required'),
+  category: z.enum(['food', 'drink', 'other']),
+  price: z.number({ invalid_type_error: 'Must be a number' }).min(0, 'Min 0'),
+  description: z.string().optional(),
+})
+
 const eventSchema = z.object({
   title: z.string().min(3, 'At least 3 characters').max(120),
   description: z.string().min(10, 'At least 10 characters').max(2000),
@@ -32,6 +39,7 @@ const eventSchema = z.object({
   venueId: z.string().min(1, 'Venue required'),
   location: z.string().min(3, 'Location required'),
   ticketTiers: z.array(tierSchema).min(1, 'At least one wave required'),
+  menuItems: z.array(menuItemSchema).max(5, 'Max 5 menu items'),
 }).refine(data => data.endDate >= data.startDate, {
   message: 'End date must be on or after start date',
   path: ['endDate'],
@@ -42,6 +50,16 @@ type EventFormValues = z.infer<typeof eventSchema>
 function newTier(): EventFormValues['ticketTiers'][number] {
   return { id: `wave-${Date.now()}`, name: '', price: 0, quantity: 1, quantityRemaining: 1, description: '' }
 }
+
+function newMenuItem(): EventFormValues['menuItems'][number] {
+  return { name: '', category: 'other', price: 0, description: '' }
+}
+
+const MENU_CATEGORIES: { value: EventFormValues['menuItems'][number]['category']; label: string }[] = [
+  { value: 'food',  label: 'Food'  },
+  { value: 'drink', label: 'Drink' },
+  { value: 'other', label: 'Other' },
+]
 
 export default function EventFormPage() {
   const { eventId } = useParams<{ eventId?: string }>()
@@ -81,10 +99,12 @@ export default function EventFormPage() {
       venueId: '',
       location: '',
       ticketTiers: [newTier()],
+      menuItems: [],
     },
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'ticketTiers' })
+  const { fields: menuFields, append: appendMenu, remove: removeMenu } = useFieldArray({ control, name: 'menuItems' })
   const formValues = watch()
 
   useEffect(() => {
@@ -108,6 +128,12 @@ export default function EventFormPage() {
         quantity:          t.quantity,
         quantityRemaining: t.quantityRemaining,
         description:       t.description ?? '',
+      })),
+      menuItems: (existingEvent.menuItems ?? []).map(m => ({
+        name:        m.name,
+        category:    (['food', 'drink', 'other'].includes(m.category) ? m.category : 'other') as 'food' | 'drink' | 'other',
+        price:       m.price,
+        description: m.description ?? '',
       })),
     })
     if (existingEvent.flyerSquareUrl)   setLandscapes([{ url: existingEvent.flyerSquareUrl }])
@@ -153,6 +179,7 @@ export default function EventFormPage() {
       categoryId,
       status: (asDraft ? 'draft' : values.status) as 'draft' | 'live',
       posterFiles: posterFiles.length > 0 ? posterFiles : undefined,
+      menuItems: values.menuItems?.length ? values.menuItems : undefined,
     }
 
     if (isNew) {
@@ -477,6 +504,90 @@ export default function EventFormPage() {
               )}
               {errors.ticketTiers?.message && (
                 <p className="text-xs text-red-400">{errors.ticketTiers.message}</p>
+              )}
+            </section>
+
+            {/* Menu Items */}
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading font-bold text-sm text-foreground">Menu Items</h2>
+                  <p className="text-[11px] text-admin-30 mt-0.5">Optional — sponsor items guests can add to their ticket purchase (max 5)</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {menuFields.map((field, index) => (
+                  <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-admin-40 font-mono">Item {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeMenu(index)}
+                        className="w-6 h-6 rounded flex items-center justify-center text-admin-20 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">Name *</Label>
+                        <Input
+                          {...register(`menuItems.${index}.name`)}
+                          placeholder="e.g. Hennessy VS"
+                          className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                        />
+                        {errors.menuItems?.[index]?.name && (
+                          <p className="text-xs text-red-400">{errors.menuItems[index]?.name?.message}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">Category *</Label>
+                        <select
+                          {...register(`menuItems.${index}.category`)}
+                          className="w-full h-8 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-neon-pink/30"
+                        >
+                          {MENU_CATEGORIES.map(c => (
+                            <option key={c.value} value={c.value} className="bg-admin-surface">{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">Price (KSh) *</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          {...register(`menuItems.${index}.price`, { valueAsNumber: true })}
+                          placeholder="0"
+                          className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                        />
+                        {errors.menuItems?.[index]?.price && (
+                          <p className="text-xs text-red-400">{errors.menuItems[index]?.price?.message}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-admin-50">Description (optional)</Label>
+                      <Input
+                        {...register(`menuItems.${index}.description`)}
+                        placeholder="e.g. 700ml bottle, serves 4"
+                        className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {menuFields.length < 5 && (
+                <button
+                  type="button"
+                  onClick={() => appendMenu(newMenuItem())}
+                  className="flex items-center gap-2 text-sm text-neon-pink/70 hover:text-neon-pink transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Menu Item
+                </button>
+              )}
+              {errors.menuItems?.message && (
+                <p className="text-xs text-red-400">{errors.menuItems.message}</p>
               )}
             </section>
 
