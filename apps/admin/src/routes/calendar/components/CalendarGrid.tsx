@@ -120,7 +120,7 @@ export function CalendarGrid({ eventsByDate, onSelectEvent }: CalendarGridProps)
 
           return (
             <div
-              key={toKey(cell.year, cell.month, cell.day)}
+              key={key}
               className={cn(
                 'min-h-[96px] p-1.5 flex flex-col gap-1',
                 !cell.isCurrentMonth && 'opacity-30',
