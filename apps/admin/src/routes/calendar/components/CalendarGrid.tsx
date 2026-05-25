@@ -11,6 +11,11 @@ const MONTH_NAMES = [
 ]
 
 interface CalendarGridProps {
+  /**
+   * Events grouped by date key (YYYY-MM-DD matching Event.startDate).
+   * For multi-day events, the parent must insert the event under every date
+   * key in the range (startDate through endDate) for it to appear on each day.
+   */
   eventsByDate: Map<string, Event[]>
   onSelectEvent: (event: Event) => void
 }
@@ -107,7 +112,7 @@ export function CalendarGrid({ eventsByDate, onSelectEvent }: CalendarGridProps)
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7 divide-x divide-y divide-admin">
-        {cells.map((cell, idx) => {
+        {cells.map((cell) => {
           const key = toKey(cell.year, cell.month, cell.day)
           const events = eventsByDate.get(key) ?? []
           const visible = events.slice(0, 2)
@@ -115,7 +120,7 @@ export function CalendarGrid({ eventsByDate, onSelectEvent }: CalendarGridProps)
 
           return (
             <div
-              key={idx}
+              key={toKey(cell.year, cell.month, cell.day)}
               className={cn(
                 'min-h-[96px] p-1.5 flex flex-col gap-1',
                 !cell.isCurrentMonth && 'opacity-30',
@@ -136,7 +141,7 @@ export function CalendarGrid({ eventsByDate, onSelectEvent }: CalendarGridProps)
                 <EventChip key={event.id} event={event} onClick={onSelectEvent} />
               ))}
 
-              {/* Overflow */}
+              {/* Overflow — opens the first non-visible event (index 2) */}
               {overflow > 0 && (
                 <button
                   type="button"
