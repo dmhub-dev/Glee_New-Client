@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { label: 'Events', to: '/events', icon: CalendarDays, active: true },
   { label: 'Bookings', to: '/bookings', icon: Ticket, active: false },
   { label: 'Invoices', to: '/invoices', icon: FileText, active: false },
-  { label: 'Calendar', to: '/calendar', icon: Calendar, active: false },
+  { label: 'Calendar', to: '/calendar', icon: Calendar, active: true },
   { label: 'Financials', to: '/financials', icon: BarChart2, active: false },
   { label: 'Gallery', to: '/gallery', icon: Image, active: false },
   { label: 'Feedback', to: '/feedback', icon: MessageSquare, active: false },
