@@ -31,14 +31,18 @@ export default function CalendarPage() {
   const { data: events = [], isLoading } = useAdminEvents()
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
 
-  // Group events by startDate YYYY-MM-DD
+  // Group events by date, expanding multi-day events across their full range
   const eventsByDate = useMemo(() => {
     const map = new Map<string, Event[]>()
     for (const event of events) {
       if (!event.startDate) continue
-      const key = event.startDate // already YYYY-MM-DD from mapper
-      if (!map.has(key)) map.set(key, [])
-      map.get(key)!.push(event)
+      const start = new Date(event.startDate)
+      const end = new Date(event.endDate || event.startDate)
+      for (const d = new Date(start); d.getTime() <= end.getTime(); d.setDate(d.getDate() + 1)) {
+        const key = d.toISOString().split('T')[0]
+        if (!map.has(key)) map.set(key, [])
+        map.get(key)!.push(event)
+      }
     }
     return map
   }, [events])
