@@ -1,7 +1,7 @@
 // apps/admin/src/routes/settings/components/AvatarUpload.tsx
 import { useRef } from 'react'
-import { Camera } from 'lucide-react'
-import { Avatar, AvatarImage, AvatarFallback, useToast } from '@glee/ui'
+import { Camera, ImageUp } from 'lucide-react'
+import { Avatar, AvatarImage, AvatarFallback, Button, useToast } from '@glee/ui'
 import { useUploadAvatar, type ProfileData } from '@glee/api'
 
 interface AvatarUploadProps {
@@ -36,24 +36,41 @@ export function AvatarUpload({ profileData }: AvatarUploadProps) {
   }
 
   return (
-    <div className="relative group">
-      <Avatar className="h-16 w-16">
-        {profileData.avatarUrl ? (
-          <AvatarImage src={profileData.avatarUrl} alt={profileData.firstName} />
-        ) : null}
-        <AvatarFallback className="bg-admin-overlay text-admin-80 text-lg font-semibold">
-          {fallback}
-        </AvatarFallback>
-      </Avatar>
-      <button
-        type="button"
-        aria-label="Upload avatar"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={avatarMutation.isPending}
-        className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
-      >
-        <Camera className="h-5 w-5 text-white" />
-      </button>
+    <div className="inline-flex max-w-full items-center gap-4 rounded-xl border border-admin bg-admin-overlay px-4 py-3">
+      <div className="relative group shrink-0">
+        <Avatar className="h-20 w-20 border border-admin shadow-admin">
+          {profileData.avatarUrl ? (
+            <AvatarImage src={profileData.avatarUrl} alt={profileData.firstName} />
+          ) : null}
+          <AvatarFallback className="bg-neon-pink/10 text-neon-pink text-2xl font-black">
+            {fallback}
+          </AvatarFallback>
+        </Avatar>
+        <button
+          type="button"
+          aria-label="Upload avatar"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={avatarMutation.isPending}
+          className="absolute inset-0 flex items-center justify-center rounded-full bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity disabled:cursor-not-allowed"
+        >
+          <Camera className="h-5 w-5 text-white" />
+        </button>
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-admin-90">Profile image</p>
+        <p className="mt-0.5 text-xs text-admin-40">JPG, PNG or WebP under 5 MB.</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={avatarMutation.isPending}
+          className="mt-3 h-8 gap-2 border-admin"
+        >
+          <ImageUp className="h-3.5 w-3.5" />
+          {avatarMutation.isPending ? 'Uploading...' : 'Update image'}
+        </Button>
+      </div>
       <input
         ref={fileInputRef}
         type="file"

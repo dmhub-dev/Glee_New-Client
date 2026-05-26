@@ -75,7 +75,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       <aside className={cn(
         'fixed left-0 top-0 h-screen bg-admin-surface border-r border-admin flex flex-col z-40 transition-all duration-200',
         'shadow-admin-card',
-        isCollapsed ? 'w-14' : 'w-60',
+        isCollapsed ? 'w-14' : 'w-64',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
         {/* Collapse toggle — floating pill on right edge, desktop only */}
@@ -89,7 +89,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         {/* Logo */}
         <div className={cn(
           'border-b border-admin flex items-center',
-          isCollapsed ? 'px-3 py-4 justify-center' : 'px-6 py-5 justify-between'
+          isCollapsed ? 'px-3 py-4 justify-center' : 'px-5 py-5 justify-between'
         )}>
           {isCollapsed ? (
             <div className="w-8 h-8 rounded-lg bg-neon-pink flex items-center justify-center shrink-0">
@@ -97,7 +97,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </div>
           ) : (
             <>
-              <img src="/glee-logo-final.svg" alt="Glee" className="h-8" />
+              <img src="/glee-logo-final.svg" alt="Glee" className="h-12 max-w-[160px] object-contain" />
               <button
                 onClick={onClose}
                 className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-admin-40 hover:text-admin-70 hover:bg-admin-overlay transition-colors"
