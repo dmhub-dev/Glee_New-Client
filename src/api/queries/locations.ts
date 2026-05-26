@@ -7,6 +7,7 @@ export interface Location {
   address: string
   description: string | null
   capacity: number
+  vendorId: string | null
   isIndoors: boolean
   isOutdoors: boolean
   latitude: number
@@ -32,8 +33,10 @@ export interface CreateLocationDto {
 
 export interface UpdateLocationDto extends Partial<CreateLocationDto> {}
 
+type LocationScope = 'admin' | 'vendor'
+
 export const locationKeys = {
-  all:  ['locations']            as const,
+  all:  (scope: LocationScope = 'admin') => ['locations', scope] as const,
   byId: (id: string) => ['locations', id] as const,
 }
 
@@ -72,28 +75,31 @@ export function deleteLocation(id: string): Promise<void> {
   return apiFetch(`/api/v1/admin/locations/${id}`, { method: 'DELETE' })
 }
 
-export function useLocations() {
-  return useQuery({ queryKey: locationKeys.all, queryFn: getLocations })
+export function useLocations(options?: { vendorScoped?: boolean }) {
+  const scope: LocationScope = options?.vendorScoped ? 'vendor' : 'admin'
+  return useQuery({ queryKey: locationKeys.all(scope), queryFn: getLocations })
 }
 
 export function useLocation(id: string) {
   return useQuery({ queryKey: locationKeys.byId(id), queryFn: () => getLocation(id) })
 }
 
-export function useCreateLocation() {
+export function useCreateLocation(options?: { vendorScoped?: boolean }) {
   const qc = useQueryClient()
+  const scope: LocationScope = options?.vendorScoped ? 'vendor' : 'admin'
   return useMutation({
     mutationFn: async ({ dto, pictures }: { dto: CreateLocationDto; pictures: File[] }) => {
       const created = await createLocation(dto)
       if (pictures.length) await uploadLocationPictures(created.id, pictures)
       return created
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: locationKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: locationKeys.all(scope) }),
   })
 }
 
-export function useUpdateLocation() {
+export function useUpdateLocation(options?: { vendorScoped?: boolean }) {
   const qc = useQueryClient()
+  const scope: LocationScope = options?.vendorScoped ? 'vendor' : 'admin'
   return useMutation({
     mutationFn: async ({ id, dto, pictures }: { id: string; dto: UpdateLocationDto; pictures: File[] }) => {
       const updated = await updateLocation(id, dto)
@@ -101,16 +107,17 @@ export function useUpdateLocation() {
       return updated
     },
     onSuccess: (_, { id }) => {
-      qc.invalidateQueries({ queryKey: locationKeys.all })
+      qc.invalidateQueries({ queryKey: locationKeys.all(scope) })
       qc.invalidateQueries({ queryKey: locationKeys.byId(id) })
     },
   })
 }
 
-export function useDeleteLocation() {
+export function useDeleteLocation(options?: { vendorScoped?: boolean }) {
   const qc = useQueryClient()
+  const scope: LocationScope = options?.vendorScoped ? 'vendor' : 'admin'
   return useMutation({
     mutationFn: (id: string) => deleteLocation(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: locationKeys.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: locationKeys.all(scope) }),
   })
 }

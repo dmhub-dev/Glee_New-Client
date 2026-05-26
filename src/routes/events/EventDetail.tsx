@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, type EventApiPayload } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
+import { useAdminUser } from '../../app/providers'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Progress } from '@glee/ui'
 import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils } from 'lucide-react'
 import { cn } from '@glee/ui'
@@ -100,9 +101,11 @@ function money(value: number) {
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
-  const { data: event, isLoading } = useAdminEvent(eventId ?? '')
-  const updateMutation = useUpdateEvent()
-  const deleteMutation = useDeleteEvent()
+  const user = useAdminUser()
+  const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
+  const { data: event, isLoading } = useAdminEvent(eventId ?? '', { vendorScoped: isVendorRole })
+  const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
+  const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
   const { data: ticketData, isLoading: ticketsLoading } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
   const [attendeesOpen, setAttendeesOpen] = useState(false)

@@ -162,8 +162,8 @@ export function deleteUser(userId: string): Promise<void> {
   return apiFetch(`/api/v1/users/${userId}`, { method: 'DELETE' })
 }
 
-export function useUsers() {
-  return useQuery({ queryKey: userKeys.all, queryFn: listUsers })
+export function useUsers(options?: { enabled?: boolean }) {
+  return useQuery({ queryKey: userKeys.all, queryFn: listUsers, enabled: options?.enabled ?? true })
 }
 
 export function useUser(userId: string | null) {

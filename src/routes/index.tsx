@@ -6,6 +6,8 @@ import {
   CalendarDays,
   CheckCircle,
   Clock,
+  DollarSign,
+  PlusCircle,
   MapPin,
   ShieldCheck,
   Ticket,
@@ -87,7 +89,7 @@ function StatCard({
   onClick,
 }: {
   label: string
-  value: number
+  value: number | string
   detail: string
   icon: typeof Users
   onClick?: () => void
@@ -107,7 +109,7 @@ function StatCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs text-admin-40">{label}</p>
-          <p className="font-heading text-2xl font-black text-foreground">{value.toLocaleString()}</p>
+          <p className="font-heading text-2xl font-black text-foreground">{typeof value === 'number' ? value.toLocaleString() : value}</p>
           <p className="mt-1 truncate text-xs text-admin-40">{detail}</p>
         </div>
       </div>
@@ -118,11 +120,12 @@ function StatCard({
 export default function DashboardPage() {
   const user = useAdminUser()
   const isSuperAdmin = user.role === 'super_admin'
+  const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
   const navigate = useNavigate()
-  const deleteMutation = useDeleteEvent()
+  const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
 
-  const { data: events, isLoading: eventsLoading } = useAdminEvents()
-  const { data: users, isLoading: usersLoading } = useUsers()
+  const { data: events, isLoading: eventsLoading } = useAdminEvents({ vendorScoped: isVendorRole })
+  const { data: users, isLoading: usersLoading } = useUsers({ enabled: !isVendorRole })
   const { data: locations, isLoading: locationsLoading } = useLocations()
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const { data: auditLogs, isLoading: auditLoading } = useAuditLogs({ limit: 8 }, { enabled: isSuperAdmin })
@@ -184,6 +187,157 @@ export default function DashboardPage() {
 
   const isLoading = eventsLoading || usersLoading || locationsLoading || categoriesLoading
   const sellThrough = tickets.total > 0 ? Math.round((tickets.sold / tickets.total) * 100) : 0
+
+  if (isVendorRole) {
+    const grossRevenue = eventList.reduce((sum, event) => (
+      sum + event.ticketTiers.reduce((eventSum, tier) => eventSum + Math.max(0, tier.quantity - tier.quantityRemaining) * tier.price, 0)
+    ), 0)
+    const pendingEvents = eventList.filter(event => event.status === 'draft')
+    const liveEvents = eventList.filter(event => event.status === 'active')
+    const attentionEvents = eventList.filter(event => event.status === 'postponed' || event.status === 'cancelled')
+    const menuItems = eventList.reduce((sum, event) => sum + (event.menuItems?.length ?? 0), 0)
+    const pricedTicketCategories = eventList.reduce((sum, event) => sum + event.ticketTiers.length, 0)
+    const eventsWithAvailability = eventList.filter(event => event.ticketTiers.some(tier => tier.quantityRemaining > 0))
+    const vendorLocations = locationList.filter(location =>
+      eventList.some(event => event.locationId === location.id || event.venueId === location.id),
+    )
+
+    return (
+      <AdminLayout
+        title="Vendor Dashboard"
+        subtitle={`Welcome ${user.name.split(' ')[0]}, manage your events, ticket sales, and attendees.`}
+      >
+        <div className="space-y-5">
+          <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-neon-pink">Vendor workspace</p>
+                <h2 className="mt-2 font-heading text-xl font-black text-foreground">Publish events and track sales on Glee</h2>
+                <p className="mt-2 max-w-2xl text-sm text-admin-50">
+                  This account is for external event partners. Focus on creating events, keeping ticket and menu details current, and monitoring purchases.
+                </p>
+                <Badge variant="outline" className="mt-3 border-admin text-admin-50">Only your vendor data is visible</Badge>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard/events/new')}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neon-pink/90"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Create Event
+              </button>
+            </div>
+          </section>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {eventsLoading ? (
+              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)
+            ) : (
+              <>
+                <StatCard label="My Events" value={eventList.length} detail={`${liveEvents.length} live, ${pendingEvents.length} drafts`} icon={CalendarDays} onClick={() => navigate('/dashboard/events')} />
+                <StatCard label="Tickets Sold" value={tickets.sold} detail={`${tickets.remaining.toLocaleString()} tickets still available`} icon={Ticket} onClick={() => navigate('/dashboard/events')} />
+                <StatCard label="Gross Sales" value={`KSh ${grossRevenue.toLocaleString()}`} detail="Estimated from sold ticket categories" icon={DollarSign} />
+                <StatCard label="Needs Attention" value={attentionEvents.length} detail="Postponed or cancelled events" icon={Activity} onClick={() => navigate('/dashboard/events')} />
+              </>
+            )}
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-3">
+            <div className="space-y-5 xl:col-span-2">
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-foreground">Event Publishing Queue</h2>
+                    <p className="mt-1 text-xs text-admin-40">Drafts are not public until you publish them as active.</p>
+                  </div>
+                  <button onClick={() => navigate('/dashboard/events')} className="text-xs font-medium text-neon-pink/70 hover:text-neon-pink">
+                    Manage events
+                  </button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <FocusRow label="Draft events" value={pendingEvents.length} detail="Complete details and publish" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Live events" value={liveEvents.length} detail="Visible to ticket buyers" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Sold out events" value={eventList.filter(event => event.status === 'sold_out').length} detail="Ticket capacity reached" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Menu-enabled events" value={eventList.filter(event => (event.menuItems?.length ?? 0) > 0).length} detail="Food or drink add-ons available" onClick={() => navigate('/dashboard/events')} />
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-foreground">Vendor Operations</h2>
+                    <p className="mt-1 text-xs text-admin-40">Core work for running events on Glee</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <DataTile label="Club profile / locations" value={vendorLocations.length} detail="Locations used by your events" onClick={() => navigate('/dashboard/events?section=locations')} />
+                  <DataTile label="Menu items uploaded" value={menuItems} detail="Food and drink items attached to your events" onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Ticket price groups" value={pricedTicketCategories} detail="Ticket categories and price points configured" onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Events with availability" value={eventsWithAvailability.length} detail="Events that still have tickets to sell" onClick={() => navigate('/dashboard/events')} />
+                </div>
+              </section>
+
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-foreground">My Upcoming Events</h2>
+                    <p className="mt-1 text-xs text-admin-40">Events customers can discover and buy tickets for.</p>
+                  </div>
+                </div>
+                {eventsLoading ? (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-60 rounded-lg" />)}
+                  </div>
+                ) : upcomingEvents.length === 0 ? (
+                  <div className="rounded-lg border border-admin bg-admin-surface p-8 text-center">
+                    <p className="text-sm font-medium text-admin-70">No live upcoming events yet.</p>
+                    <button onClick={() => navigate('/dashboard/events/new')} className="mt-2 text-sm font-medium text-neon-pink hover:underline">
+                      Create your first event
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {upcomingEvents.slice(0, 3).map(event => (
+                      <AdminEventCard key={event.id} event={event} onDelete={id => deleteMutation.mutate(id)} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+
+            <div className="space-y-5">
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center gap-2">
+                  <Ticket className="h-4 w-4 text-neon-pink" />
+                  <h2 className="font-heading text-sm font-bold text-foreground">Ticket Sales</h2>
+                </div>
+                <div className="space-y-4">
+                  <ReportMetric label="Sell-through" value={`${sellThrough}%`} detail={`${tickets.sold.toLocaleString()} of ${tickets.total.toLocaleString()} tickets sold`} />
+                  <ReportMetric label="Available" value={tickets.remaining.toLocaleString()} detail="Tickets customers can still buy" />
+                  <ReportMetric label="Gross ticket sales" value={`KSh ${grossRevenue.toLocaleString()}`} detail="Before platform fees and settlement adjustments" />
+                  <ReportMetric label="Own bookings" value={tickets.sold.toLocaleString()} detail="Bookings shown only for your vendor events" />
+                  <ReportMetric label="Moderation" value="Glee controlled" detail="Vendors cannot approve their own account or events if review is required" />
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-neon-pink" />
+                  <h2 className="font-heading text-sm font-bold text-foreground">Vendor Checklist</h2>
+                </div>
+                <div className="space-y-3">
+                  <DataTile label="Add event posters" value={eventList.filter(event => event.flyerSquareUrl || event.flyerPortraitUrl).length} detail="Events with public artwork" onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Configure prices" value={eventList.filter(event => event.ticketTiers.length > 0).length} detail="Events with ticket categories" onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Table inventory" value={0} detail="Reserved table inventory will live here" onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Review profile" value={1} detail="Keep business contact details current" onClick={() => navigate('/dashboard/profile')} />
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </AdminLayout>
+    )
+  }
 
   if (!isSuperAdmin) {
     const vendorAccounts = userList.filter(record => record.role === 'vendor' || record.role === 'vendor_staff')

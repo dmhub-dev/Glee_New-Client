@@ -1,12 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAdminEvents, useDeleteEvent } from '@glee/api'
+import { useAdminEvents, useDeleteEvent, useCategories, useLocations, useCreateLocation } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
-import { Skeleton, Input, Progress } from '@glee/ui'
-import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2, Tags, MapPinned } from 'lucide-react'
+import { useAdminUser } from '../../app/providers'
+import { Skeleton, Input, Progress, Button, Textarea, Label, useToast } from '@glee/ui'
+import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2, Tags, MapPinned, Building2, ParkingCircle, Wind } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
+import type { Location } from '@glee/api'
 import CategoriesTab from '../settings/CategoriesTab'
 import LocationsTab from '../settings/LocationsTab'
 
@@ -73,14 +75,284 @@ function lowestPrice(event: Event): number {
   return Math.min(...event.ticketTiers.map(t => t.price))
 }
 
+function CategoryReferenceGrid({
+  categories,
+  isLoading,
+}: {
+  categories: Array<{ id: string; name: string; createdAt: string }>
+  isLoading: boolean
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+        <h2 className="font-heading text-base font-bold text-foreground">Approved Event Categories</h2>
+        <p className="mt-1 text-sm text-admin-40">Use these categories when creating or editing your events. Vendors cannot create or modify platform categories.</p>
+      </div>
+      {isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => <Skeleton key={index} className="h-24 rounded-xl" />)}
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {categories.map(category => (
+            <div key={category.id} className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin">
+              <span className="inline-flex rounded-full border border-neon-pink/20 bg-neon-pink/10 px-2.5 py-1 text-xs font-medium text-neon-pink">
+                {category.name}
+              </span>
+              <p className="mt-3 text-xs text-admin-40">Available for event setup</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function LocationReferenceGrid({
+  locations,
+  isLoading,
+  allowCreate = false,
+}: {
+  locations: Location[]
+  isLoading: boolean
+  allowCreate?: boolean
+}) {
+  const { toast } = useToast()
+  const createLocation = useCreateLocation({ vendorScoped: true })
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [form, setForm] = useState({
+    name: '',
+    address: '',
+    description: '',
+    capacity: '100',
+    latitude: '0',
+    longitude: '0',
+    isIndoors: true,
+    isOutdoors: false,
+    isParkingAvailable: false,
+  })
+
+  async function handleCreateLocation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    try {
+      await createLocation.mutateAsync({
+        dto: {
+          name: form.name.trim(),
+          address: form.address.trim(),
+          description: form.description.trim(),
+          capacity: Number(form.capacity),
+          latitude: Number(form.latitude),
+          longitude: Number(form.longitude),
+          isIndoors: form.isIndoors,
+          isOutdoors: form.isOutdoors,
+          isParkingAvailable: form.isParkingAvailable,
+        },
+        pictures: [],
+      })
+      toast({ title: 'Location added' })
+      setForm({
+        name: '',
+        address: '',
+        description: '',
+        capacity: '100',
+        latitude: '0',
+        longitude: '0',
+        isIndoors: true,
+        isOutdoors: false,
+        isParkingAvailable: false,
+      })
+      setIsCreateOpen(false)
+    } catch {
+      toast({ title: 'Failed to add location', variant: 'destructive' })
+    }
+  }
+
+  function updateForm<Key extends keyof typeof form>(key: Key, value: (typeof form)[Key]) {
+    setForm(current => ({ ...current, [key]: value }))
+  }
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-heading text-base font-bold text-foreground">Event Locations</h2>
+          <p className="mt-1 text-sm text-admin-40">Use Glee-approved locations or add your own venue. Your private locations are only visible to your vendor account.</p>
+        </div>
+        {allowCreate && (
+          <Button onClick={() => setIsCreateOpen(open => !open)} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
+            <Plus className="h-4 w-4" />
+            Add Location
+          </Button>
+        )}
+      </div>
+      {allowCreate && isCreateOpen && (
+        <form onSubmit={handleCreateLocation} className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="vendor-location-name">Venue name</Label>
+                <Input
+                  id="vendor-location-name"
+                  required
+                  value={form.name}
+                  onChange={event => updateForm('name', event.target.value)}
+                  className="mt-1 bg-admin-input border-admin"
+                  placeholder="The Social Garden"
+                />
+              </div>
+              <div>
+                <Label htmlFor="vendor-location-address">Address</Label>
+                <Input
+                  id="vendor-location-address"
+                  required
+                  value={form.address}
+                  onChange={event => updateForm('address', event.target.value)}
+                  className="mt-1 bg-admin-input border-admin"
+                  placeholder="Westlands, Nairobi"
+                />
+              </div>
+              <div>
+                <Label htmlFor="vendor-location-description">Description</Label>
+                <Textarea
+                  id="vendor-location-description"
+                  value={form.description}
+                  onChange={event => updateForm('description', event.target.value)}
+                  className="mt-1 min-h-[92px] resize-none bg-admin-input border-admin"
+                  placeholder="Stage setup, gate access, ambience, or notes for event planning"
+                />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label htmlFor="vendor-location-capacity">Capacity</Label>
+                  <Input
+                    id="vendor-location-capacity"
+                    required
+                    min={1}
+                    type="number"
+                    value={form.capacity}
+                    onChange={event => updateForm('capacity', event.target.value)}
+                    className="mt-1 bg-admin-input border-admin"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor-location-latitude">Latitude</Label>
+                  <Input
+                    id="vendor-location-latitude"
+                    required
+                    type="number"
+                    step="any"
+                    value={form.latitude}
+                    onChange={event => updateForm('latitude', event.target.value)}
+                    className="mt-1 bg-admin-input border-admin"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="vendor-location-longitude">Longitude</Label>
+                  <Input
+                    id="vendor-location-longitude"
+                    required
+                    type="number"
+                    step="any"
+                    value={form.longitude}
+                    onChange={event => updateForm('longitude', event.target.value)}
+                    className="mt-1 bg-admin-input border-admin"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                {[
+                  { key: 'isIndoors' as const, label: 'Indoor', icon: Building2 },
+                  { key: 'isOutdoors' as const, label: 'Outdoor', icon: Wind },
+                  { key: 'isParkingAvailable' as const, label: 'Parking', icon: ParkingCircle },
+                ].map(option => {
+                  const Icon = option.icon
+                  const checked = Boolean(form[option.key])
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => updateForm(option.key, !checked)}
+                      className={cn(
+                        'flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors',
+                        checked ? 'border-neon-pink/40 bg-neon-pink/10 text-neon-pink' : 'border-admin bg-admin-overlay text-admin-50 hover:text-admin-70',
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        {option.label}
+                      </span>
+                      <span className={cn('h-2.5 w-2.5 rounded-full', checked ? 'bg-neon-pink' : 'bg-admin-30')} />
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="text-admin-50">Cancel</Button>
+                <Button type="submit" disabled={createLocation.isPending} className="bg-neon-pink text-white hover:bg-neon-pink/90">
+                  {createLocation.isPending ? 'Saving...' : 'Save Location'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </form>
+      )}
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-44 rounded-xl" />)}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {locations.map(location => (
+            <div key={location.id} className="overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin">
+              <div className="h-28 bg-admin-overlay">
+                {location.pictures?.[0] ? (
+                  <img src={location.pictures[0]} alt={location.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-xs text-admin-30">No image</div>
+                )}
+              </div>
+              <div className="space-y-3 p-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{location.name}</h3>
+                    <span className={cn(
+                      'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                      location.vendorId ? 'border-neon-pink/25 bg-neon-pink/10 text-neon-pink' : 'border-admin bg-admin-overlay text-admin-40',
+                    )}>
+                      {location.vendorId ? 'My Location' : 'Glee'}
+                    </span>
+                  </div>
+                  <p className="mt-1 line-clamp-1 text-xs text-admin-40">{location.address}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">{location.capacity.toLocaleString()} capacity</span>
+                  {location.isParkingAvailable && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Parking</span>}
+                  {location.isIndoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Indoor</span>}
+                  {location.isOutdoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Outdoor</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function EventsListPage() {
+  const user = useAdminUser()
+  const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { data: events, isLoading } = useAdminEvents()
-  const deleteMutation = useDeleteEvent()
+  const { data: events, isLoading } = useAdminEvents({ vendorScoped: isVendorRole })
+  const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
   const [activeTab, setActiveTab] = useState<StatusTab>('active')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const { data: categories, isLoading: categoriesLoading } = useCategories()
+  const { data: locations, isLoading: locationsLoading } = useLocations({ vendorScoped: isVendorRole })
   const rawSection = searchParams.get('section')
   const activeSection: EventSection = rawSection === 'categories' || rawSection === 'locations' ? rawSection : 'events'
 
@@ -117,8 +389,10 @@ export default function EventsListPage() {
 
   return (
     <AdminLayout
-      title={activeSection === 'events' ? 'Events' : activeSection === 'categories' ? 'Event Categories' : 'Event Locations'}
-      subtitle="Manage event inventory, categories, and locations from one place"
+      title={isVendorRole ? (
+        activeSection === 'events' ? 'My Events' : activeSection === 'categories' ? 'Event Categories' : 'Event Locations'
+      ) : activeSection === 'events' ? 'Events' : activeSection === 'categories' ? 'Event Categories' : 'Event Locations'}
+      subtitle={isVendorRole ? 'Create events and reference approved categories and locations' : 'Manage event inventory, categories, and locations from one place'}
     >
       <div className="space-y-4">
         <div className="flex gap-1 overflow-x-auto border-b border-admin">
@@ -143,8 +417,12 @@ export default function EventsListPage() {
           })}
         </div>
 
-        {activeSection === 'categories' && <CategoriesTab />}
-        {activeSection === 'locations' && <LocationsTab />}
+        {activeSection === 'categories' && (isVendorRole ? (
+          <CategoryReferenceGrid categories={categories ?? []} isLoading={categoriesLoading} />
+        ) : <CategoriesTab />)}
+        {activeSection === 'locations' && (isVendorRole ? (
+          <LocationReferenceGrid locations={locations ?? []} isLoading={locationsLoading} allowCreate />
+        ) : <LocationsTab />)}
         {activeSection === 'events' && (
           <>
 

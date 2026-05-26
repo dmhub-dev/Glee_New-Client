@@ -175,6 +175,20 @@ export interface EventApiPayload {
   posterFiles?: File[]
 }
 
+function combineDateTime(date: string, time?: string) {
+  return new Date(`${date}T${time || '00:00'}:00`)
+}
+
+function buildEndDateTime(startDate: string, startTime: string, endDate: string, endTime?: string) {
+  const start = combineDateTime(startDate, startTime)
+  const safeEndDate = !endDate || endDate < startDate ? startDate : endDate
+  const end = combineDateTime(safeEndDate, endTime || startTime)
+  if (end < start) {
+    end.setDate(end.getDate() + 1)
+  }
+  return { start, end }
+}
+
 function buildFormData(payload: EventApiPayload): FormData {
   const fd = new FormData()
 
@@ -185,10 +199,14 @@ function buildFormData(payload: EventApiPayload): FormData {
 
   if (payload.categoryId) fd.append('category', payload.categoryId)
 
-  const startIso = new Date(`${payload.startDate}T${payload.startTime}:00`).toISOString()
-  const endIso   = payload.endTime
-    ? new Date(`${payload.endDate}T${payload.endTime}:00`).toISOString()
-    : startIso
+  const eventDateRange = buildEndDateTime(
+    payload.startDate,
+    payload.startTime,
+    payload.endDate,
+    payload.endTime || payload.startTime,
+  )
+  const startIso = eventDateRange.start.toISOString()
+  const endIso   = eventDateRange.end.toISOString()
 
   fd.append('date', JSON.stringify({ start: startIso, end: endIso }))
   fd.append('ticketCategories', JSON.stringify(
@@ -197,12 +215,15 @@ function buildFormData(payload: EventApiPayload): FormData {
 
   if (payload.schedules?.length) {
     fd.append('eventSchedule', JSON.stringify(
-      payload.schedules.map(s => ({
-        name: s.name,
-        description: s.description,
-        startDate: new Date(`${s.startDate}T${s.startTime}:00`).toISOString(),
-        endDate: new Date(`${s.endDate}T${s.endTime}:00`).toISOString(),
-      })),
+      payload.schedules.map(s => {
+        const scheduleDateRange = buildEndDateTime(s.startDate, s.startTime, s.endDate, s.endTime)
+        return {
+          name: s.name,
+          description: s.description,
+          startDate: scheduleDateRange.start.toISOString(),
+          endDate: scheduleDateRange.end.toISOString(),
+        }
+      }),
     ))
   }
 
@@ -228,8 +249,8 @@ export const eventKeys = {
     ['events', 'list', filters] as const,
   byId:  (id: string) => ['events', id] as const,
   admin: {
-    all:  ['admin', 'events'] as const,
-    byId: (id: string) => ['admin', 'events', id] as const,
+    all:  (scope: 'admin' | 'vendor' = 'admin') => ['admin', 'events', scope] as const,
+    byId: (id: string, scope: 'admin' | 'vendor' = 'admin') => ['admin', 'events', scope, id] as const,
   },
 }
 
@@ -255,36 +276,36 @@ export async function fetchEvent(id: string): Promise<Event | undefined> {
 
 // ── Fetch functions (admin — authenticated) ────────────────────────────────────
 
-export async function getAdminEvents(): Promise<Event[]> {
+export async function getAdminEvents(vendorScoped = false): Promise<Event[]> {
   const res = await apiFetch<{ success: boolean; data: BackendEvent[] }>(
-    '/api/v1/event?page=1&limit=100',
+    `${vendorScoped ? '/api/v2' : '/api/v1'}/event?page=1&limit=100`,
   )
   return (res.data ?? []).map(mapBackendToEvent)
 }
 
-export async function getAdminEvent(id: string): Promise<Event> {
-  const res = await apiFetch<{ success: boolean; data: BackendEvent }>(`/api/v1/event/${id}`)
+export async function getAdminEvent(id: string, vendorScoped = false): Promise<Event> {
+  const res = await apiFetch<{ success: boolean; data: BackendEvent }>(`${vendorScoped ? '/api/v2' : '/api/v1'}/event/${id}`)
   return mapBackendToEvent(res.data)
 }
 
-export async function createAdminEvent(payload: EventApiPayload): Promise<Event> {
+export async function createAdminEvent(payload: EventApiPayload, vendorScoped = false): Promise<Event> {
   const res = await apiFetch<{ success: boolean; data: BackendEvent }>(
-    '/api/v1/admin/event',
+    `${vendorScoped ? '/api/v2' : '/api/v1'}/admin/event`,
     { method: 'POST', body: buildFormData(payload) },
   )
   return mapBackendToEvent(res.data)
 }
 
-export async function updateAdminEvent(id: string, payload: EventApiPayload): Promise<Event> {
+export async function updateAdminEvent(id: string, payload: EventApiPayload, vendorScoped = false): Promise<Event> {
   const res = await apiFetch<{ success: boolean; data: BackendEvent }>(
-    `/api/v1/admin/event/${id}`,
+    `${vendorScoped ? '/api/v2' : '/api/v1'}/admin/event/${id}`,
     { method: 'PATCH', body: buildFormData(payload) },
   )
   return mapBackendToEvent(res.data)
 }
 
-export async function deleteAdminEvent(id: string): Promise<void> {
-  await apiFetch(`/api/v1/admin/event/${id}`, { method: 'DELETE' })
+export async function deleteAdminEvent(id: string, vendorScoped = false): Promise<void> {
+  await apiFetch(`${vendorScoped ? '/api/v2' : '/api/v1'}/admin/event/${id}`, { method: 'DELETE' })
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
@@ -306,44 +327,49 @@ export function useEvent(id: string) {
   })
 }
 
-export function useAdminEvents() {
+export function useAdminEvents(options?: { vendorScoped?: boolean }) {
+  const scope = options?.vendorScoped ? 'vendor' : 'admin'
   return useQuery({
-    queryKey: eventKeys.admin.all,
-    queryFn:  getAdminEvents,
+    queryKey: eventKeys.admin.all(scope),
+    queryFn:  () => getAdminEvents(Boolean(options?.vendorScoped)),
   })
 }
 
-export function useAdminEvent(id: string) {
+export function useAdminEvent(id: string, options?: { vendorScoped?: boolean }) {
+  const scope = options?.vendorScoped ? 'vendor' : 'admin'
   return useQuery({
-    queryKey: eventKeys.admin.byId(id),
-    queryFn:  () => getAdminEvent(id),
+    queryKey: eventKeys.admin.byId(id, scope),
+    queryFn:  () => getAdminEvent(id, Boolean(options?.vendorScoped)),
     enabled:  !!id && id !== 'new',
   })
 }
 
-export function useCreateEvent() {
+export function useCreateEvent(options?: { vendorScoped?: boolean }) {
   const qc = useQueryClient()
+  const scope = options?.vendorScoped ? 'vendor' : 'admin'
   return useMutation({
-    mutationFn: (payload: EventApiPayload) => createAdminEvent(payload),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: eventKeys.admin.all }),
+    mutationFn: (payload: EventApiPayload) => createAdminEvent(payload, Boolean(options?.vendorScoped)),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) }),
   })
 }
 
-export function useUpdateEvent() {
+export function useUpdateEvent(options?: { vendorScoped?: boolean }) {
   const qc = useQueryClient()
+  const scope = options?.vendorScoped ? 'vendor' : 'admin'
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: EventApiPayload }) => updateAdminEvent(id, data),
+    mutationFn: ({ id, data }: { id: string; data: EventApiPayload }) => updateAdminEvent(id, data, Boolean(options?.vendorScoped)),
     onSuccess:  (_, { id }) => {
-      qc.invalidateQueries({ queryKey: eventKeys.admin.all })
-      qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id) })
+      qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) })
+      qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id, scope) })
     },
   })
 }
 
-export function useDeleteEvent() {
+export function useDeleteEvent(options?: { vendorScoped?: boolean }) {
   const qc = useQueryClient()
+  const scope = options?.vendorScoped ? 'vendor' : 'admin'
   return useMutation({
-    mutationFn: (id: string) => deleteAdminEvent(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: eventKeys.admin.all }),
+    mutationFn: (id: string) => deleteAdminEvent(id, Boolean(options?.vendorScoped)),
+    onSuccess:  () => qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) }),
   })
 }

@@ -36,8 +36,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Roles & Permissions', to: '/dashboard/roles', icon: ShieldCheck, active: true, roles: ['super_admin'] },
   { label: 'Audit Logs', to: '/dashboard/audit-logs', icon: ScrollText, active: true, roles: ['super_admin'] },
   { label: 'Settings', to: '/dashboard/settings', icon: Settings, active: true, roles: ['super_admin'] },
-  { label: 'Bookings', to: '/bookings', icon: Ticket, active: false },
-  { label: 'Invoices', to: '/invoices', icon: FileText, active: false },
+  { label: 'Bookings', to: '/bookings', icon: Ticket, active: false, roles: ['vendor', 'vendor_staff', 'admin', 'customer_support'] },
+  { label: 'Menu & Pricing', to: '/menu-pricing', icon: FileText, active: false, roles: ['vendor', 'vendor_staff'] },
+  { label: 'Sales Reports', to: '/sales-reports', icon: BarChart2, active: false, roles: ['vendor', 'vendor_staff'] },
   { label: 'Financials', to: '/financials', icon: BarChart2, active: false, roles: ['super_admin', 'admin', 'finance'] },
 ]
 

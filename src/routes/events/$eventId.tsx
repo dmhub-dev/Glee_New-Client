@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
+import { useAdminUser } from '../../app/providers'
 import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories, useLocations } from '@glee/api'
 import { Button, Input, Textarea, Label, Skeleton } from '@glee/ui'
 import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, Trash2, Upload, X } from 'lucide-react'
@@ -292,12 +293,14 @@ export default function EventFormPage() {
   const { eventId } = useParams<{ eventId?: string }>()
   const isNew = !eventId || eventId === 'new'
   const navigate = useNavigate()
+  const user = useAdminUser()
+  const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
 
-  const { data: existingEvent, isLoading } = useAdminEvent(isNew ? '' : eventId!)
-  const createMutation = useCreateEvent()
-  const updateMutation = useUpdateEvent()
+  const { data: existingEvent, isLoading } = useAdminEvent(isNew ? '' : eventId!, { vendorScoped: isVendorRole })
+  const createMutation = useCreateEvent({ vendorScoped: isVendorRole })
+  const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
   const { data: categoriesData } = useCategories()
-  const { data: locationsData } = useLocations()
+  const { data: locationsData } = useLocations({ vendorScoped: isVendorRole })
 
   const [landscapes, setLandscapes] = useState<{ url: string; file?: File }[]>([])
   const [portraits,  setPortraits]  = useState<{ url: string; file?: File }[]>([])
@@ -480,7 +483,10 @@ export default function EventFormPage() {
       startTime: values.startTime,
       endTime: values.endTime,
       ticketTiers: values.ticketTiers,
-      schedules: sortSchedules(values.schedules),
+      schedules: sortSchedules(values.schedules.map(schedule => ({
+        ...schedule,
+        endDate: getScheduleEndDate(schedule),
+      }))),
       posterFiles: posterFiles.length > 0 ? posterFiles : undefined,
       menuItems: values.menuItems?.length ? values.menuItems : undefined,
     }
