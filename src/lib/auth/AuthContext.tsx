@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import type { AuthUser } from '@glee/api'
-import { apiLogin, apiLogout, apiMe } from '@glee/api'
+import { apiLogin, apiLogout, apiMe, apiVerifyLoginTwoFactor } from '@glee/api'
 import { tokens } from '@glee/utils'
 
 // Roles permitted in the admin panel
@@ -18,7 +18,8 @@ interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; email?: string; message?: string }>
+  verifyTwoFactor: (email: string, otp: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -26,7 +27,8 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
-  login: async () => {},
+  login: async () => ({ requiresTwoFactor: false }),
+  verifyTwoFactor: async () => {},
   logout: async () => {},
 })
 
@@ -54,7 +56,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    const { accessToken, refreshToken, user: me } = await apiLogin(email, password)
+    const result = await apiLogin(email, password)
+    if ('requiresTwoFactor' in result) {
+      if (result.role && !ADMIN_ROLES.has(result.role)) {
+        throw new Error('Access denied — your account does not have admin access.')
+      }
+      return { requiresTwoFactor: true, email: result.email, message: result.message }
+    }
+    if (!ADMIN_ROLES.has(result.user.role)) {
+      throw new Error('Access denied — your account does not have admin access.')
+    }
+    tokens.setAccess(result.accessToken)
+    tokens.setRefresh(result.refreshToken)
+    setUser(result.user)
+    return { requiresTwoFactor: false }
+  }, [])
+
+  const verifyTwoFactor = useCallback(async (email: string, otp: string) => {
+    const { accessToken, refreshToken, user: me } = await apiVerifyLoginTwoFactor(email, otp)
     if (!ADMIN_ROLES.has(me.role)) {
       throw new Error('Access denied — your account does not have admin access.')
     }
@@ -70,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, verifyTwoFactor, logout }}>
       {children}
     </AuthContext.Provider>
   )

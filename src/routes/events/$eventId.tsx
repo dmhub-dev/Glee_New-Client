@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
-import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories } from '@glee/api'
+import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories, useLocations } from '@glee/api'
 import { Button, Input, Textarea, Label, Skeleton } from '@glee/ui'
 import { ArrowLeft, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
@@ -26,19 +26,28 @@ const menuItemSchema = z.object({
   description: z.string().optional(),
 })
 
+const scheduleSchema = z.object({
+  name: z.string().min(1, 'Name required'),
+  description: z.string().min(1, 'Description required'),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
+})
+
 const eventSchema = z.object({
   title: z.string().min(3, 'At least 3 characters').max(120),
   description: z.string().min(10, 'At least 10 characters').max(2000),
   category: z.string().min(1, 'Category required'),
-  status: z.enum(['draft', 'live'] as const),
+  status: z.enum(['draft', 'active', 'postponed', 'cancelled', 'sold_out'] as const),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
   endDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
   endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')),
-  venueId: z.string().min(1, 'Venue required'),
-  location: z.string().min(3, 'Location required'),
+  locationId: z.string().min(1, 'Location required'),
   ticketTiers: z.array(tierSchema).min(1, 'At least one wave required'),
   menuItems: z.array(menuItemSchema).max(5, 'Max 5 menu items'),
+  schedules: z.array(scheduleSchema).min(1, 'At least one schedule required'),
 }).refine(data => data.endDate >= data.startDate, {
   message: 'End date must be on or after start date',
   path: ['endDate'],
@@ -52,6 +61,11 @@ function newTier(): EventFormValues['ticketTiers'][number] {
 
 function newMenuItem(): EventFormValues['menuItems'][number] {
   return { name: '', category: 'other', price: 0, description: '' }
+}
+
+function newSchedule(): EventFormValues['schedules'][number] {
+  const today = new Date().toISOString().slice(0, 10)
+  return { name: '', description: '', startDate: today, endDate: today, startTime: '09:00', endTime: '18:00' }
 }
 
 const MENU_CATEGORIES: { value: EventFormValues['menuItems'][number]['category']; label: string }[] = [
@@ -69,6 +83,7 @@ export default function EventFormPage() {
   const createMutation = useCreateEvent()
   const updateMutation = useUpdateEvent()
   const { data: categoriesData } = useCategories()
+  const { data: locationsData } = useLocations()
 
   const [landscapes, setLandscapes] = useState<{ url: string; file?: File }[]>([])
   const [portraits,  setPortraits]  = useState<{ url: string; file?: File }[]>([])
@@ -95,15 +110,16 @@ export default function EventFormPage() {
       endDate:   '',
       startTime: '',
       endTime: '',
-      venueId: '',
-      location: '',
+      locationId: '',
       ticketTiers: [newTier()],
       menuItems: [],
+      schedules: [newSchedule()],
     },
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'ticketTiers' })
   const { fields: menuFields, append: appendMenu, remove: removeMenu } = useFieldArray({ control, name: 'menuItems' })
+  const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({ control, name: 'schedules' })
   const formValues = watch()
 
   useEffect(() => {
@@ -113,13 +129,12 @@ export default function EventFormPage() {
       title:       existingEvent.title,
       description: existingEvent.description,
       category:    categoryName,
-      status:      existingEvent.status === 'live' ? 'live' : 'draft',
+      status:      existingEvent.status,
       startDate:   existingEvent.startDate,
       endDate:     existingEvent.endDate,
       startTime:   existingEvent.startTime,
       endTime:     existingEvent.endTime ?? '',
-      venueId:     existingEvent.venueId,
-      location:    existingEvent.location ?? '',
+      locationId:  existingEvent.locationId ?? existingEvent.venueId,
       ticketTiers: existingEvent.ticketTiers.map(t => ({
         id:                t.id,
         name:              t.name,
@@ -134,6 +149,20 @@ export default function EventFormPage() {
         price:       m.price,
         description: m.description ?? '',
       })),
+      schedules: existingEvent.schedules?.length
+        ? existingEvent.schedules.map(s => {
+            const start = new Date(s.startDate)
+            const end = new Date(s.endDate)
+            return {
+              name: s.name,
+              description: s.description,
+              startDate: start.toISOString().split('T')[0],
+              endDate: end.toISOString().split('T')[0],
+              startTime: start.toTimeString().slice(0, 5),
+              endTime: end.toTimeString().slice(0, 5),
+            }
+          })
+        : [newSchedule()],
     })
     if (existingEvent.flyerSquareUrl)   setLandscapes([{ url: existingEvent.flyerSquareUrl }])
     if (existingEvent.flyerPortraitUrl) setPortraits([{ url: existingEvent.flyerPortraitUrl }])
@@ -174,9 +203,17 @@ export default function EventFormPage() {
       ...mediums.filter(p => p.file).map(p => p.file!),
     ]
     const payload = {
-      ...values,
+      title: values.title,
+      description: values.description,
       categoryId,
-      status: (asDraft ? 'draft' : values.status) as 'draft' | 'live',
+      locationId: values.locationId,
+      status: asDraft ? 'draft' : values.status,
+      startDate: values.startDate,
+      endDate: values.endDate,
+      startTime: values.startTime,
+      endTime: values.endTime,
+      ticketTiers: values.ticketTiers,
+      schedules: values.schedules,
       posterFiles: posterFiles.length > 0 ? posterFiles : undefined,
       menuItems: values.menuItems?.length ? values.menuItems : undefined,
     }
@@ -203,15 +240,22 @@ export default function EventFormPage() {
   const previewEvent: Event = {
     id: 'preview',
     vendorId: 'admin-001',
-    venueId: formValues.venueId || 'Venue',
+    venueId: formValues.locationId || 'Venue',
     title: formValues.title || 'Event Title',
     description: formValues.description || 'Event description will appear here.',
     startDate: formValues.startDate || new Date().toISOString().slice(0, 10),
     endDate:   formValues.endDate   || formValues.startDate || new Date().toISOString().slice(0, 10),
     startTime: formValues.startTime || '20:00',
     endTime: formValues.endTime || undefined,
-    status: formValues.status === 'live' ? 'live' : 'draft',
-    location: formValues.location,
+    status: formValues.status === 'active' ? 'active' : 'draft',
+    location: locationsData?.find(l => l.id === formValues.locationId)?.name,
+    locationId: formValues.locationId,
+    schedules: formValues.schedules?.map(s => ({
+      name: s.name,
+      description: s.description,
+      startDate: `${s.startDate}T${s.startTime}:00`,
+      endDate: `${s.endDate}T${s.endTime}:00`,
+    })),
     flyerSquareUrl:   landscapes[0]?.url ?? undefined,
     flyerPortraitUrl: portraits[0]?.url ?? undefined,
     ticketTiers: (formValues.ticketTiers ?? []).map(t => ({
@@ -242,9 +286,9 @@ export default function EventFormPage() {
             Back to Events
           </button>
 
-          {!isNew && existingEvent?.status === 'live' && (
+          {!isNew && existingEvent?.status === 'active' && (
             <div className="bg-neon-pink/10 border border-neon-pink/20 rounded-xl px-4 py-3 text-sm text-neon-pink">
-              This event is live — changes will update immediately.
+              This event is active — changes will update immediately.
             </div>
           )}
 
@@ -297,14 +341,14 @@ export default function EventFormPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => field.onChange('live')}
+                          onClick={() => field.onChange('active')}
                           className={`flex-1 px-4 text-sm font-medium transition-colors border-l border-admin-md ${
-                            field.value === 'live'
+                            field.value === 'active'
                               ? 'bg-neon-pink text-white'
                               : 'bg-transparent text-admin-40 hover:text-admin-70'
                           }`}
                         >
-                          Live
+                          Active
                         </button>
                       </div>
                     )}
@@ -351,19 +395,101 @@ export default function EventFormPage() {
               </div>
             </section>
 
+            {/* Schedule */}
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading font-bold text-sm text-foreground">Event Schedule</h2>
+                <button
+                  type="button"
+                  onClick={() => appendSchedule(newSchedule())}
+                  className="flex items-center gap-2 text-sm text-neon-pink/70 hover:text-neon-pink transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Schedule
+                </button>
+              </div>
+              <div className="space-y-3">
+                {scheduleFields.map((field, index) => (
+                  <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-admin-40 font-mono">Schedule {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeSchedule(index)}
+                        disabled={scheduleFields.length === 1}
+                        className="w-6 h-6 rounded flex items-center justify-center text-admin-20 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-admin-50">Name *</Label>
+                      <Input
+                        {...register(`schedules.${index}.name`)}
+                        placeholder="e.g. Summer Music Carnival"
+                        className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                      />
+                      {errors.schedules?.[index]?.name && (
+                        <p className="text-xs text-red-400">{errors.schedules[index]?.name?.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-admin-50">Description *</Label>
+                      <Textarea
+                        {...register(`schedules.${index}.description`)}
+                        rows={3}
+                        placeholder="9:00am–10:00am guest arrival, 10:00am–12:00pm opening performances..."
+                        className="text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30 resize-none"
+                      />
+                      {errors.schedules?.[index]?.description && (
+                        <p className="text-xs text-red-400">{errors.schedules[index]?.description?.message}</p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">Start Date *</Label>
+                        <Input type="date" {...register(`schedules.${index}.startDate`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">Start Time *</Label>
+                        <Input type="time" {...register(`schedules.${index}.startTime`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">End Date *</Label>
+                        <Input type="date" {...register(`schedules.${index}.endDate`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">End Time *</Label>
+                        <Input type="time" {...register(`schedules.${index}.endTime`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {errors.schedules?.message && (
+                <p className="text-xs text-red-400">{errors.schedules.message}</p>
+              )}
+            </section>
+
             {/* Location */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Location</h2>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="venueId" className="text-xs text-admin-50">Venue Name *</Label>
-                  <Input id="venueId" {...register('venueId')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" placeholder="e.g. Club Privé" />
-                  {errors.venueId && <p className="text-xs text-red-400">{errors.venueId.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="location" className="text-xs text-admin-50">Address *</Label>
-                  <Input id="location" {...register('location')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" placeholder="e.g. Westlands, Nairobi" />
-                  {errors.location && <p className="text-xs text-red-400">{errors.location.message}</p>}
+                <div className="space-y-1 col-span-2">
+                  <Label htmlFor="locationId" className="text-xs text-admin-50">Location *</Label>
+                  <select
+                    id="locationId"
+                    {...register('locationId')}
+                    className="w-full h-9 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-neon-pink/30"
+                  >
+                    <option value="" className="bg-admin-surface">Select location…</option>
+                    {(locationsData ?? []).map(loc => (
+                      <option key={loc.id} value={loc.id} className="bg-admin-surface">
+                        {loc.name} — {loc.address}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.locationId && <p className="text-xs text-red-400">{errors.locationId.message}</p>}
                 </div>
               </div>
             </section>
@@ -614,7 +740,7 @@ export default function EventFormPage() {
                   disabled={isSubmitting}
                   className="rounded-full bg-neon-pink hover:bg-[#cc2272] text-white font-semibold px-6"
                 >
-                  {isSubmitting ? 'Saving...' : (formValues.status === 'live' ? 'Publish Event' : 'Save Event')}
+                  {isSubmitting ? 'Saving...' : (formValues.status === 'active' ? 'Publish Event' : 'Save Event')}
                 </Button>
               </div>
             </div>

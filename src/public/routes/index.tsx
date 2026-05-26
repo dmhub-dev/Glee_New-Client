@@ -10,7 +10,7 @@ export default function LandingPage() {
   const liveEvents = useMemo(
     () =>
       events
-        .filter(e => e.status === 'live')
+        .filter(e => e.status === 'active')
         .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()),
     [events],
   )

@@ -7,13 +7,11 @@ import { Pencil, Trash2, MapPin } from 'lucide-react'
 const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
 
 const STATUS_CONFIG = {
-  live:             { label: 'Active',    dot: 'bg-green-400',  text: 'text-green-400'  },
+  active:           { label: 'Active',    dot: 'bg-green-400',  text: 'text-green-400'  },
   draft:            { label: 'Draft',     dot: 'bg-amber-400',  text: 'text-amber-400'  },
-  pending_approval: { label: 'Pending',   dot: 'bg-blue-400',   text: 'text-blue-400'   },
-  past:             { label: 'Past',      dot: 'bg-admin-30',   text: 'text-admin-30'   },
-  rejected:         { label: 'Rejected',  dot: 'bg-red-400',    text: 'text-red-400'    },
   cancelled:        { label: 'Cancelled', dot: 'bg-red-500',    text: 'text-red-400'    },
   postponed:        { label: 'Postponed', dot: 'bg-orange-400', text: 'text-orange-400' },
+  sold_out:         { label: 'Sold Out',  dot: 'bg-admin-30',   text: 'text-admin-30'   },
 }
 
 function ticketsSoldPercent(event: Event): number {

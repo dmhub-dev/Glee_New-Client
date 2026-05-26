@@ -10,23 +10,19 @@ import type { Event } from '@glee/types'
 const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
 const STATUS_CONFIG: Record<Event['status'], { label: string; dot: string; badge: string }> = {
-  live:             { label: 'Active',    dot: 'bg-green-400',   badge: 'bg-green-500/15 text-green-400 border-green-500/20'   },
+  active:           { label: 'Active',    dot: 'bg-green-400',   badge: 'bg-green-500/15 text-green-400 border-green-500/20'   },
   draft:            { label: 'Draft',     dot: 'bg-amber-400',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20'   },
-  pending_approval: { label: 'Pending',   dot: 'bg-blue-400',    badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20'     },
-  past:             { label: 'Past',      dot: 'bg-admin-30',    badge: 'bg-admin-overlay text-admin-40 border-admin'          },
-  rejected:         { label: 'Rejected',  dot: 'bg-red-400',     badge: 'bg-red-500/15 text-red-400 border-red-500/20'         },
   cancelled:        { label: 'Cancelled', dot: 'bg-red-500',     badge: 'bg-red-500/15 text-red-400 border-red-500/20'         },
   postponed:        { label: 'Postponed', dot: 'bg-orange-400',  badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20'},
+  sold_out:         { label: 'Sold Out',  dot: 'bg-admin-30',    badge: 'bg-admin-overlay text-admin-40 border-admin'          },
 }
 
 const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
-  { value: 'live',             label: 'Set Active'         },
-  { value: 'draft',            label: 'Move to Draft'      },
-  { value: 'pending_approval', label: 'Send for Approval'  },
-  { value: 'postponed',        label: 'Mark as Postponed'  },
-  { value: 'cancelled',        label: 'Cancel Event'       },
-  { value: 'past',             label: 'Mark as Ended'      },
-  { value: 'rejected',         label: 'Reject'             },
+  { value: 'active',    label: 'Set Active'        },
+  { value: 'draft',     label: 'Move to Draft'     },
+  { value: 'postponed', label: 'Mark as Postponed' },
+  { value: 'cancelled', label: 'Cancel Event'      },
+  { value: 'sold_out',  label: 'Mark Sold Out'     },
 ]
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
@@ -58,20 +54,29 @@ export default function EventDetailPage() {
   function handleStatusChange(newStatus: Event['status']) {
     if (!event) return
     setStatusOpen(false)
-    const apiStatus: 'live' | 'draft' = newStatus === 'live' ? 'live' : 'draft'
     const payload: EventApiPayload = {
       title:       event.title,
       description: event.description,
-      category:    '',
       categoryId:  event.categoryId ?? '',
-      status:      apiStatus,
+      status:      newStatus,
       startDate:   event.startDate,
       endDate:     event.endDate,
       startTime:   event.startTime,
       endTime:     event.endTime,
-      venueId:     event.venueId,
-      location:    event.location ?? '',
+      locationId:  event.locationId ?? event.venueId,
       ticketTiers: event.ticketTiers,
+      schedules: (event.schedules ?? []).map(s => {
+        const start = new Date(s.startDate)
+        const end = new Date(s.endDate)
+        return {
+          name: s.name,
+          description: s.description,
+          startDate: start.toISOString().split('T')[0],
+          endDate: end.toISOString().split('T')[0],
+          startTime: start.toTimeString().slice(0, 5),
+          endTime: end.toTimeString().slice(0, 5),
+        }
+      }),
     }
     updateMutation.mutate({ id: event.id, data: payload })
   }

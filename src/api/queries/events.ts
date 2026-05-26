@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Event, EventMenuItem } from '@glee/types'
+import type { Event, EventMenuItem, EventSchedule } from '@glee/types'
 import { apiFetch } from '../client'
 
 // ── Backend shapes ─────────────────────────────────────────────────────────────
@@ -20,18 +20,27 @@ interface BackendEventMenuItem {
   description?: string | null
 }
 
+interface BackendEventSchedule {
+  id: string
+  name: string
+  description?: string | null
+  startDate: string
+  endDate: string
+}
+
 interface BackendEvent {
   id: string
   name: string
   description: string | null
-  price: string | number
+  price?: string | number
   capacity: number | null
-  availableTickets: number | null
-  locationName: string | null
-  city: string | null
-  state: string | null
-  country: string | null
-  bannerImages: string[]
+  availableTickets?: number | null
+  locationName?: string | null
+  city?: string | null
+  state?: string | null
+  country?: string | null
+  photos?: string[]
+  bannerImages?: string[]
   startDate: string | null
   endDate: string | null
   status: string
@@ -40,25 +49,27 @@ interface BackendEvent {
   location: { id: string; name: string; address: string } | null
   ticketCategories: BackendTicketCategory[]
   menuItems: BackendEventMenuItem[]
+  schedules?: BackendEventSchedule[]
+  categoryId?: string | null
+  vendorId?: string | null
 }
 
 // ── Status maps ────────────────────────────────────────────────────────────────
 
 const BACKEND_TO_STATUS: Record<string, Event['status']> = {
-  ACTIVE:    'live',
-  INACTIVE:  'draft',
-  SUSPENDED: 'pending_approval',
-  DONE:      'past',
+  DRAFT:     'draft',
+  ACTIVE:    'active',
+  POSTPONED: 'postponed',
+  CANCELLED: 'cancelled',
+  SOLD_OUT:  'sold_out',
 }
 
 const STATUS_TO_BACKEND: Record<string, string> = {
-  live:             'ACTIVE',
-  draft:            'INACTIVE',
-  pending_approval: 'SUSPENDED',
-  past:             'DONE',
-  cancelled:        'DONE',
-  postponed:        'DONE',
-  rejected:         'INACTIVE',
+  draft:     'DRAFT',
+  active:    'ACTIVE',
+  postponed: 'POSTPONED',
+  cancelled: 'CANCELLED',
+  sold_out:  'SOLD_OUT',
 }
 
 // ── Mapper ─────────────────────────────────────────────────────────────────────
@@ -70,6 +81,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     ?? raw.locationName
     ?? [raw.city, raw.state, raw.country].filter(Boolean).join(', '))
     || undefined
+  const photos = raw.photos ?? raw.bannerImages ?? []
 
   const ticketTiers = raw.ticketCategories?.length
     ? raw.ticketCategories.map(tc => ({
@@ -90,8 +102,8 @@ function mapBackendToEvent(raw: BackendEvent): Event {
 
   return {
     id:               raw.id,
-    vendorId:         '',
-    venueId:          locationStr ?? '',
+    vendorId:         raw.vendorId ?? '',
+    venueId:          raw.location?.id ?? '',
     title:            raw.name,
     description:      raw.description ?? '',
     startDate:        start ? start.toISOString().split('T')[0] : '',
@@ -106,10 +118,19 @@ function mapBackendToEvent(raw: BackendEvent): Event {
       price:       Number(m.price),
       description: m.description ?? undefined,
     })) ?? [],
-    flyerSquareUrl:   raw.bannerImages[0] ?? undefined,
-    flyerPortraitUrl: raw.bannerImages[1] ?? raw.bannerImages[0] ?? undefined,
+    schedules: raw.schedules?.map((s): EventSchedule => ({
+      id:          s.id,
+      name:        s.name,
+      description: s.description ?? '',
+      startDate:   s.startDate,
+      endDate:     s.endDate,
+    })) ?? [],
+    flyerSquareUrl:   photos[0] ?? undefined,
+    flyerPortraitUrl: photos[1] ?? photos[0] ?? undefined,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
     location:         locationStr,
+    locationId:       raw.location?.id ?? undefined,
+    categoryId:       raw.categoryId ?? undefined,
     createdAt:        raw.createdAt,
     updatedAt:        raw.updatedAt,
   }
@@ -120,15 +141,13 @@ function mapBackendToEvent(raw: BackendEvent): Event {
 export interface EventApiPayload {
   title: string
   description: string
-  category: string
   categoryId: string
-  status: 'draft' | 'live'
+  status: Event['status']
   startDate: string
   endDate: string
   startTime: string
   endTime?: string
-  venueId: string
-  location: string
+  locationId: string
   ticketTiers: Array<{
     id: string
     name: string
@@ -143,6 +162,14 @@ export interface EventApiPayload {
     price: number
     description?: string
   }>
+  schedules?: Array<{
+    name: string
+    description: string
+    startDate: string
+    endDate: string
+    startTime: string
+    endTime: string
+  }>
   posterFiles?: File[]
 }
 
@@ -151,8 +178,8 @@ function buildFormData(payload: EventApiPayload): FormData {
 
   fd.append('name',        payload.title)
   fd.append('description', payload.description)
-  fd.append('location',    payload.location)
-  fd.append('isActive',    STATUS_TO_BACKEND[payload.status] ?? 'INACTIVE')
+  fd.append('locationId',  payload.locationId)
+  fd.append('status',      STATUS_TO_BACKEND[payload.status] ?? 'DRAFT')
 
   if (payload.categoryId) fd.append('category', payload.categoryId)
 
@@ -165,6 +192,17 @@ function buildFormData(payload: EventApiPayload): FormData {
   fd.append('ticketCategories', JSON.stringify(
     payload.ticketTiers.map(t => ({ name: t.name, price: t.price, capacity: t.quantity })),
   ))
+
+  if (payload.schedules?.length) {
+    fd.append('eventSchedule', JSON.stringify(
+      payload.schedules.map(s => ({
+        name: s.name,
+        description: s.description,
+        startDate: new Date(`${s.startDate}T${s.startTime}:00`).toISOString(),
+        endDate: new Date(`${s.endDate}T${s.endTime}:00`).toISOString(),
+      })),
+    ))
+  }
 
   if (payload.menuItems?.length) {
     fd.append('menuItems', JSON.stringify(payload.menuItems))
@@ -200,7 +238,7 @@ export async function fetchEvents(): Promise<Event[]> {
     '/api/v1/event?page=1&limit=100',
     { skipAuth: true },
   )
-  return (res.data ?? []).map(mapBackendToEvent).filter(e => e.status === 'live')
+  return (res.data ?? []).map(mapBackendToEvent).filter(e => e.status === 'active')
 }
 
 export async function fetchEvent(id: string): Promise<Event | undefined> {

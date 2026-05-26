@@ -12,6 +12,17 @@ export interface ProfileData {
   avatarUrl: string | null
 }
 
+interface BackendMeUser {
+  id: string
+  name: string
+  email: string
+  phone?: string | null
+  profileImage?: string | null
+  role: string | { name: string } | null
+  twoFactorEnabled?: boolean
+  lastLoginAt?: string | null
+}
+
 export interface UpdateProfileDto {
   firstName?: string
   lastName?: string
@@ -52,14 +63,29 @@ export const profileKeys = {
 }
 
 export function getProfile(): Promise<ProfileData> {
-  return apiFetch<{ success: boolean; data: ProfileData }>('/api/v1/profile/me').then(r => r.data)
+  return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me').then(r => {
+    const [firstName = '', ...rest] = (r.data.name ?? '').split(' ')
+    const role = typeof r.data.role === 'string' ? r.data.role : r.data.role?.name
+    return {
+      id: r.data.id,
+      firstName,
+      lastName: rest.join(' '),
+      email: r.data.email,
+      phone: r.data.phone ?? '',
+      role: (role ?? '').toLowerCase() as UserRole,
+      avatarUrl: r.data.profileImage ?? null,
+    }
+  })
 }
 
 export function updateProfile(dto: UpdateProfileDto): Promise<ProfileData> {
-  return apiFetch<{ success: boolean; data: ProfileData }>('/api/v1/profile/me', {
-    method: 'PATCH',
-    body: JSON.stringify(dto),
-  }).then(r => r.data)
+  return getProfile().then(current => {
+    const name = [dto.firstName ?? current.firstName, dto.lastName ?? current.lastName].filter(Boolean).join(' ')
+    return apiFetch<{ success: boolean; data: BackendMeUser }>(`/api/v1/users/${current.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name, phone: dto.phone }),
+    }).then(() => getProfile())
+  })
 }
 
 export function changePassword(dto: ChangePasswordDto): Promise<void> {
@@ -79,15 +105,26 @@ export function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
 }
 
 export function getSecurityInfo(): Promise<SecurityInfo> {
-  return apiFetch<{ success: boolean; data: SecurityInfo }>('/api/v1/profile/me/security').then(r => r.data)
+  return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me').then(r => ({
+    twoFactorEnabled: r.data.twoFactorEnabled ?? false,
+    lastLoginAt: r.data.lastLoginAt ?? null,
+    lastLoginIp: null,
+    activeSessions: [],
+  }))
 }
 
 export function enableTwoFactor(): Promise<void> {
-  return apiFetch<void>('/api/v1/profile/me/security/2fa/enable', { method: 'POST' })
+  return apiFetch<void>('/api/v1/me/2fa', {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled: true }),
+  })
 }
 
 export function disableTwoFactor(): Promise<void> {
-  return apiFetch<void>('/api/v1/profile/me/security/2fa/disable', { method: 'POST' })
+  return apiFetch<void>('/api/v1/me/2fa', {
+    method: 'PATCH',
+    body: JSON.stringify({ enabled: false }),
+  })
 }
 
 export function revokeSession(sessionId: string): Promise<void> {
@@ -99,14 +136,16 @@ export function revokeAllOtherSessions(): Promise<void> {
 }
 
 export function getNotificationPreferences(): Promise<NotificationPreferences> {
-  return apiFetch<{ success: boolean; data: NotificationPreferences }>('/api/v1/profile/me/notifications').then(r => r.data)
+  return Promise.resolve({
+    bookingAlerts: true,
+    eventAlerts: true,
+    systemAlerts: true,
+    weeklyReport: false,
+  })
 }
 
 export function updateNotificationPreferences(dto: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
-  return apiFetch<{ success: boolean; data: NotificationPreferences }>('/api/v1/profile/me/notifications', {
-    method: 'PATCH',
-    body: JSON.stringify(dto),
-  }).then(r => r.data)
+  return getNotificationPreferences().then(current => ({ ...current, ...dto }))
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────

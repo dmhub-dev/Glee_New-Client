@@ -20,6 +20,22 @@ export interface PendingInvite {
   invitedAt: string
 }
 
+interface BackendUserRecord {
+  id: string
+  name: string
+  email: string
+  role: string | { name: string } | null
+  isActive: 'ACTIVE' | 'INACTIVE'
+  createdAt: string
+}
+
+interface BackendInvite {
+  id: string
+  email: string
+  role: string | { name: string } | null
+  createdAt: string
+}
+
 export const ASSIGNABLE_ROLES: UserRole[] = [
   'admin',
   'operations_manager',
@@ -38,29 +54,54 @@ export const userKeys = {
   me:      () => ['users', 'me']       as const,
 }
 
+function toBackendRole(role: UserRole): string {
+  return role.toUpperCase()
+}
+
+function fromBackendRole(role: string | { name: string } | null): UserRole {
+  const value = typeof role === 'string' ? role : role?.name
+  return (value ?? '').toLowerCase() as UserRole
+}
+
 export function listUsers(): Promise<AdminUserRecord[]> {
-  return apiFetch<{ success: boolean; data: AdminUserRecord[] }>('/api/v1/users').then(r => r.data ?? [])
+  return apiFetch<{ success: boolean; data: { items: BackendUserRecord[] } }>('/api/v1/users?limit=100').then(r =>
+    (r.data?.items ?? []).map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: fromBackendRole(u.role),
+      status: u.isActive === 'ACTIVE' ? 'active' : 'inactive',
+      createdAt: u.createdAt,
+    })),
+  )
 }
 
 export function listPendingInvites(): Promise<PendingInvite[]> {
-  return apiFetch<{ success: boolean; data: PendingInvite[] }>('/api/v1/users/invites').then(r => r.data ?? [])
+  return apiFetch<{ success: boolean; data: BackendInvite[] }>('/api/v1/invitations').then(r =>
+    (r.data ?? []).map(inv => ({
+      id: inv.id,
+      email: inv.email,
+      role: fromBackendRole(inv.role),
+      invitedAt: inv.createdAt,
+    })),
+  )
 }
 
 export function inviteUser(email: string, role: UserRole): Promise<void> {
-  return apiFetch('/api/v1/users/invite', {
+  return apiFetch('/api/v1/invitations', {
     method: 'POST',
-    body: JSON.stringify({ email, role }),
+    body: JSON.stringify({ email, name: email.split('@')[0], role: toBackendRole(role) }),
   })
 }
 
 export function revokeInvite(inviteId: string): Promise<void> {
-  return apiFetch(`/api/v1/users/invites/${inviteId}`, { method: 'DELETE' })
+  return apiFetch(`/api/v1/invitations/${inviteId}/revoke`, { method: 'POST' })
 }
 
 export function setUserStatus(userId: string, status: UserStatus): Promise<void> {
-  return apiFetch(`/api/v1/users/${userId}/status`, {
+  return apiFetch(`/api/v1/users/${userId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ isActive: status === 'active' ? 'ACTIVE' : 'INACTIVE' }),
   })
 }
 

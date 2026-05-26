@@ -137,7 +137,7 @@ export default function DashboardPage() {
   const { data: activity } = useActivity()
   const deleteMutation = useDeleteEvent()
 
-  const liveEvents = events?.filter(e => e.status === 'live') ?? []
+  const liveEvents = events?.filter(e => e.status === 'active') ?? []
   const upcomingSorted = [...liveEvents].sort((a, b) => a.startDate.localeCompare(b.startDate))
   const featuredEvent = upcomingSorted[0]
   const miniGridEvents = upcomingSorted.slice(0, 3)

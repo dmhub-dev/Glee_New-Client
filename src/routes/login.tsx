@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -16,11 +17,14 @@ type LoginValues = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login } = useAuth()
+  const { login, verifyTwoFactor } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [twoFactorEmail, setTwoFactorEmail] = useState<string | null>(null)
+  const [otp, setOtp] = useState('')
+  const [isVerifying, setIsVerifying] = useState(false)
 
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/'
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/dashboard'
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -29,10 +33,29 @@ export default function LoginPage() {
   async function onSubmit(values: LoginValues) {
     setServerError(null)
     try {
-      await login(values.email, values.password)
+      const result = await login(values.email, values.password)
+      if (result.requiresTwoFactor) {
+        setTwoFactorEmail(result.email ?? values.email)
+        return
+      }
       navigate(from, { replace: true })
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Login failed. Please try again.')
+    }
+  }
+
+  async function onVerifyTwoFactor(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!twoFactorEmail) return
+    setServerError(null)
+    setIsVerifying(true)
+    try {
+      await verifyTwoFactor(twoFactorEmail, otp.trim())
+      navigate(from, { replace: true })
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Verification failed. Please try again.')
+    } finally {
+      setIsVerifying(false)
     }
   }
 
@@ -58,7 +81,38 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          {twoFactorEmail ? (
+            <form onSubmit={onVerifyTwoFactor} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="otp" className="text-xs text-admin-50">Verification code</Label>
+                <Input
+                  id="otp"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={otp}
+                  onChange={e => setOtp(e.target.value)}
+                  className="bg-admin-input border-admin focus-visible:ring-neon-pink/30 tracking-[0.35em] text-center"
+                  placeholder="000000"
+                />
+                <p className="text-xs text-admin-40">Code sent to {twoFactorEmail}</p>
+              </div>
+              <button
+                type="submit"
+                disabled={isVerifying || otp.trim().length < 4}
+                className="w-full flex items-center justify-center gap-2 bg-neon-pink hover:bg-[#cc2272] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-full transition-colors mt-1"
+              >
+                {isVerifying ? 'Verifying…' : 'Verify Code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setTwoFactorEmail(null); setOtp('') }}
+                className="w-full text-xs text-admin-40 hover:text-admin-70 transition-colors"
+              >
+                Back to password login
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs text-admin-50">Email address</Label>
@@ -108,7 +162,8 @@ export default function LoginPage() {
               {isSubmitting ? 'Signing in…' : 'Sign In'}
             </button>
 
-          </form>
+            </form>
+          )}
         </div>
 
         <p className="text-center text-xs text-admin-20">Glee Admin · Restricted Access</p>

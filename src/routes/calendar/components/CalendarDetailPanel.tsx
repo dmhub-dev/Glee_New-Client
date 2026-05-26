@@ -6,23 +6,19 @@ import { cn } from '@glee/ui'
 import { MapPin, Clock, Ticket, ExternalLink } from 'lucide-react'
 
 const STATUS_BADGE: Record<string, string> = {
-  live:             'bg-green-500/20 text-green-400 border-green-500/30',
-  draft:            'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  pending_approval: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  past:             'bg-admin-overlay text-admin-40 border-admin',
-  cancelled:        'bg-red-500/20 text-red-400 border-red-500/30',
-  postponed:        'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  rejected:         'bg-admin-overlay text-admin-30 border-admin',
+  active:    'bg-green-500/20 text-green-400 border-green-500/30',
+  draft:     'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
+  postponed: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  sold_out:  'bg-admin-overlay text-admin-40 border-admin',
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  live:             'Live',
-  draft:            'Draft',
-  pending_approval: 'Pending Approval',
-  past:             'Past',
-  cancelled:        'Cancelled',
-  postponed:        'Postponed',
-  rejected:         'Rejected',
+  active:    'Active',
+  draft:     'Draft',
+  cancelled: 'Cancelled',
+  postponed: 'Postponed',
+  sold_out:  'Sold Out',
 }
 
 const PLACEHOLDER = 'https://placehold.co/600x400/141419/FF2D8F?text=Glee'
@@ -73,7 +69,7 @@ export function CalendarDetailPanel({ event, onClose }: CalendarDetailPanelProps
               </h3>
               <span className={cn(
                 'text-[10px] font-semibold px-2 py-1 rounded-full border shrink-0 mt-0.5',
-                STATUS_BADGE[event.status] ?? STATUS_BADGE.past,
+                STATUS_BADGE[event.status] ?? STATUS_BADGE.draft,
               )}>
                 {STATUS_LABELS[event.status] ?? event.status}
               </span>

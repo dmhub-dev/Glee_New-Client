@@ -49,9 +49,9 @@ export default function CalendarPage() {
 
   // Summary counts
   const totalCount     = events.length
-  const liveCount      = events.filter(e => e.status === 'live').length
-  const pendingCount   = events.filter(e => e.status === 'pending_approval').length
-  const pastCount      = events.filter(e => e.status === 'past').length
+  const liveCount      = events.filter(e => e.status === 'active').length
+  const draftCount     = events.filter(e => e.status === 'draft').length
+  const soldOutCount   = events.filter(e => e.status === 'sold_out').length
 
   return (
     <AdminLayout title="Calendar" subtitle="Event schedule overview">
@@ -64,9 +64,9 @@ export default function CalendarPage() {
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard label="All Events"       count={totalCount}   icon={Calendar}      />
-            <SummaryCard label="Live"             count={liveCount}    icon={CalendarCheck} />
-            <SummaryCard label="Pending Approval" count={pendingCount} icon={CalendarClock} />
-            <SummaryCard label="Past"             count={pastCount}    icon={CalendarX}     />
+            <SummaryCard label="Active"           count={liveCount}    icon={CalendarCheck} />
+            <SummaryCard label="Draft"            count={draftCount}   icon={CalendarClock} />
+            <SummaryCard label="Sold Out"         count={soldOutCount} icon={CalendarX}     />
           </div>
         )}
 

@@ -37,25 +37,59 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
 
 export type RolePermissions = Record<FeatureKey, boolean>
 
+interface BackendPermission {
+  name: string
+}
+
+interface BackendRole {
+  name: string
+  permissions: BackendPermission[]
+}
+
+const FEATURE_TO_PERMISSION: Record<FeatureKey, string> = {
+  view_financials:       'payments:read',
+  export_reports:        'payments:export',
+  manage_events:         'events:update',
+  manage_bookings:       'bookings:read',
+  override_bookings:     'bookings:override',
+  manage_venues:         'location:update',
+  approve_vendors:       'vendors:approve',
+  manage_menus:          'services:update',
+  check_in_customers:    'bookings:update',
+  view_user_profiles:    'users:read',
+  manage_discounts:      'pricing:edit',
+  access_admin_settings: 'settings:manage',
+}
+
 export const roleKeys = {
   permissions: (role: UserRole) => ['admin', 'roles', role, 'permissions'] as const,
 }
 
 export function getRolePermissions(role: UserRole): Promise<RolePermissions> {
-  return apiFetch<{ success: boolean; data: RolePermissions }>(`/api/v1/roles/${role}/permissions`).then(r => r.data)
+  return apiFetch<{ success: boolean; data: BackendRole[] }>('/api/v1/roles').then(r => {
+    const backendRole = (r.data ?? []).find(item => item.name.toLowerCase() === role)
+    const names = new Set((backendRole?.permissions ?? []).map(permission => permission.name))
+    return FEATURE_KEYS.reduce((acc, key) => {
+      acc[key] = names.has(FEATURE_TO_PERMISSION[key])
+      return acc
+    }, {} as RolePermissions)
+  })
 }
 
 export function setRolePermissions(role: UserRole, permissions: RolePermissions): Promise<void> {
-  return apiFetch(`/api/v1/roles/${role}/permissions`, {
-    method: 'PUT',
-    body: JSON.stringify({ permissions }),
+  const selected = FEATURE_KEYS
+    .filter(key => permissions[key])
+    .map(key => FEATURE_TO_PERMISSION[key])
+  return apiFetch(`/api/v1/roles/${role.toUpperCase()}/permissions`, {
+    method: 'PATCH',
+    body: JSON.stringify({ permissions: selected }),
   })
 }
 
 export function reassignUserRole(userId: string, role: UserRole): Promise<void> {
-  return apiFetch(`/api/v1/users/${userId}/role`, {
+  return apiFetch(`/api/v1/users/${userId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ role }),
+    body: JSON.stringify({ role: role.toUpperCase() }),
   })
 }
 

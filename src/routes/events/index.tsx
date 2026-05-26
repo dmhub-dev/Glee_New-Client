@@ -8,24 +8,22 @@ import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 
-type StatusTab = 'live' | 'draft' | 'pending_approval' | 'past' | 'cancelled' | 'postponed'
+type StatusTab = Event['status']
 
 const TABS: { key: StatusTab; label: string }[] = [
-  { key: 'live',             label: 'Active'           },
-  { key: 'draft',            label: 'Draft'            },
-  { key: 'pending_approval', label: 'Pending Approval' },
-  { key: 'postponed',        label: 'Postponed'        },
-  { key: 'cancelled',        label: 'Cancelled'        },
-  { key: 'past',             label: 'Past'             },
+  { key: 'active',    label: 'Active'    },
+  { key: 'draft',     label: 'Draft'     },
+  { key: 'postponed', label: 'Postponed' },
+  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'sold_out',  label: 'Sold Out'  },
 ]
 
 const STATUS_DOT: Record<StatusTab, string> = {
-  live:             'bg-green-400',
-  draft:            'bg-amber-400',
-  pending_approval: 'bg-blue-400',
-  past:             'bg-admin-30',
-  cancelled:        'bg-red-500',
-  postponed:        'bg-orange-400',
+  active:    'bg-green-400',
+  draft:     'bg-amber-400',
+  postponed: 'bg-orange-400',
+  cancelled: 'bg-red-500',
+  sold_out:  'bg-admin-30',
 }
 
 const CATEGORY_COLOURS: Record<string, string> = {
@@ -70,7 +68,7 @@ export default function EventsListPage() {
   const navigate = useNavigate()
   const { data: events, isLoading } = useAdminEvents()
   const deleteMutation = useDeleteEvent()
-  const [activeTab, setActiveTab] = useState<StatusTab>('live')
+  const [activeTab, setActiveTab] = useState<StatusTab>('active')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
@@ -189,7 +187,7 @@ export default function EventsListPage() {
             <p className="text-admin-40 text-sm mb-3">
               {search ? `No events matching "${search}"` : `No ${TABS.find(t => t.key === activeTab)?.label.toLowerCase()} events`}
             </p>
-            {activeTab === 'live' && !search && (
+            {activeTab === 'active' && !search && (
               <button onClick={() => navigate('/dashboard/events/new')} className="text-sm text-neon-pink hover:underline font-medium">
                 Create your first event →
               </button>

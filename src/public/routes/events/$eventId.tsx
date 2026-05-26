@@ -108,7 +108,7 @@ export default function EventDetailPage() {
     )
   }
 
-  if (!event || event.status !== 'live') {
+  if (!event || event.status !== 'active') {
     navigate('/', { replace: true })
     return null
   }

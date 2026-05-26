@@ -15,6 +15,14 @@ export interface TicketTier {
   description?: string
 }
 
+export interface EventSchedule {
+  id?: string
+  name: string
+  description: string
+  startDate: string
+  endDate: string
+}
+
 export interface Event {
   id: string
   vendorId: string
@@ -27,10 +35,12 @@ export interface Event {
   endTime?: string
   ticketTiers: TicketTier[]
   menuItems?: EventMenuItem[]
+  schedules?: EventSchedule[]
   flyerPortraitUrl?: string
   flyerSquareUrl?: string
-  status: 'draft' | 'pending_approval' | 'live' | 'rejected' | 'past' | 'cancelled' | 'postponed'
+  status: 'draft' | 'active' | 'postponed' | 'cancelled' | 'sold_out'
   location?: string
+  locationId?: string
   dresscode?: string
   categoryId?: string
   createdAt: string
