@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+
+# Environment files — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist
+build
+out
+
+# Cache & tooling
+.turbo
+.cache
+*.local
+.parcel-cache
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test coverage
+coverage
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Superpowers / AI tooling docs
+docs/
+.claude/
+
+# Project-specific
+CLAUDE.md
+TASKS_WEEK1.md

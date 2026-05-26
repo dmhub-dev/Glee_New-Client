@@ -1,0 +1,230 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Backgrounds ── */
+    --bg-primary:        #090912;
+    --bg-secondary:      #0F0F1E;
+
+    /* shadcn base tokens — deep indigo-purple dark */
+    --background:        243 38% 5%;
+    --secondary:         243 22% 14%;
+    --muted:             243 18% 17%;
+
+    /* ── Borders / Inputs ── */
+    --border:            243 22% 22%;
+    --input:             243 22% 22%;
+
+    /* ── Brand accent ── */
+    --neon-pink:         #FF2D8F;
+    --neon-pink-hover:   #FF4A9F;
+    --primary:           330 100% 59%;
+    --accent:            330 100% 59%;
+    --ring:              330 100% 59%;
+
+    /* ── Text ── */
+    --text-primary:      #EEEEF8;
+    --text-secondary:    #8888B0;
+    --foreground:        244 14% 94%;
+    --card-foreground:   244 14% 94%;
+    --primary-foreground:    243 38% 5%;
+    --secondary-foreground:  244 14% 94%;
+    --muted-foreground:      243 12% 60%;
+    --accent-foreground:     243 38% 5%;
+    --popover-foreground:    244 14% 94%;
+
+    /* ── Surfaces ── */
+    --card:              243 28% 11%;
+    --popover:           243 28% 11%;
+
+    /* ── Semantic ── */
+    --destructive:       0 84.2% 60.2%;
+    --destructive-foreground: 244 14% 94%;
+
+    /* ── Shape ── */
+    --radius:            0.5rem;
+
+    /* ── Shadows / Glows ── */
+    --shadow-neon:        0 0 18px rgba(255, 45, 143, 0.35);
+    --shadow-neon-strong: 0 0 28px rgba(255, 45, 143, 0.5);
+
+    /* ── Admin theme surface tokens (dark defaults — deep indigo) ── */
+    --admin-surface:     #0E0E1C;
+    --admin-surface-2:   #131328;
+    --admin-body:        #090912;
+    --admin-border:      rgba(120, 110, 220, 0.12);
+    --admin-border-md:   rgba(120, 110, 220, 0.20);
+    --admin-t20:         rgba(255, 255, 255, 0.20);
+    --admin-t30:         rgba(255, 255, 255, 0.32);
+    --admin-t40:         rgba(255, 255, 255, 0.44);
+    --admin-t50:         rgba(255, 255, 255, 0.56);
+    --admin-t60:         rgba(255, 255, 255, 0.64);
+    --admin-t70:         rgba(255, 255, 255, 0.72);
+    --admin-t80:         rgba(255, 255, 255, 0.82);
+    --admin-t90:         rgba(255, 255, 255, 0.92);
+    --admin-overlay-sm:  rgba(255, 255, 255, 0.05);
+    --admin-overlay-md:  rgba(255, 255, 255, 0.09);
+    --admin-overlay-lg:  rgba(255, 255, 255, 0.14);
+    --admin-input-bg:    rgba(255, 255, 255, 0.07);
+    --admin-shadow:      0 1px 3px rgba(0, 0, 0, 0.50), 0 0 0 1px rgba(120, 110, 220, 0.08);
+    --admin-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(120, 110, 220, 0.06);
+    /* floating dialog surface — clearly lighter than the body in dark mode */
+    --admin-dialog-bg:   #252545;
+    --admin-dialog-border: rgba(140, 130, 255, 0.25);
+  }
+
+  /* ── Light theme overrides — lavender-editorial ── */
+  html[data-theme="light"] {
+    color-scheme: light;
+
+    /* shadcn tokens */
+    --background:        248 28% 93%;
+    --foreground:        248 35% 13%;
+    --card:              248 40% 99%;
+    --card-foreground:   248 35% 13%;
+    --popover:           248 40% 99%;
+    --popover-foreground: 248 35% 13%;
+    --border:            248 22% 84%;
+    --input:             248 22% 84%;
+    --muted:             248 22% 89%;
+    --muted-foreground:  248 14% 46%;
+    --secondary:         248 22% 91%;
+    --secondary-foreground: 248 35% 13%;
+    --primary-foreground: 0 0% 100%;
+    --accent-foreground:  248 35% 13%;
+
+    /* Glee base */
+    --bg-primary:        #ECEAF6;
+    --bg-secondary:      #F5F4FC;
+    --text-primary:      #1C1A36;
+    --text-secondary:    #6A6580;
+
+    /* Admin surface tokens */
+    --admin-surface:     #F5F4FC;
+    --admin-surface-2:   #ECEAF6;
+    --admin-body:        #E5E3F2;
+    --admin-border:      rgba(70, 55, 160, 0.12);
+    --admin-border-md:   rgba(70, 55, 160, 0.20);
+    --admin-t20:         rgba(28, 26, 54, 0.22);
+    --admin-t30:         rgba(28, 26, 54, 0.34);
+    --admin-t40:         rgba(28, 26, 54, 0.46);
+    --admin-t50:         rgba(28, 26, 54, 0.54);
+    --admin-t60:         rgba(28, 26, 54, 0.62);
+    --admin-t70:         rgba(28, 26, 54, 0.72);
+    --admin-t80:         rgba(28, 26, 54, 0.82);
+    --admin-t90:         rgba(28, 26, 54, 0.92);
+    --admin-overlay-sm:  rgba(60, 40, 140, 0.04);
+    --admin-overlay-md:  rgba(60, 40, 140, 0.08);
+    --admin-overlay-lg:  rgba(60, 40, 140, 0.13);
+    --admin-input-bg:    rgba(60, 40, 140, 0.06);
+    --admin-shadow:      0 1px 4px rgba(20, 15, 60, 0.10), 0 0 0 1px rgba(70, 55, 160, 0.08);
+    --admin-card-shadow: 0 4px 24px rgba(20, 15, 60, 0.12), 0 0 0 1px rgba(70, 55, 160, 0.06);
+    /* floating dialog surface — white in light mode */
+    --admin-dialog-bg:   #ffffff;
+    --admin-dialog-border: rgba(70, 55, 160, 0.20);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+  }
+
+  .mono-text {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--neon-pink);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-pink-hover);
+  }
+}
+
+@layer utilities {
+  /* ── Admin theme-aware utility classes ── */
+  .bg-admin-surface   { background-color: var(--admin-surface); }
+  .bg-admin-body      { background-color: var(--admin-body); }
+  .bg-admin-dialog    { background-color: var(--admin-dialog-bg); }
+  .border-admin-dialog { border-color: var(--admin-dialog-border); }
+  .border-admin       { border-color: var(--admin-border); }
+  .border-admin-md    { border-color: var(--admin-border-md); }
+  .text-admin-20      { color: var(--admin-t20); }
+  .text-admin-30      { color: var(--admin-t30); }
+  .text-admin-40      { color: var(--admin-t40); }
+  .text-admin-50      { color: var(--admin-t50); }
+  .text-admin-60      { color: var(--admin-t60); }
+  .text-admin-70      { color: var(--admin-t70); }
+  .text-admin-80      { color: var(--admin-t80); }
+  .text-admin-90      { color: var(--admin-t90); }
+  .bg-admin-overlay   { background-color: var(--admin-overlay-sm); }
+  .bg-admin-input     { background-color: var(--admin-input-bg); }
+  .shadow-admin       { box-shadow: var(--admin-shadow); }
+  .shadow-admin-card  { box-shadow: var(--admin-card-shadow); }
+
+  /* hover variants */
+  .hover\:bg-admin-overlay:hover  { background-color: var(--admin-overlay-md); }
+  .hover\:bg-admin-overlay-lg:hover { background-color: var(--admin-overlay-lg); }
+
+  /* ── Neon glow utilities ── */
+  .shadow-neon {
+    box-shadow: var(--shadow-neon);
+  }
+  .shadow-neon-strong {
+    box-shadow: var(--shadow-neon-strong);
+  }
+  .text-neon {
+    color: var(--neon-pink);
+  }
+  .border-neon {
+    border-color: var(--neon-pink);
+  }
+  .bg-neon {
+    background-color: var(--neon-pink);
+  }
+
+  /* ── Pulsing glow animation ── */
+  .animate-pulse-neon {
+    animation: pulse-neon 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-neon {
+  0%, 100% { box-shadow: var(--shadow-neon); }
+  50%       { box-shadow: var(--shadow-neon-strong); }
+}
