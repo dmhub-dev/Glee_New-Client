@@ -54,7 +54,7 @@ export default function App() {
         <Route
           path="/dashboard/settings"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin']}>
+            <ProtectedRoute roles={['super_admin']}>
               <SettingsPage />
             </ProtectedRoute>
           }

@@ -10,6 +10,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   vendor_staff: 'Vendor Staff',
   customer_support: 'Customer Support',
   content_manager: 'Content Manager',
+  user: 'Customer',
 }
 
 export function roleBadgeClass(role: UserRole): string {
@@ -18,6 +19,7 @@ export function roleBadgeClass(role: UserRole): string {
     super_admin: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
     vendor: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
     finance: 'bg-green-500/10 text-green-400 border-green-500/30',
+    user: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
   }
   return map[role] ?? 'bg-admin-overlay text-admin-60 border-admin'
 }

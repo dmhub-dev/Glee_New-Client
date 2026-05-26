@@ -36,7 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Users', to: '/dashboard/users', icon: Users, active: true, roles: ['super_admin', 'admin'] },
   { label: 'Roles & Permissions', to: '/dashboard/roles', icon: ShieldCheck, active: true, roles: ['super_admin'] },
   { label: 'Audit Logs', to: '/dashboard/audit-logs', icon: ScrollText, active: true, roles: ['super_admin'] },
-  { label: 'Settings', to: '/dashboard/settings', icon: Settings, active: true, roles: ['super_admin', 'admin'] },
+  { label: 'Settings', to: '/dashboard/settings', icon: Settings, active: true, roles: ['super_admin'] },
   { label: 'Profile', to: '/dashboard/profile', icon: UserCircle, active: true },
   { label: 'Bookings', to: '/bookings', icon: Ticket, active: false },
   { label: 'Invoices', to: '/invoices', icon: FileText, active: false },

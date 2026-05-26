@@ -122,6 +122,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[] | ['*']> = {
     'media:upload',
     'media:manage',
   ],
+
+  user: [
+    'events:read',
+    'bookings:create',
+    'bookings:read_own',
+  ],
 }
 
 export function hasPermission(role: UserRole, permission: Permission): boolean {

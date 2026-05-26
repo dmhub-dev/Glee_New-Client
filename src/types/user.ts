@@ -8,6 +8,7 @@ export type UserRole =
   | 'vendor_staff'
   | 'customer_support'
   | 'content_manager'
+  | 'user'
 
 export interface User {
   id: string

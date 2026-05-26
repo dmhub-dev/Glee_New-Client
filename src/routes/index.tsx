@@ -185,6 +185,215 @@ export default function DashboardPage() {
   const isLoading = eventsLoading || usersLoading || locationsLoading || categoriesLoading
   const sellThrough = tickets.total > 0 ? Math.round((tickets.sold / tickets.total) * 100) : 0
 
+  if (!isSuperAdmin) {
+    const vendorAccounts = userList.filter(record => record.role === 'vendor' || record.role === 'vendor_staff')
+    const inactiveVendors = vendorAccounts.filter(record => record.status !== 'active')
+    const customerAccounts = userList.filter(record => record.role === 'user')
+    const menuItems = eventList.reduce((sum, event) => sum + (event.menuItems?.length ?? 0), 0)
+    const pricedTicketCategories = eventList.reduce((sum, event) => sum + event.ticketTiers.length, 0)
+    const disputeSignals = eventList.filter(event => event.status === 'cancelled' || event.status === 'postponed')
+    const activeLocations = locationList.filter(location =>
+      eventList.some(event => event.locationId === location.id || event.venueId === location.id),
+    )
+
+    return (
+      <AdminLayout title="Admin Dashboard" subtitle={`Hello ${user.name.split(' ')[0]}, here is your events operations overview.`}>
+        <div className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)
+            ) : (
+              <>
+                <StatCard
+                  label="Events To Manage"
+                  value={eventList.length}
+                  detail={`${activeEvents.length} active, ${draftEvents.length} drafts`}
+                  icon={CalendarDays}
+                  onClick={() => navigate('/dashboard/events')}
+                />
+                <StatCard
+                  label="Venues / Locations"
+                  value={locationList.length}
+                  detail={`${activeLocations.length} currently used by events`}
+                  icon={MapPin}
+                  onClick={() => navigate('/dashboard/events?section=locations')}
+                />
+                <StatCard
+                  label="Ticket Bookings"
+                  value={tickets.sold}
+                  detail={`${tickets.remaining.toLocaleString()} ticket capacity remaining`}
+                  icon={Ticket}
+                  onClick={() => navigate('/dashboard/events')}
+                />
+                <StatCard
+                  label="Vendors"
+                  value={vendorAccounts.length}
+                  detail={`${inactiveVendors.length} needing moderation`}
+                  icon={ShieldCheck}
+                  onClick={() => navigate('/dashboard/users')}
+                />
+              </>
+            )}
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-3">
+            <div className="space-y-5 xl:col-span-2">
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-foreground">Operations Queue</h2>
+                    <p className="mt-1 text-xs text-admin-40">Admin work centered on events, vendors, pricing, customers, and disputes</p>
+                  </div>
+                  <Badge variant="outline" className="border-admin text-admin-50">No infrastructure access</Badge>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <FocusRow label="Draft events" value={draftEvents.length} detail="Review, complete details, and publish" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Vendor moderation" value={inactiveVendors.length} detail="Inactive vendor or staff accounts" onClick={() => navigate('/dashboard/users')} />
+                  <FocusRow label="Dispute signals" value={disputeSignals.length} detail="Cancelled or postponed events to resolve" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Customer records" value={customerAccounts.length} detail="View customer data for support" onClick={() => navigate('/dashboard/users')} />
+                </div>
+              </section>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                  <div className="mb-4">
+                    <h2 className="font-heading text-sm font-bold text-foreground">Event Pipeline</h2>
+                    <p className="mt-1 text-xs text-admin-40">Statuses admins need to manage</p>
+                  </div>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={statusData} barCategoryGap="28%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--admin-t30)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fill: 'var(--admin-t30)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <RechartsTooltip contentStyle={TOOLTIP_STYLE} />
+                      <Bar dataKey="value" name="Events" fill="#FF2D8F" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </section>
+
+                <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                  <div className="mb-4">
+                    <h2 className="font-heading text-sm font-bold text-foreground">Reporting Snapshot</h2>
+                    <p className="mt-1 text-xs text-admin-40">Operational metrics available without finance ownership controls</p>
+                  </div>
+                  <div className="space-y-4">
+                    <ReportMetric label="Sell-through" value={`${sellThrough}%`} detail={`${tickets.sold.toLocaleString()} of ${tickets.total.toLocaleString()} ticket capacity sold`} />
+                    <ReportMetric label="Menu items" value={menuItems.toLocaleString()} detail="Food and drink pre-order inventory attached to events" />
+                    <ReportMetric label="Pricing records" value={pricedTicketCategories.toLocaleString()} detail="Ticket categories currently configured" />
+                    <ReportMetric label="Categories" value={categoryList.length.toLocaleString()} detail="Event categories available for organization" />
+                  </div>
+                </section>
+              </div>
+
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-foreground">Menu & Pricing Health</h2>
+                    <p className="mt-1 text-xs text-admin-40">Events with missing sellable inventory need attention</p>
+                  </div>
+                  <button onClick={() => navigate('/dashboard/events')} className="text-xs font-medium text-neon-pink/70 hover:text-neon-pink">
+                    Manage events
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {eventList.slice(0, 6).map(event => {
+                    const hasTickets = event.ticketTiers.length > 0
+                    const menuCount = event.menuItems?.length ?? 0
+                    const hasMenu = menuCount > 0
+                    return (
+                      <button
+                        key={event.id}
+                        type="button"
+                        onClick={() => navigate(`/dashboard/events/${event.id}/edit`)}
+                        className="flex w-full items-center justify-between gap-4 rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-admin-80">{event.title}</p>
+                          <p className="text-xs text-admin-40">{event.location ?? 'No location selected'}</p>
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <Badge className={cn('border text-[10px]', hasTickets ? 'border-green-500/30 bg-green-500/10 text-green-500' : 'border-red-500/30 bg-red-500/10 text-red-500')}>
+                            {event.ticketTiers.length} prices
+                          </Badge>
+                          <Badge className={cn('border text-[10px]', hasMenu ? 'border-green-500/30 bg-green-500/10 text-green-500' : 'border-admin bg-admin-input text-admin-40')}>
+                            {menuCount} menu
+                          </Badge>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            </div>
+
+            <div className="space-y-5">
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-neon-pink" />
+                  <h2 className="font-heading text-sm font-bold text-foreground">Venue Utilization</h2>
+                </div>
+                <div className="space-y-3">
+                  {locationsLoading ? (
+                    Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-8 rounded-lg" />)
+                  ) : locationUsage.length === 0 ? (
+                    <p className="text-sm text-admin-40">No location data yet.</p>
+                  ) : locationUsage.map(location => (
+                    <button
+                      key={location.id}
+                      type="button"
+                      onClick={() => navigate(`/dashboard/locations/${location.id}`)}
+                      className="w-full rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+                    >
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="truncate text-admin-70">{location.name}</span>
+                        <span className="font-mono text-admin-40">{location.count} events</span>
+                      </div>
+                      <Progress value={location.pct} className="mt-2 h-1.5 bg-admin-input [&>div]:bg-neon-pink" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-neon-pink" />
+                  <h2 className="font-heading text-sm font-bold text-foreground">Customer & Vendor Data</h2>
+                </div>
+                <div className="grid gap-3">
+                  <DataTile label="Customers" value={customerAccounts.length} detail="Visible for support and dispute resolution" onClick={() => navigate('/dashboard/users')} />
+                  <DataTile label="Vendor accounts" value={vendorAccounts.length} detail={`${vendorAccounts.filter(v => v.status === 'active').length} active`} onClick={() => navigate('/dashboard/users')} />
+                  <DataTile label="Vendor staff" value={userList.filter(record => record.role === 'vendor_staff').length} detail="Operational users under vendors" onClick={() => navigate('/dashboard/users')} />
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-neon-pink" />
+                  <h2 className="font-heading text-sm font-bold text-foreground">Upcoming Events</h2>
+                </div>
+                <div className="space-y-3">
+                  {upcomingEvents.length === 0 ? (
+                    <p className="rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No active upcoming events.</p>
+                  ) : upcomingEvents.slice(0, 5).map(event => (
+                    <button
+                      key={event.id}
+                      type="button"
+                      onClick={() => navigate(`/dashboard/events/${event.id}`)}
+                      className="w-full rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+                    >
+                      <p className="truncate text-sm font-medium text-admin-80">{event.title}</p>
+                      <p className="mt-1 text-xs text-admin-40">{event.startDate} · {event.location ?? 'No location'}</p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </AdminLayout>
+    )
+  }
+
   return (
     <AdminLayout
       title={isSuperAdmin ? 'Super Admin Dashboard' : 'Admin Dashboard'}
@@ -491,6 +700,42 @@ function FocusRow({
         <p className="mt-0.5 text-xs text-admin-40">{detail}</p>
       </div>
       <span className="font-heading text-xl font-black text-neon-pink">{value}</span>
+    </button>
+  )
+}
+
+function ReportMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-lg border border-admin bg-admin-overlay p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-admin-80">{label}</p>
+        <span className="font-heading text-lg font-black text-neon-pink">{value}</span>
+      </div>
+      <p className="mt-1 text-xs text-admin-40">{detail}</p>
+    </div>
+  )
+}
+
+function DataTile({
+  label,
+  value,
+  detail,
+  onClick,
+}: {
+  label: string
+  value: number
+  detail: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+    >
+      <p className="text-xs text-admin-40">{label}</p>
+      <p className="mt-1 font-heading text-xl font-black text-foreground">{value.toLocaleString()}</p>
+      <p className="mt-1 text-xs text-admin-40">{detail}</p>
     </button>
   )
 }
