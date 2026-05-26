@@ -7,8 +7,9 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories, useLocations } from '@glee/api'
 import { Button, Input, Textarea, Label, Skeleton } from '@glee/ui'
-import { ArrowLeft, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
+import type { Location } from '@glee/api'
 
 const tierSchema = z.object({
   id: z.string(),
@@ -74,6 +75,92 @@ const MENU_CATEGORIES: { value: EventFormValues['menuItems'][number]['category']
   { value: 'other', label: 'Other' },
 ]
 
+const STATUS_OPTIONS: { value: EventFormValues['status']; label: string; description: string; className: string }[] = [
+  { value: 'draft',     label: 'Draft',     description: 'Keep hidden while editing', className: 'border-amber-500/30 bg-amber-500/10 text-amber-400' },
+  { value: 'active',    label: 'Active',    description: 'Visible and sellable',      className: 'border-green-500/30 bg-green-500/10 text-green-400' },
+  { value: 'postponed', label: 'Postponed', description: 'Temporarily delayed',       className: 'border-orange-500/30 bg-orange-500/10 text-orange-400' },
+  { value: 'cancelled', label: 'Cancelled', description: 'No longer running',         className: 'border-red-500/30 bg-red-500/10 text-red-400' },
+  { value: 'sold_out',  label: 'Sold Out',  description: 'Capacity reached',          className: 'border-admin bg-admin-overlay text-admin-50' },
+]
+
+function LocationPicker({
+  value,
+  onChange,
+  locations,
+}: {
+  value: string
+  onChange: (value: string) => void
+  locations: Location[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const selected = locations.find(location => location.id === value)
+  const filtered = locations.filter(location => {
+    const haystack = `${location.name} ${location.address}`.toLowerCase()
+    return haystack.includes(query.toLowerCase())
+  })
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-admin-md bg-admin-input px-3 text-left text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-neon-pink/30"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <MapPin className="h-4 w-4 shrink-0 text-neon-pink" />
+          <span className="min-w-0">
+            <span className="block truncate">{selected?.name ?? 'Search and select location'}</span>
+            {selected?.address && <span className="block truncate text-xs text-admin-40">{selected.address}</span>}
+          </span>
+        </span>
+        <ChevronsUpDown className="h-4 w-4 shrink-0 text-admin-30" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin-card">
+            <div className="border-b border-admin p-2">
+              <Input
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="Search locations..."
+                className="h-9 bg-admin-input border-admin text-sm"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-72 overflow-y-auto p-1">
+              {filtered.length === 0 ? (
+                <p className="px-3 py-6 text-center text-sm text-admin-40">No locations found.</p>
+              ) : filtered.map(location => (
+                <button
+                  key={location.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(location.id)
+                    setOpen(false)
+                    setQuery('')
+                  }}
+                  className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-admin-overlay"
+                >
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-admin">
+                    {location.id === value && <Check className="h-3.5 w-3.5 text-neon-pink" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-admin-90">{location.name}</span>
+                    <span className="block truncate text-xs text-admin-40">{location.address}</span>
+                    <span className="mt-1 block text-[11px] text-admin-30">Capacity {location.capacity.toLocaleString()}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function EventFormPage() {
   const { eventId } = useParams<{ eventId?: string }>()
   const isNew = !eventId || eventId === 'new'
@@ -121,6 +208,17 @@ export default function EventFormPage() {
   const { fields: menuFields, append: appendMenu, remove: removeMenu } = useFieldArray({ control, name: 'menuItems' })
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({ control, name: 'schedules' })
   const formValues = watch()
+
+  useEffect(() => {
+    const schedules = formValues.schedules ?? []
+    const first = schedules[0]
+    const last = schedules[schedules.length - 1]
+    if (!first || !last) return
+    if (first.startDate && first.startDate !== formValues.startDate) setValue('startDate', first.startDate)
+    if (first.startTime && first.startTime !== formValues.startTime) setValue('startTime', first.startTime)
+    if (last.endDate && last.endDate !== formValues.endDate) setValue('endDate', last.endDate)
+    if (last.endTime && last.endTime !== formValues.endTime) setValue('endTime', last.endTime)
+  }, [formValues.schedules, formValues.startDate, formValues.startTime, formValues.endDate, formValues.endTime, setValue])
 
   useEffect(() => {
     if (!existingEvent) return
@@ -321,84 +419,52 @@ export default function EventFormPage() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-admin-50">Status</Label>
-                  <Controller
-                    control={control}
-                    name="status"
-                    render={({ field }) => (
-                      <div className="flex rounded-md border border-admin-md overflow-hidden h-9">
-                        <button
-                          type="button"
-                          onClick={() => field.onChange('draft')}
-                          className={`flex-1 px-4 text-sm font-medium transition-colors ${
-                            field.value === 'draft'
-                              ? 'bg-admin-overlay text-foreground'
-                              : 'bg-transparent text-admin-40 hover:text-admin-70'
-                          }`}
-                        >
-                          Draft
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => field.onChange('active')}
-                          className={`flex-1 px-4 text-sm font-medium transition-colors border-l border-admin-md ${
-                            field.value === 'active'
-                              ? 'bg-neon-pink text-white'
-                              : 'bg-transparent text-admin-40 hover:text-admin-70'
-                          }`}
-                        >
-                          Active
-                        </button>
-                      </div>
-                    )}
-                  />
-                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-admin-50">Status</Label>
+                <Controller
+                  control={control}
+                  name="status"
+                  render={({ field }) => (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                      {STATUS_OPTIONS.map(option => {
+                        const selected = field.value === option.value
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => field.onChange(option.value)}
+                            className={`rounded-xl border p-3 text-left transition-colors ${
+                              selected ? option.className : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2 text-sm font-semibold">
+                              {selected ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                              {option.label}
+                            </span>
+                            <span className="mt-1 block text-[11px] opacity-80">{option.description}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                />
               </div>
             </section>
 
-            {/* Date & time */}
-            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <h2 className="font-heading font-bold text-sm text-foreground">Date & Time</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="startDate" className="text-xs text-admin-50">Start Date *</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    {...register('startDate', {
-                      onChange: e => {
-                        const val = e.target.value
-                        if (val && !formValues.endDate) {
-                          setValue('endDate', val)
-                        }
-                      },
-                    })}
-                    className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
-                  />
-                  {errors.startDate && <p className="text-xs text-red-400">{errors.startDate.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="startTime" className="text-xs text-admin-50">Start Time *</Label>
-                  <Input id="startTime" type="time" {...register('startTime')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
-                  {errors.startTime && <p className="text-xs text-red-400">{errors.startTime.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="endDate" className="text-xs text-admin-50">End Date *</Label>
-                  <Input id="endDate" type="date" {...register('endDate')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
-                  {errors.endDate && <p className="text-xs text-red-400">{errors.endDate.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="endTime" className="text-xs text-admin-50">End Time</Label>
-                  <Input id="endTime" type="time" {...register('endTime')} className="bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
-                </div>
-              </div>
-            </section>
+            <input type="hidden" {...register('startDate')} />
+            <input type="hidden" {...register('startTime')} />
+            <input type="hidden" {...register('endDate')} />
+            <input type="hidden" {...register('endTime')} />
 
             {/* Schedule */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="font-heading font-bold text-sm text-foreground">Event Schedule</h2>
+                <div>
+                  <h2 className="font-heading font-bold text-sm text-foreground">Date, Time & Event Schedule</h2>
+                  <p className="mt-1 text-xs text-admin-40">The first schedule start and final schedule end define the event dates.</p>
+                </div>
                 <button
                   type="button"
                   onClick={() => appendSchedule(newSchedule())}
@@ -412,7 +478,10 @@ export default function EventFormPage() {
                 {scheduleFields.map((field, index) => (
                   <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-admin-40 font-mono">Schedule {index + 1}</span>
+                      <span className="flex items-center gap-2 text-xs text-admin-40 font-mono">
+                        <CalendarClock className="h-3.5 w-3.5 text-neon-pink" />
+                        Schedule {index + 1}
+                      </span>
                       <button
                         type="button"
                         onClick={() => removeSchedule(index)}
@@ -445,7 +514,7 @@ export default function EventFormPage() {
                         <p className="text-xs text-red-400">{errors.schedules[index]?.description?.message}</p>
                       )}
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                       <div className="space-y-1">
                         <Label className="text-xs text-admin-50">Start Date *</Label>
                         <Input type="date" {...register(`schedules.${index}.startDate`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
@@ -469,6 +538,9 @@ export default function EventFormPage() {
               {errors.schedules?.message && (
                 <p className="text-xs text-red-400">{errors.schedules.message}</p>
               )}
+              {(errors.startDate || errors.startTime || errors.endDate || errors.endTime) && (
+                <p className="text-xs text-red-400">Schedule dates and times are required.</p>
+              )}
             </section>
 
             {/* Location */}
@@ -477,18 +549,13 @@ export default function EventFormPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1 col-span-2">
                   <Label htmlFor="locationId" className="text-xs text-admin-50">Location *</Label>
-                  <select
-                    id="locationId"
-                    {...register('locationId')}
-                    className="w-full h-9 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-neon-pink/30"
-                  >
-                    <option value="" className="bg-admin-surface">Select location…</option>
-                    {(locationsData ?? []).map(loc => (
-                      <option key={loc.id} value={loc.id} className="bg-admin-surface">
-                        {loc.name} — {loc.address}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    control={control}
+                    name="locationId"
+                    render={({ field }) => (
+                      <LocationPicker value={field.value} onChange={field.onChange} locations={locationsData ?? []} />
+                    )}
+                  />
                   {errors.locationId && <p className="text-xs text-red-400">{errors.locationId.message}</p>}
                 </div>
               </div>

@@ -33,14 +33,17 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, active: true },
   { label: 'Events', to: '/dashboard/events', icon: CalendarDays, active: true },
   { label: 'Calendar', to: '/dashboard/calendar', icon: Calendar, active: true, roles: ['super_admin', 'admin', 'operations_manager'] },
-  { label: 'Users', to: '/dashboard/users', icon: Users, active: true, roles: ['super_admin', 'admin'] },
   { label: 'Roles & Permissions', to: '/dashboard/roles', icon: ShieldCheck, active: true, roles: ['super_admin'] },
   { label: 'Audit Logs', to: '/dashboard/audit-logs', icon: ScrollText, active: true, roles: ['super_admin'] },
   { label: 'Settings', to: '/dashboard/settings', icon: Settings, active: true, roles: ['super_admin'] },
-  { label: 'Profile', to: '/dashboard/profile', icon: UserCircle, active: true },
   { label: 'Bookings', to: '/bookings', icon: Ticket, active: false },
   { label: 'Invoices', to: '/invoices', icon: FileText, active: false },
   { label: 'Financials', to: '/financials', icon: BarChart2, active: false, roles: ['super_admin', 'admin', 'finance'] },
+]
+
+const ACCOUNT_NAV_ITEMS: NavItem[] = [
+  { label: 'Users', to: '/dashboard/users', icon: Users, active: true, roles: ['super_admin', 'admin'] },
+  { label: 'Profile', to: '/dashboard/profile', icon: UserCircle, active: true },
 ]
 
 interface SidebarProps {
@@ -54,8 +57,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const user = useAdminUser()
   const { logout } = useAuth()
   const navigate = useNavigate()
-  const initials = user.name.split(' ').map((n: string) => n[0]).join('')
   const visibleNavItems = NAV_ITEMS.filter(item => !item.roles || item.roles.includes(user.role))
+  const visibleAccountItems = ACCOUNT_NAV_ITEMS.filter(item => !item.roles || item.roles.includes(user.role))
 
   async function handleLogout() {
     await logout()
@@ -152,32 +155,41 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           ))}
         </nav>
 
-        {/* User chip */}
-        {isCollapsed ? (
-          <div className="py-4 border-t border-admin flex items-center justify-center">
-            <div
-              className="w-8 h-8 rounded-full bg-neon-pink/20 flex items-center justify-center text-neon-pink text-xs font-bold"
-              title={user.name}
-            >
-              {initials}
-            </div>
+        <div className={cn('border-t border-admin py-3', isCollapsed ? 'px-2' : 'px-3')}>
+          <div className="mb-2 flex flex-col gap-0.5">
+            {visibleAccountItems.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === '/dashboard'}
+                onClick={onClose}
+                title={isCollapsed ? item.label : undefined}
+                className={({ isActive }) => cn(
+                  'flex items-center py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isCollapsed ? 'justify-center px-0' : 'gap-3 px-3',
+                  isActive
+                    ? 'bg-neon-pink/10 text-neon-pink'
+                    : 'text-admin-50 hover:text-foreground hover:bg-admin-overlay',
+                )}
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                {!isCollapsed && item.label}
+              </NavLink>
+            ))}
           </div>
-        ) : (
-          <div className="px-4 py-4 border-t border-admin">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-neon-pink/20 flex items-center justify-center text-neon-pink text-xs font-bold shrink-0">
-                {initials}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-admin-90 truncate">{user.name}</p>
-                <p className="text-xs text-admin-40 capitalize">{user.role}</p>
-              </div>
-              <button onClick={handleLogout} title="Sign out" className="text-admin-30 hover:text-neon-pink transition-colors shrink-0">
-              <LogOut className="w-4 h-4" />
-            </button>
-            </div>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={isCollapsed ? 'Logout' : undefined}
+            className={cn(
+              'flex w-full items-center rounded-lg py-2.5 text-sm font-medium text-red-400/70 transition-colors hover:bg-red-500/10 hover:text-red-400',
+              isCollapsed ? 'justify-center px-0' : 'gap-3 px-3',
+            )}
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {!isCollapsed && 'Logout'}
+          </button>
+        </div>
       </aside>
     </>
   )

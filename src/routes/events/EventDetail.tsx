@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAdminEvent, useUpdateEvent, useDeleteEvent, type EventApiPayload } from '@glee/api'
+import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, type EventApiPayload } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
-import { Skeleton, Progress } from '@glee/ui'
-import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Progress } from '@glee/ui'
+import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 
@@ -43,13 +43,30 @@ function formatTime(time: string): string {
   return d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
+function formatDateTimeRange(startValue: string, endValue: string): string {
+  const start = new Date(startValue)
+  const end = new Date(endValue)
+  const sameDay = start.toDateString() === end.toDateString()
+  const startDate = start.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  const endDate = end.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  const startTime = start.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const endTime = end.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return sameDay ? `${startDate} · ${startTime} - ${endTime}` : `${startDate} ${startTime} - ${endDate} ${endTime}`
+}
+
+function money(value: number) {
+  return `KSh ${Math.max(0, value).toLocaleString()}`
+}
+
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
   const { data: event, isLoading } = useAdminEvent(eventId ?? '')
   const updateMutation = useUpdateEvent()
   const deleteMutation = useDeleteEvent()
+  const { data: ticketData, isLoading: ticketsLoading } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [attendeesOpen, setAttendeesOpen] = useState(false)
 
   function handleStatusChange(newStatus: Event['status']) {
     if (!event) return
@@ -129,6 +146,14 @@ export default function EventDetailPage() {
   const soldPct = totalTickets === 0 ? 0 : Math.round((soldTickets / totalTickets) * 100)
   const revenue = event.ticketTiers.reduce((s, t) => s + (t.quantity - t.quantityRemaining) * t.price, 0)
   const lowestPrice = event.ticketTiers.length > 0 ? Math.min(...event.ticketTiers.map(t => t.price)) : 0
+  const purchasedTickets = ticketData?.tickets ?? []
+  const ticketRevenue = purchasedTickets.reduce((sum, ticket) => {
+    const unitPrice = Number(ticket.ticketCategory?.price ?? 0)
+    return sum + unitPrice * ticket.quantity
+  }, 0)
+  const totalPurchaseRevenue = purchasedTickets.reduce((sum, ticket) => sum + Number(ticket.totalPrice ?? ticket.payment?.amount ?? 0), 0)
+  const menuRevenue = Math.max(0, totalPurchaseRevenue - ticketRevenue)
+  const attendeePreview = purchasedTickets.slice(0, 5)
 
   return (
     <AdminLayout title="Event Details">
@@ -255,6 +280,35 @@ export default function EventDetailPage() {
               <p className="text-sm text-admin-50 leading-relaxed whitespace-pre-line">{event.description}</p>
             </div>
 
+            {/* Schedule */}
+            <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading font-bold text-sm text-foreground">Event Schedule</h2>
+                <span className="text-xs text-admin-40">{event.schedules?.length ?? 0} schedule item{(event.schedules?.length ?? 0) === 1 ? '' : 's'}</span>
+              </div>
+              {(event.schedules ?? []).length === 0 ? (
+                <div className="rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
+                  No detailed schedule has been added yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(event.schedules ?? []).map((schedule, index) => (
+                    <div key={schedule.id ?? `${schedule.name}-${index}`} className="rounded-xl border border-admin bg-admin-overlay p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{schedule.name}</p>
+                          <p className="mt-1 text-sm leading-relaxed text-admin-50 whitespace-pre-line">{schedule.description}</p>
+                        </div>
+                        <div className="shrink-0 rounded-lg border border-neon-pink/20 bg-neon-pink/10 px-3 py-2 text-xs font-medium text-neon-pink">
+                          {formatDateTimeRange(schedule.startDate, schedule.endDate)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Ticket tiers */}
             <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Ticket Tiers</h2>
@@ -289,6 +343,45 @@ export default function EventDetailPage() {
                 })}
               </div>
             </div>
+
+            {/* Attendees */}
+            <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-heading font-bold text-sm text-foreground">Attendees</h2>
+                  <p className="mt-1 text-xs text-admin-40">People who have purchased tickets for this event</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAttendeesOpen(true)}
+                  className="rounded-full border border-admin bg-admin-overlay px-3 py-1.5 text-xs font-medium text-admin-60 hover:border-neon-pink/30 hover:text-neon-pink"
+                >
+                  View full list
+                </button>
+              </div>
+              {ticketsLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-12 rounded-lg" />)}
+                </div>
+              ) : attendeePreview.length === 0 ? (
+                <div className="rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
+                  No attendees have purchased tickets yet.
+                </div>
+              ) : (
+                <div className="divide-y divide-admin rounded-xl border border-admin bg-admin-overlay">
+                  {attendeePreview.map(ticket => (
+                    <div key={ticket.id} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-[1fr_1fr_auto] sm:items-center">
+                      <div>
+                        <p className="font-medium text-admin-90">{ticket.user?.name ?? 'Guest attendee'}</p>
+                        <p className="text-xs text-admin-40">{ticket.user?.email ?? 'No email'}</p>
+                      </div>
+                      <p className="text-xs text-admin-50">{ticket.user?.phone ?? 'No phone'}</p>
+                      <p className="font-mono text-xs text-neon-pink">{ticket.quantity} ticket{ticket.quantity === 1 ? '' : 's'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right: stats + breakdown */}
@@ -316,6 +409,36 @@ export default function EventDetailPage() {
                   <span className="font-mono font-semibold text-neon-pink">{soldPct}%</span>
                 </div>
                 <Progress value={soldPct} className="h-2 bg-admin-overlay [&>div]:bg-neon-pink" />
+              </div>
+            </div>
+
+            {/* Revenue */}
+            <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <h2 className="font-heading font-bold text-sm text-foreground">Revenue</h2>
+              <div className="grid gap-3">
+                <RevenueCard icon={Ticket} label="Ticket revenue" value={money(ticketRevenue || revenue)} />
+                <RevenueCard icon={Utensils} label="Menu add-ons" value={money(menuRevenue)} />
+                <RevenueCard icon={DollarSign} label="Total collected" value={money(totalPurchaseRevenue || revenue)} />
+              </div>
+            </div>
+
+            {/* Attendee summary */}
+            <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading font-bold text-sm text-foreground">Attendance</h2>
+                <Users className="h-4 w-4 text-neon-pink" />
+              </div>
+              <div className="space-y-0">
+                {[
+                  { label: 'Purchases', value: purchasedTickets.length.toLocaleString() },
+                  { label: 'Ticket quantity', value: purchasedTickets.reduce((sum, ticket) => sum + ticket.quantity, 0).toLocaleString() },
+                  { label: 'Checked in', value: purchasedTickets.filter(ticket => Boolean((ticket as { checkedInAt?: string | null }).checkedInAt)).length.toLocaleString() },
+                ].map((row, i, arr) => (
+                  <div key={row.label} className={cn('flex justify-between items-center py-2.5', i < arr.length - 1 && 'border-b border-admin')}>
+                    <span className="text-xs text-admin-40">{row.label}</span>
+                    <span className="font-mono font-semibold text-sm text-admin-80">{row.value}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -366,6 +489,58 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
+      <Dialog open={attendeesOpen} onOpenChange={setAttendeesOpen}>
+        <DialogContent className="max-h-[86vh] max-w-4xl overflow-y-auto border-admin bg-admin-surface">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Event attendees</DialogTitle>
+            <DialogDescription>{event.title}</DialogDescription>
+          </DialogHeader>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Phone</th>
+                  <th className="px-4 py-3 font-medium">Tickets</th>
+                  <th className="px-4 py-3 font-medium">Amount</th>
+                  <th className="px-4 py-3 font-medium">Purchased</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-admin">
+                {purchasedTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-admin-40">No attendees yet.</td>
+                  </tr>
+                ) : purchasedTickets.map(ticket => (
+                  <tr key={ticket.id} className="hover:bg-admin-overlay">
+                    <td className="px-4 py-3 font-medium text-admin-90">{ticket.user?.name ?? 'Guest attendee'}</td>
+                    <td className="px-4 py-3 text-admin-50">{ticket.user?.email ?? '-'}</td>
+                    <td className="px-4 py-3 text-admin-50">{ticket.user?.phone ?? '-'}</td>
+                    <td className="px-4 py-3 font-mono text-neon-pink">{ticket.quantity}</td>
+                    <td className="px-4 py-3 font-mono text-admin-70">{money(Number(ticket.totalPrice ?? ticket.payment?.amount ?? 0))}</td>
+                    <td className="px-4 py-3 text-admin-40">{new Date(ticket.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
+  )
+}
+
+function RevenueCard({ icon: Icon, label, value }: { icon: typeof Ticket; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-admin bg-admin-overlay p-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-neon-pink/10">
+        <Icon className="h-4 w-4 text-neon-pink" />
+      </div>
+      <div>
+        <p className="text-xs text-admin-40">{label}</p>
+        <p className="font-heading text-lg font-black text-foreground">{value}</p>
+      </div>
+    </div>
   )
 }

@@ -1,4 +1,5 @@
 import { apiFetch } from '../client'
+import { useQuery } from '@tanstack/react-query'
 
 export interface InitiateGuestPurchaseParams {
   eventId: string
@@ -31,5 +32,56 @@ export function confirmTicketPurchase(verificationToken: string): Promise<void> 
     method: 'POST',
     body: JSON.stringify({ verificationToken }),
     skipAuth: true,
+  })
+}
+
+export interface AdminEventTicket {
+  id: string
+  eventId: string
+  userId: string | null
+  quantity: number
+  totalPrice: string | number
+  createdAt: string
+  user: {
+    id?: string
+    name?: string | null
+    email?: string | null
+    phone?: string | null
+  } | null
+  payment?: {
+    amount?: string | number | null
+    totalPrice?: string | number | null
+    noOfItems?: number | null
+    metadata?: unknown
+  } | null
+  ticketCategory?: {
+    id: string
+    name: string
+    price: string | number
+  } | null
+}
+
+export interface AdminEventTicketsResult {
+  tickets: AdminEventTicket[]
+  totalPages: number
+  page: number
+}
+
+export function getAdminEventTickets(eventId: string): Promise<AdminEventTicketsResult> {
+  const params = new URLSearchParams({ eventId, page: '1', limit: '100' })
+  return apiFetch<{ success: boolean; data: AdminEventTicket[]; totalPages?: number; page?: number }>(
+    `/api/v1/admin/event-ticket?${params.toString()}`,
+  ).then(r => ({
+    tickets: r.success === false ? [] : (r.data ?? []),
+    totalPages: r.totalPages ?? 1,
+    page: r.page ?? 1,
+  }))
+}
+
+export function useAdminEventTickets(eventId: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'event-tickets', eventId],
+    queryFn: () => getAdminEventTickets(eventId as string),
+    enabled: Boolean(eventId),
   })
 }

@@ -1,6 +1,15 @@
-import { Bell, Settings, Search, Sun, Moon, Menu } from 'lucide-react'
-import { Input } from '@glee/ui'
-import { useTheme } from '../../app/providers'
+import { Bell, LogOut, Search, Sun, Moon, Menu, Settings, UserCircle } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Input,
+} from '@glee/ui'
+import { useAdminUser, useTheme } from '../../app/providers'
+import { useAuth } from '../../lib/auth/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
 interface HeaderProps {
@@ -11,7 +20,15 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, onToggleSidebar }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
+  const user = useAdminUser()
+  const { logout } = useAuth()
   const navigate = useNavigate()
+  const initials = user.name.split(' ').map((part: string) => part[0]).join('').slice(0, 2).toUpperCase()
+
+  async function handleLogout() {
+    await logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <header className="h-16 bg-admin-body border-b border-admin flex items-center gap-3 px-4 lg:px-6 sticky top-0 z-10">
@@ -51,13 +68,41 @@ export default function Header({ title, subtitle, onToggleSidebar }: HeaderProps
         <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-neon-pink rounded-full" />
       </button>
 
-      <button
-        onClick={() => navigate('/dashboard/settings')}
-        title="Settings"
-        className="hidden sm:flex w-8 h-8 items-center justify-center rounded-full bg-admin-overlay hover:bg-admin-overlay-lg border border-admin text-admin-60 hover:text-foreground transition-colors"
-      >
-        <Settings className="w-4 h-4" />
-      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            title="Account"
+            className="hidden sm:flex h-9 w-9 items-center justify-center rounded-full border border-admin bg-neon-pink/10 text-xs font-bold text-neon-pink hover:border-neon-pink/40"
+          >
+            {initials || <UserCircle className="h-4 w-4" />}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64 border-admin bg-admin-surface text-admin-80">
+          <DropdownMenuLabel>
+            <div>
+              <p className="truncate text-sm font-semibold text-foreground">{user.name}</p>
+              <p className="truncate text-xs font-normal text-admin-40">{user.email}</p>
+              <p className="mt-1 text-xs font-normal capitalize text-admin-40">{user.role.replaceAll('_', ' ')}</p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator className="bg-admin" />
+          <DropdownMenuItem onClick={() => navigate('/dashboard/profile')} className="gap-2 focus:bg-admin-overlay">
+            <UserCircle className="h-4 w-4" />
+            Edit profile
+          </DropdownMenuItem>
+          {user.role === 'super_admin' && (
+            <DropdownMenuItem onClick={() => navigate('/dashboard/settings')} className="gap-2 focus:bg-admin-overlay">
+              <Settings className="h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator className="bg-admin" />
+          <DropdownMenuItem onClick={handleLogout} className="gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400">
+            <LogOut className="h-4 w-4" />
+            Logout
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   )
 }
