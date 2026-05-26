@@ -1,18 +1,46 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Ticket, FileText, Calendar, BarChart2, Image, MessageSquare, LogOut, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  LayoutDashboard,
+  CalendarDays,
+  Ticket,
+  FileText,
+  Calendar,
+  BarChart2,
+  LogOut,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  ShieldCheck,
+  ScrollText,
+  Settings,
+  UserCircle,
+} from 'lucide-react'
 import { cn } from '@glee/ui'
 import { useAdminUser } from '../../app/providers'
 import { useAuth } from '../../lib/auth/AuthContext'
+import type { UserRole } from '@glee/types'
 
-const NAV_ITEMS = [
+type NavItem = {
+  label: string
+  to: string
+  icon: typeof LayoutDashboard
+  active: boolean
+  roles?: UserRole[]
+}
+
+const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, active: true },
   { label: 'Events', to: '/dashboard/events', icon: CalendarDays, active: true },
+  { label: 'Calendar', to: '/dashboard/calendar', icon: Calendar, active: true, roles: ['super_admin', 'admin', 'operations_manager'] },
+  { label: 'Users', to: '/dashboard/users', icon: Users, active: true, roles: ['super_admin', 'admin'] },
+  { label: 'Roles & Permissions', to: '/dashboard/roles', icon: ShieldCheck, active: true, roles: ['super_admin'] },
+  { label: 'Audit Logs', to: '/dashboard/audit-logs', icon: ScrollText, active: true, roles: ['super_admin'] },
+  { label: 'Settings', to: '/dashboard/settings', icon: Settings, active: true, roles: ['super_admin', 'admin'] },
+  { label: 'Profile', to: '/dashboard/profile', icon: UserCircle, active: true },
   { label: 'Bookings', to: '/bookings', icon: Ticket, active: false },
   { label: 'Invoices', to: '/invoices', icon: FileText, active: false },
-  { label: 'Calendar', to: '/dashboard/calendar', icon: Calendar, active: true },
-  { label: 'Financials', to: '/financials', icon: BarChart2, active: false },
-  { label: 'Gallery', to: '/gallery', icon: Image, active: false },
-  { label: 'Feedback', to: '/feedback', icon: MessageSquare, active: false },
+  { label: 'Financials', to: '/financials', icon: BarChart2, active: false, roles: ['super_admin', 'admin', 'finance'] },
 ]
 
 interface SidebarProps {
@@ -27,6 +55,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const { logout } = useAuth()
   const navigate = useNavigate()
   const initials = user.name.split(' ').map((n: string) => n[0]).join('')
+  const visibleNavItems = NAV_ITEMS.filter(item => !item.roles || item.roles.includes(user.role))
 
   async function handleLogout() {
     await logout()
@@ -81,7 +110,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
         {/* Nav */}
         <nav className={cn('flex-1 py-4 flex flex-col gap-0.5 overflow-y-auto', isCollapsed ? 'px-2' : 'px-3')}>
-          {NAV_ITEMS.map(item => (
+          {visibleNavItems.map(item => (
             item.active ? (
               <NavLink
                 key={item.to}

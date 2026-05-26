@@ -14,6 +14,7 @@ const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
 const CalendarPage       = lazy(() => import('../routes/calendar/index'))
 const SettingsPage       = lazy(() => import('../routes/settings/index'))
 const LocationDetailPage = lazy(() => import('../routes/locations/$locationId'))
+const AuditLogsPage      = lazy(() => import('../routes/audit-logs/index'))
 
 function PageSkeleton() {
   return (
@@ -52,6 +53,38 @@ export default function App() {
           element={
             <ProtectedRoute roles={['super_admin', 'admin']}>
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/users"
+          element={
+            <ProtectedRoute roles={['super_admin', 'admin']}>
+              <SettingsPage defaultTab="users" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/roles"
+          element={
+            <ProtectedRoute roles={['super_admin']}>
+              <SettingsPage defaultTab="roles" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/audit-logs"
+          element={
+            <ProtectedRoute roles={['super_admin']}>
+              <AuditLogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/profile"
+          element={
+            <ProtectedRoute>
+              <SettingsPage defaultTab="profile" />
             </ProtectedRoute>
           }
         />

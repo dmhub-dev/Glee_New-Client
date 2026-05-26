@@ -52,7 +52,7 @@ export default function Header({ title, subtitle, onToggleSidebar }: HeaderProps
       </button>
 
       <button
-        onClick={() => navigate('/dashboard/settings?tab=users')}
+        onClick={() => navigate('/dashboard/settings')}
         title="Settings"
         className="hidden sm:flex w-8 h-8 items-center justify-center rounded-full bg-admin-overlay hover:bg-admin-overlay-lg border border-admin text-admin-60 hover:text-foreground transition-colors"
       >
