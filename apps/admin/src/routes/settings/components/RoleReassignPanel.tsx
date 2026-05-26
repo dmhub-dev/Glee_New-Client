@@ -18,9 +18,7 @@ import {
   Skeleton,
   useToast,
 } from '@glee/ui'
-import { ASSIGNABLE_ROLES } from '../../../lib/api/users'
-import { useReassignUserRole } from '../../../lib/queries/roles'
-import { useUsers } from '../../../lib/queries/users'
+import { ASSIGNABLE_ROLES, useReassignUserRole, useUsers } from '@glee/api'
 import { ROLE_LABELS, roleBadgeClass } from './roleConstants'
 
 interface PendingReassign {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from '../lib/auth/AuthContext'
-import type { AuthUser } from '../lib/api/auth'
+import type { AuthUser } from '@glee/api'
 
 // ── Admin user (reads from AuthContext — ProtectedRoute guarantees non-null) ──
 

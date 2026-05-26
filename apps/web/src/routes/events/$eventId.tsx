@@ -9,7 +9,7 @@ import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@glee/ui'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
-import { initiateGuestPurchase, confirmTicketPurchase } from '../../lib/api/tickets'
+import { initiateGuestPurchase, confirmTicketPurchase } from '@glee/api'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
 

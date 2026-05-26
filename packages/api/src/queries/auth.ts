@@ -1,5 +1,5 @@
 import type { UserRole } from '@glee/types'
-import { apiFetch } from './client'
+import { apiFetch } from '../client'
 
 export interface AuthUser {
   id: string
@@ -15,7 +15,6 @@ export interface LoginResponse {
   user: AuthUser
 }
 
-// Backend response shapes
 interface BackendUser {
   id: string
   name: string
@@ -40,7 +39,6 @@ function toAuthUser(raw: BackendUser): AuthUser {
     id: raw.id,
     name: raw.name,
     email: raw.email,
-    // Backend returns UPPER_CASE role names; normalise to lowercase for frontend type
     role: (raw.role ?? '').toLowerCase() as UserRole,
     avatarUrl: raw.profileImage ?? null,
   }

@@ -1,7 +1,7 @@
 import AdminLayout from '../components/layout/AdminLayout'
 import { useAdminUser } from '../app/providers'
 import { useDashboardStats, useRevenueChart, useRecentBookings, useActivity } from '../lib/queries/stats'
-import { useAdminEvents, useDeleteEvent } from '../lib/queries/events'
+import { useAdminEvents, useDeleteEvent } from '@glee/api'
 import { Skeleton, Progress } from '@glee/ui'
 import { CalendarDays, Ticket, Users, TrendingUp, TrendingDown, CheckCircle, XCircle, Zap, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import {

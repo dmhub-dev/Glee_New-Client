@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import type { Category } from '../../lib/api/categories'
+import { type Category, useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@glee/api'
 import {
   Button, Input,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
@@ -13,9 +13,6 @@ import {
   Skeleton,
   useToast,
 } from '@glee/ui'
-import {
-  useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory,
-} from '../../lib/queries/categories'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { SlidePanel } from '../../components/ui/SlidePanel'
 

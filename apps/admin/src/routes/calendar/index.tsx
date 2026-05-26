@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import type { Event } from '@glee/types'
 import AdminLayout from '../../components/layout/AdminLayout'
-import { useAdminEvents } from '../../lib/queries/events'
+import { useAdminEvents } from '@glee/api'
 import { CalendarGrid } from './components/CalendarGrid'
 import { CalendarDetailPanel } from './components/CalendarDetailPanel'
 import { Skeleton } from '@glee/ui'

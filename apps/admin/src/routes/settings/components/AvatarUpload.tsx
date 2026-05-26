@@ -2,8 +2,7 @@
 import { useRef } from 'react'
 import { Camera } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback, useToast } from '@glee/ui'
-import { useUploadAvatar } from '../../../lib/queries/profile'
-import type { ProfileData } from '../../../lib/api/profile'
+import { useUploadAvatar, type ProfileData } from '@glee/api'
 
 interface AvatarUploadProps {
   profileData: ProfileData

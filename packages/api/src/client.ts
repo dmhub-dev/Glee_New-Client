@@ -1,6 +1,7 @@
-import { tokens } from '../auth/tokens'
+import { tokens } from '@glee/utils'
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const BASE: string = (import.meta as any).env?.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) {
@@ -9,7 +10,6 @@ export class ApiError extends Error {
   }
 }
 
-// Single in-flight refresh to avoid parallel 401 storms
 let refreshPromise: Promise<string | null> | null = null
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -68,7 +68,6 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     throw new ApiError(res.status, body.message ?? res.statusText)
   }
 
-  // 204 No Content
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }

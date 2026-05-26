@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAdminEvent, useUpdateEvent, useDeleteEvent } from '../../lib/queries/events'
-import type { EventApiPayload } from '../../lib/api/events'
+import { useAdminEvent, useUpdateEvent, useDeleteEvent, type EventApiPayload } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { Skeleton, Progress } from '@glee/ui'
 import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown } from 'lucide-react'

@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import type { AuthUser } from '../api/auth'
-import { apiLogin, apiLogout, apiMe } from '../api/auth'
-import { tokens } from './tokens'
+import type { AuthUser } from '@glee/api'
+import { apiLogin, apiLogout, apiMe } from '@glee/api'
+import { tokens } from '@glee/utils'
 
 // Roles permitted in the admin panel
 const ADMIN_ROLES = new Set([

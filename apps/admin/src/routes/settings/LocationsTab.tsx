@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import type { Location } from '../../lib/api/locations'
+import { type Location, useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation } from '@glee/api'
 import {
   Button, Input, Badge, Textarea,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
@@ -14,9 +14,6 @@ import {
   Skeleton,
   useToast,
 } from '@glee/ui'
-import {
-  useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation,
-} from '../../lib/queries/locations'
 import {
   Pencil, Plus, Trash2, ParkingCircle, Wind, Building2,
   MapPin, Users, FileText, ImagePlus, X as XIcon, Image,

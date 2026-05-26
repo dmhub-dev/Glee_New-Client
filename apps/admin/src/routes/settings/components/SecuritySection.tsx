@@ -2,12 +2,7 @@
 import { useState } from 'react'
 import { Shield, Monitor, Laptop, Smartphone, MapPin, Clock, LogOut, AlertTriangle } from 'lucide-react'
 import { Button, Switch, Skeleton, useToast } from '@glee/ui'
-import {
-  useSecurityInfo,
-  useToggle2FA,
-  useRevokeSession,
-  useRevokeAllOtherSessions,
-} from '../../../lib/queries/profile'
+import { useSecurityInfo, useToggle2FA, useRevokeSession, useRevokeAllOtherSessions } from '@glee/api'
 import { formatDistanceToNow } from 'date-fns'
 
 function DeviceIcon({ device }: { device: string }) {

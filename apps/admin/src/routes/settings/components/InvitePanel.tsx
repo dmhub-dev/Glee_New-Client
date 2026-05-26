@@ -19,8 +19,7 @@ import {
   FormMessage,
   useToast,
 } from '@glee/ui'
-import { useInviteUser, useRevokeInvite, usePendingInvites } from '../../../lib/queries/users'
-import { ASSIGNABLE_ROLES } from '../../../lib/api/users'
+import { useInviteUser, useRevokeInvite, usePendingInvites, ASSIGNABLE_ROLES } from '@glee/api'
 import { ROLE_LABELS } from './roleConstants'
 
 const inviteSchema = z.object({

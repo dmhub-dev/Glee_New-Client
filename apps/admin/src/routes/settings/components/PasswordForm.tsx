@@ -10,7 +10,7 @@ import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
   useToast,
 } from '@glee/ui'
-import { useChangePassword } from '../../../lib/queries/profile'
+import { useChangePassword } from '@glee/api'
 
 const passwordSchema = z
   .object({

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAdminEvents, useDeleteEvent } from '../../lib/queries/events'
+import { useAdminEvents, useDeleteEvent } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { Skeleton, Input, Progress } from '@glee/ui'

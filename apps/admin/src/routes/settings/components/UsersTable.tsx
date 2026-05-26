@@ -20,8 +20,7 @@ import {
   Skeleton,
   useToast,
 } from '@glee/ui'
-import { useUsers, useSetUserStatus, useDeleteUser } from '../../../lib/queries/users'
-import { ASSIGNABLE_ROLES } from '../../../lib/api/users'
+import { useUsers, useSetUserStatus, useDeleteUser, ASSIGNABLE_ROLES } from '@glee/api'
 import { ROLE_LABELS, roleBadgeClass } from './roleConstants'
 
 export default function UsersTable() {

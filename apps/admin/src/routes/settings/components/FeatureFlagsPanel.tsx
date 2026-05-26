@@ -11,9 +11,7 @@ import {
   Skeleton,
   useToast,
 } from '@glee/ui'
-import { FEATURE_KEYS, FEATURE_LABELS, type RolePermissions } from '../../../lib/api/roles'
-import { ASSIGNABLE_ROLES } from '../../../lib/api/users'
-import { useRolePermissions, useSetRolePermissions } from '../../../lib/queries/roles'
+import { FEATURE_KEYS, FEATURE_LABELS, type RolePermissions, ASSIGNABLE_ROLES, useRolePermissions, useSetRolePermissions } from '@glee/api'
 import { ROLE_LABELS } from './roleConstants'
 
 function buildDefaultPermissions(): RolePermissions {

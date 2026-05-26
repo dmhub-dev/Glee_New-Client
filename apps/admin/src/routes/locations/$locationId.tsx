@@ -12,8 +12,7 @@ import {
   AlertDialogCancel, AlertDialogAction,
   useToast,
 } from '@glee/ui'
-import { useLocation, useUpdateLocation, useDeleteLocation } from '../../lib/queries/locations'
-import type { Location } from '../../lib/api/locations'
+import { useLocation, useUpdateLocation, useDeleteLocation, type Location } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { SlidePanel } from '../../components/ui/SlidePanel'
 import {

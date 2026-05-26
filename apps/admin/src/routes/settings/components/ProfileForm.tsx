@@ -10,7 +10,7 @@ import {
   Skeleton,
   useToast,
 } from '@glee/ui'
-import { useProfile, useUpdateProfile } from '../../../lib/queries/profile'
+import { useProfile, useUpdateProfile } from '@glee/api'
 import { ROLE_LABELS, roleBadgeClass } from './roleConstants'
 import { AvatarUpload } from './AvatarUpload'
 

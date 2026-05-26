@@ -1,5 +1,7 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { UserRole } from '@glee/types'
-import { apiFetch } from './client'
+import { apiFetch } from '../client'
+import { userKeys } from './users'
 
 export const FEATURE_KEYS = [
   'view_financials',
@@ -35,13 +37,12 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
 
 export type RolePermissions = Record<FeatureKey, boolean>
 
-interface RolePermissionsResponse {
-  success: boolean
-  data: RolePermissions
+export const roleKeys = {
+  permissions: (role: UserRole) => ['admin', 'roles', role, 'permissions'] as const,
 }
 
 export function getRolePermissions(role: UserRole): Promise<RolePermissions> {
-  return apiFetch<RolePermissionsResponse>(`/api/v1/roles/${role}/permissions`).then(r => r.data)
+  return apiFetch<{ success: boolean; data: RolePermissions }>(`/api/v1/roles/${role}/permissions`).then(r => r.data)
 }
 
 export function setRolePermissions(role: UserRole, permissions: RolePermissions): Promise<void> {
@@ -55,5 +56,28 @@ export function reassignUserRole(userId: string, role: UserRole): Promise<void> 
   return apiFetch(`/api/v1/users/${userId}/role`, {
     method: 'PATCH',
     body: JSON.stringify({ role }),
+  })
+}
+
+export function useRolePermissions(role: UserRole) {
+  return useQuery({
+    queryKey: roleKeys.permissions(role),
+    queryFn: () => getRolePermissions(role),
+  })
+}
+
+export function useSetRolePermissions(role: UserRole) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (permissions: RolePermissions) => setRolePermissions(role, permissions),
+    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.permissions(role) }),
+  })
+}
+
+export function useReassignUserRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: UserRole }) => reassignUserRole(userId, role),
+    onSuccess: () => qc.invalidateQueries({ queryKey: userKeys.all }),
   })
 }

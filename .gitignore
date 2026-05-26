@@ -38,6 +38,7 @@ coverage
 # Superpowers / AI tooling docs
 docs/
 .claude/
+.superpowers/
 
 # Project-specific
 CLAUDE.md
