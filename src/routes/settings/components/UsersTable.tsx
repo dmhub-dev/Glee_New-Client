@@ -56,6 +56,7 @@ import {
 } from '@glee/api'
 import { SlidePanel } from '../../../components/ui/SlidePanel'
 import { ROLE_LABELS, roleBadgeClass } from './roleConstants'
+import { useAdminUser } from '../../../app/providers'
 
 type DetailView = 'details' | 'audit'
 type SortKey = 'name' | 'email' | 'role' | 'status' | 'lastLoginAt' | 'createdAt'
@@ -107,6 +108,8 @@ function SortIcon({ active, direction }: { active: boolean; direction: SortDirec
 }
 
 export default function UsersTable() {
+  const currentUser = useAdminUser()
+  const isSuperAdmin = currentUser.role === 'super_admin'
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null)
@@ -123,13 +126,14 @@ export default function UsersTable() {
   const { data: auditLogs, isLoading: auditLoading } = useAuditLogs({
     actorId: selectedUserId ?? 'none',
     limit: 20,
-  })
+  }, { enabled: isSuperAdmin && Boolean(selectedUserId) })
   const statusMutation = useSetUserStatus()
   const deleteMutation = useDeleteUser()
   const reassignMutation = useReassignUserRole()
 
   const selectedUserFromList = users?.find(user => user.id === selectedUserId) ?? null
   const panelUser = selectedUser ?? selectedUserFromList
+  const visibleRoleFilters = isSuperAdmin ? FILTER_ROLES : ASSIGNABLE_ROLES
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -186,6 +190,7 @@ export default function UsersTable() {
 
   const filteredUsers = useMemo(() => {
     const output = (users ?? []).filter(u => {
+      if (!isSuperAdmin && u.role === 'super_admin') return false
       const matchesRole = roleFilter === 'all' || u.role === roleFilter
       const matchesSearch =
         !search ||
@@ -199,7 +204,7 @@ export default function UsersTable() {
       const result = compareUser(a, b, sortKey)
       return sortDirection === 'asc' ? result : -result
     })
-  }, [roleFilter, search, sortDirection, sortKey, users])
+  }, [isSuperAdmin, roleFilter, search, sortDirection, sortKey, users])
 
   const headers: { key: SortKey; label: string }[] = [
     { key: 'name', label: 'User' },
@@ -230,7 +235,7 @@ export default function UsersTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
-              {FILTER_ROLES.map(role => (
+              {visibleRoleFilters.map(role => (
                 <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
               ))}
             </SelectContent>
@@ -266,6 +271,9 @@ export default function UsersTable() {
             </thead>
             <tbody className="divide-y divide-admin">
               {filteredUsers.map(user => (
+                (() => {
+                  const canManageUser = isSuperAdmin || user.role !== 'super_admin'
+                  return (
                 <tr
                   key={user.id}
                   onClick={() => openDetails(user)}
@@ -313,6 +321,7 @@ export default function UsersTable() {
                         variant="ghost"
                         title="Update role"
                         onClick={() => openRoleDialog(user)}
+                        disabled={!canManageUser}
                         className="h-8 w-8 text-admin-40 hover:text-neon-pink"
                       >
                         <UserRoundCog className="h-4 w-4" />
@@ -323,7 +332,7 @@ export default function UsersTable() {
                         variant="ghost"
                         title={user.status === 'active' ? 'Deactivate user' : 'Activate user'}
                         onClick={() => handleToggleStatus(user.id, user.status)}
-                        disabled={pendingStatusId === user.id}
+                        disabled={pendingStatusId === user.id || !canManageUser}
                         className="h-8 w-8 text-admin-40 hover:text-admin-80"
                       >
                         <Power className="h-4 w-4" />
@@ -335,6 +344,7 @@ export default function UsersTable() {
                             size="icon"
                             variant="ghost"
                             title="Delete user"
+                            disabled={!canManageUser}
                             className="h-8 w-8 text-red-500/60 hover:text-red-500"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -361,6 +371,8 @@ export default function UsersTable() {
                     </div>
                   </td>
                 </tr>
+                  )
+                })()
               ))}
               {filteredUsers.length === 0 && (
                 <tr>
@@ -412,7 +424,7 @@ export default function UsersTable() {
               </div>
 
               <div className="mt-5 inline-flex rounded-lg border border-admin bg-admin-overlay p-1">
-                {(['details', 'audit'] as DetailView[]).map(view => (
+                {(['details', ...(isSuperAdmin ? ['audit'] as const : [])] as DetailView[]).map(view => (
                   <button
                     key={view}
                     type="button"

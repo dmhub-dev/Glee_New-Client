@@ -117,6 +117,7 @@ function StatCard({
 
 export default function DashboardPage() {
   const user = useAdminUser()
+  const isSuperAdmin = user.role === 'super_admin'
   const navigate = useNavigate()
   const deleteMutation = useDeleteEvent()
 
@@ -124,7 +125,7 @@ export default function DashboardPage() {
   const { data: users, isLoading: usersLoading } = useUsers()
   const { data: locations, isLoading: locationsLoading } = useLocations()
   const { data: categories, isLoading: categoriesLoading } = useCategories()
-  const { data: auditLogs, isLoading: auditLoading } = useAuditLogs({ limit: 8 })
+  const { data: auditLogs, isLoading: auditLoading } = useAuditLogs({ limit: 8 }, { enabled: isSuperAdmin })
 
   const eventList = events ?? []
   const userList = users ?? []
@@ -185,20 +186,33 @@ export default function DashboardPage() {
   const sellThrough = tickets.total > 0 ? Math.round((tickets.sold / tickets.total) * 100) : 0
 
   return (
-    <AdminLayout title="Dashboard" subtitle={`Hello ${user.name.split(' ')[0]}, here is the platform overview.`}>
+    <AdminLayout
+      title={isSuperAdmin ? 'Super Admin Dashboard' : 'Admin Dashboard'}
+      subtitle={`Hello ${user.name.split(' ')[0]}, here is your ${isSuperAdmin ? 'platform' : 'operations'} overview.`}
+    >
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)
           ) : (
             <>
-              <StatCard
-                label="Total Users"
-                value={userList.length}
-                detail={`${userList.filter(u => u.status === 'active').length} active accounts`}
-                icon={Users}
-                onClick={() => navigate('/dashboard/users')}
-              />
+              {isSuperAdmin ? (
+                <StatCard
+                  label="Total Users"
+                  value={userList.length}
+                  detail={`${userList.filter(u => u.status === 'active').length} active accounts`}
+                  icon={Users}
+                  onClick={() => navigate('/dashboard/users')}
+                />
+              ) : (
+                <StatCard
+                  label="Managed Users"
+                  value={userList.filter(record => record.role !== 'super_admin').length}
+                  detail={`${userList.filter(u => u.status === 'active' && u.role !== 'super_admin').length} active non-super-admin accounts`}
+                  icon={Users}
+                  onClick={() => navigate('/dashboard/users')}
+                />
+              )}
               <StatCard
                 label="Events"
                 value={eventList.length}
@@ -366,41 +380,55 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-neon-pink" />
-                  <h2 className="font-heading text-sm font-bold text-foreground">Recent Audit Activity</h2>
-                </div>
-                <button onClick={() => navigate('/dashboard/audit-logs')} className="text-xs font-medium text-neon-pink/70 hover:text-neon-pink">
-                  View
-                </button>
-              </div>
-              <div className="space-y-3">
-                {auditLoading ? (
-                  Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-12 rounded-lg" />)
-                ) : (auditLogs?.items ?? []).length === 0 ? (
-                  <p className="rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No audit logs recorded yet.</p>
-                ) : (auditLogs?.items ?? []).map(log => (
-                  <div key={log.id} className="flex gap-3 rounded-lg border border-admin bg-admin-overlay p-3">
-                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neon-pink/10">
-                      {log.action.includes('delete') ? (
-                        <XCircle className="h-3.5 w-3.5 text-red-400" />
-                      ) : log.action.includes('update') ? (
-                        <Clock className="h-3.5 w-3.5 text-amber-400" />
-                      ) : (
-                        <CheckCircle className="h-3.5 w-3.5 text-neon-pink" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-admin-80">{log.action}</p>
-                      <p className="truncate text-xs text-admin-40">{log.actor?.email ?? 'System'} - {log.entity}</p>
-                      <p className="mt-0.5 text-[11px] text-admin-30">{formatRelativeTime(log.createdAt)}</p>
-                    </div>
+            {isSuperAdmin ? (
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-neon-pink" />
+                    <h2 className="font-heading text-sm font-bold text-foreground">Recent Audit Activity</h2>
                   </div>
-                ))}
-              </div>
-            </section>
+                  <button onClick={() => navigate('/dashboard/audit-logs')} className="text-xs font-medium text-neon-pink/70 hover:text-neon-pink">
+                    View
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {auditLoading ? (
+                    Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-12 rounded-lg" />)
+                  ) : (auditLogs?.items ?? []).length === 0 ? (
+                    <p className="rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No audit logs recorded yet.</p>
+                  ) : (auditLogs?.items ?? []).map(log => (
+                    <div key={log.id} className="flex gap-3 rounded-lg border border-admin bg-admin-overlay p-3">
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neon-pink/10">
+                        {log.action.includes('delete') ? (
+                          <XCircle className="h-3.5 w-3.5 text-red-400" />
+                        ) : log.action.includes('update') ? (
+                          <Clock className="h-3.5 w-3.5 text-amber-400" />
+                        ) : (
+                          <CheckCircle className="h-3.5 w-3.5 text-neon-pink" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-admin-80">{log.action}</p>
+                        <p className="truncate text-xs text-admin-40">{log.actor?.email ?? 'System'} - {log.entity}</p>
+                        <p className="mt-0.5 text-[11px] text-admin-30">{formatRelativeTime(log.createdAt)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-neon-pink" />
+                  <h2 className="font-heading text-sm font-bold text-foreground">Admin Focus</h2>
+                </div>
+                <div className="space-y-3">
+                  <FocusRow label="Draft events" value={draftEvents.length} detail="Review before publishing" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Postponed events" value={eventList.filter(event => event.status === 'postponed').length} detail="Needs schedule follow-up" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Cancelled events" value={eventList.filter(event => event.status === 'cancelled').length} detail="Review customer impact" onClick={() => navigate('/dashboard/events')} />
+                </div>
+              </section>
+            )}
           </div>
         </div>
 
@@ -438,6 +466,32 @@ function InventoryCard({ label, value }: { label: string; value: number }) {
       <p className="text-xs text-admin-40">{label}</p>
       <p className="mt-1 font-heading text-xl font-black text-foreground">{value.toLocaleString()}</p>
     </div>
+  )
+}
+
+function FocusRow({
+  label,
+  value,
+  detail,
+  onClick,
+}: {
+  label: string
+  value: number
+  detail: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between gap-3 rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+    >
+      <div>
+        <p className="text-sm font-medium text-admin-80">{label}</p>
+        <p className="mt-0.5 text-xs text-admin-40">{detail}</p>
+      </div>
+      <span className="font-heading text-xl font-black text-neon-pink">{value}</span>
+    </button>
   )
 }
 

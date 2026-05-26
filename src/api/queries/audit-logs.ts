@@ -64,10 +64,11 @@ export function listAuditLogs(filters: AuditLogFilters = {}): Promise<AuditLogsR
   }))
 }
 
-export function useAuditLogs(filters: AuditLogFilters = {}) {
+export function useAuditLogs(filters: AuditLogFilters = {}, options: { enabled?: boolean } = {}) {
   const clean = compactFilters({ page: 1, limit: 50, ...filters })
   return useQuery({
     queryKey: auditLogKeys.list(clean),
     queryFn: () => listAuditLogs(clean),
+    enabled: options.enabled ?? true,
   })
 }
