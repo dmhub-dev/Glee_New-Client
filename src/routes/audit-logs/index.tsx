@@ -1,8 +1,46 @@
 import { useMemo, useState } from 'react'
-import { Activity, Search, ShieldAlert } from 'lucide-react'
+import { Activity, Filter, ShieldAlert } from 'lucide-react'
 import AdminLayout from '../../components/layout/AdminLayout'
-import { Badge, Button, Input, Skeleton } from '@glee/ui'
-import { useAuditLogs } from '@glee/api'
+import {
+  Badge,
+  Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Skeleton,
+} from '@glee/ui'
+import { useAuditLogs, useUsers } from '@glee/api'
+
+const ENTITY_OPTIONS = [
+  'User',
+  'UserInvitation',
+  'Role',
+  'Permission',
+  'Event',
+  'Location',
+  'Category',
+  'Booking',
+  'Payment',
+  'Wallet',
+]
+
+const ACTION_OPTIONS = [
+  'users.invite',
+  'users.invite_accept',
+  'users.invite_resend',
+  'users.invite_revoke',
+  'users.update',
+  'users.delete',
+  'roles.permissions_update',
+  'locations.create',
+  'locations.update',
+  'locations.delete',
+  'events.create',
+  'events.update',
+  'events.delete',
+]
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-KE', {
@@ -21,28 +59,29 @@ function formatMetadata(value: unknown) {
 }
 
 export default function AuditLogsPage() {
-  const [action, setAction] = useState('')
-  const [entity, setEntity] = useState('')
-  const [actorId, setActorId] = useState('')
+  const [action, setAction] = useState('all')
+  const [entity, setEntity] = useState('all')
+  const [actorId, setActorId] = useState('all')
   const [page, setPage] = useState(1)
 
   const filters = useMemo(() => ({
-    action: action.trim(),
-    entity: entity.trim(),
-    actorId: actorId.trim(),
+    action: action === 'all' ? '' : action,
+    entity: entity === 'all' ? '' : entity,
+    actorId: actorId === 'all' ? '' : actorId,
     page,
     limit: 50,
   }), [action, actorId, entity, page])
 
   const { data, isLoading, isError, error } = useAuditLogs(filters)
+  const { data: users } = useUsers()
   const items = data?.items ?? []
   const total = data?.total ?? 0
   const hasNextPage = data ? data.page * data.limit < data.total : false
 
   function resetFilters() {
-    setAction('')
-    setEntity('')
-    setActorId('')
+    setAction('all')
+    setEntity('all')
+    setActorId('all')
     setPage(1)
   }
 
@@ -50,28 +89,44 @@ export default function AuditLogsPage() {
     <AdminLayout title="Audit Logs" subtitle="Track platform changes and sensitive account activity">
       <div className="space-y-6">
         <section className="rounded-lg border border-admin bg-admin-surface p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Filter className="h-4 w-4 text-neon-pink" />
+            <h2 className="text-sm font-semibold text-admin-90">Filters</h2>
+          </div>
           <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-30" />
-              <Input
-                value={action}
-                onChange={e => { setAction(e.target.value); setPage(1) }}
-                placeholder="Filter by action"
-                className="bg-admin-input border-admin pl-9"
-              />
-            </div>
-            <Input
-              value={entity}
-              onChange={e => { setEntity(e.target.value); setPage(1) }}
-              placeholder="Filter by entity"
-              className="bg-admin-input border-admin"
-            />
-            <Input
-              value={actorId}
-              onChange={e => { setActorId(e.target.value); setPage(1) }}
-              placeholder="Filter by actor ID"
-              className="bg-admin-input border-admin"
-            />
+            <Select value={action} onValueChange={value => { setAction(value); setPage(1) }}>
+              <SelectTrigger className="bg-admin-input border-admin text-foreground">
+                <SelectValue placeholder="Action" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All actions</SelectItem>
+                {ACTION_OPTIONS.map(option => (
+                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={entity} onValueChange={value => { setEntity(value); setPage(1) }}>
+              <SelectTrigger className="bg-admin-input border-admin text-foreground">
+                <SelectValue placeholder="Entity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All entities</SelectItem>
+                {ENTITY_OPTIONS.map(option => (
+                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={actorId} onValueChange={value => { setActorId(value); setPage(1) }}>
+              <SelectTrigger className="bg-admin-input border-admin text-foreground">
+                <SelectValue placeholder="Actor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All users</SelectItem>
+                {(users ?? []).map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name} - {user.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button type="button" variant="outline" onClick={resetFilters} className="border-admin">
               Clear
             </Button>

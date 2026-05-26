@@ -8,9 +8,16 @@ export interface AdminUserRecord {
   id: string
   name: string
   email: string
+  phone: string | null
+  address: string | null
+  profileImage: string | null
   role: UserRole
   status: UserStatus
+  invitedAt: string | null
+  invitedBy: { id: string; name: string; email: string } | null
+  lastLoginAt: string | null
   createdAt: string
+  updatedAt: string
 }
 
 export interface PendingInvite {
@@ -24,9 +31,16 @@ interface BackendUserRecord {
   id: string
   name: string
   email: string
+  phone?: string | null
+  address?: string | null
+  profileImage?: string | null
   role: string | { name: string } | null
   isActive: 'ACTIVE' | 'INACTIVE'
+  invitedAt?: string | null
+  invitedBy?: { id: string; name: string; email: string } | null
+  lastLoginAt?: string | null
   createdAt: string
+  updatedAt?: string
 }
 
 interface BackendInvite {
@@ -69,11 +83,39 @@ export function listUsers(): Promise<AdminUserRecord[]> {
       id: u.id,
       name: u.name,
       email: u.email,
+      phone: u.phone ?? null,
+      address: u.address ?? null,
+      profileImage: u.profileImage ?? null,
       role: fromBackendRole(u.role),
       status: u.isActive === 'ACTIVE' ? 'active' : 'inactive',
+      invitedAt: u.invitedAt ?? null,
+      invitedBy: u.invitedBy ?? null,
+      lastLoginAt: u.lastLoginAt ?? null,
       createdAt: u.createdAt,
+      updatedAt: u.updatedAt ?? u.createdAt,
     })),
   )
+}
+
+export function getUser(userId: string): Promise<AdminUserRecord> {
+  return apiFetch<{ success: boolean; data: BackendUserRecord }>(`/api/v1/users/${userId}`).then(r => {
+    const u = r.data
+    return {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone ?? null,
+      address: u.address ?? null,
+      profileImage: u.profileImage ?? null,
+      role: fromBackendRole(u.role),
+      status: u.isActive === 'ACTIVE' ? 'active' : 'inactive',
+      invitedAt: u.invitedAt ?? null,
+      invitedBy: u.invitedBy ?? null,
+      lastLoginAt: u.lastLoginAt ?? null,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt ?? u.createdAt,
+    }
+  })
 }
 
 export function listPendingInvites(): Promise<PendingInvite[]> {
@@ -111,6 +153,14 @@ export function deleteUser(userId: string): Promise<void> {
 
 export function useUsers() {
   return useQuery({ queryKey: userKeys.all, queryFn: listUsers })
+}
+
+export function useUser(userId: string | null) {
+  return useQuery({
+    queryKey: userKeys.byId(userId ?? 'none'),
+    queryFn: () => getUser(userId as string),
+    enabled: Boolean(userId),
+  })
 }
 
 export function usePendingInvites() {
