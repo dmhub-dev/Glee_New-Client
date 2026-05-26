@@ -344,6 +344,8 @@ function LocationReferenceGrid({
 export default function EventsListPage() {
   const user = useAdminUser()
   const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
+  const canCreateEvents = user.role !== 'vendor_staff'
+  const canDeleteEvents = user.role !== 'vendor_staff'
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: events, isLoading } = useAdminEvents({ vendorScoped: isVendorRole })
@@ -455,14 +457,16 @@ export default function EventsListPage() {
                 <List className="w-4 h-4" />
               </button>
             </div>
-            <button
-              onClick={() => navigate('/dashboard/events/new')}
-              className="flex items-center gap-2 bg-neon-pink hover:bg-[#cc2272] text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden xs:inline">Create Event</span>
-              <span className="xs:hidden">New</span>
-            </button>
+            {canCreateEvents && (
+              <button
+                onClick={() => navigate('/dashboard/events/new')}
+                className="flex items-center gap-2 bg-neon-pink hover:bg-[#cc2272] text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden xs:inline">Create Event</span>
+                <span className="xs:hidden">New</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -511,7 +515,7 @@ export default function EventsListPage() {
             <p className="text-admin-40 text-sm mb-3">
               {search ? `No events matching "${search}"` : `No ${STATUS_TABS.find(t => t.key === activeTab)?.label.toLowerCase()} events`}
             </p>
-            {activeTab === 'active' && !search && (
+            {activeTab === 'active' && !search && canCreateEvents && (
               <button onClick={() => navigate('/dashboard/events/new')} className="text-sm text-neon-pink hover:underline font-medium">
                 Create your first event →
               </button>
@@ -520,7 +524,7 @@ export default function EventsListPage() {
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {filtered.map(event => (
-              <AdminEventCard key={event.id} event={event} onDelete={handleDelete} />
+              <AdminEventCard key={event.id} event={event} onDelete={handleDelete} canDelete={canDeleteEvents} />
             ))}
           </div>
         ) : (
@@ -613,13 +617,15 @@ export default function EventsListPage() {
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); handleDelete(event.id) }}
-                            className="w-8 h-8 rounded-lg bg-admin-overlay border border-admin hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-admin-50 flex items-center justify-center transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {canDeleteEvents && (
+                            <button
+                              onClick={e => { e.stopPropagation(); handleDelete(event.id) }}
+                              className="w-8 h-8 rounded-lg bg-admin-overlay border border-admin hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 text-admin-50 flex items-center justify-center transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -11,6 +11,9 @@ const DashboardPage      = lazy(() => import('../routes/index'))
 const EventsListPage     = lazy(() => import('../routes/events/index'))
 const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
 const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
+const BookingsPage       = lazy(() => import('../routes/bookings/index'))
+const MenuPricingPage    = lazy(() => import('../routes/menu-pricing/index'))
+const SalesReportsPage   = lazy(() => import('../routes/sales-reports/index'))
 const CalendarPage       = lazy(() => import('../routes/calendar/index'))
 const SettingsPage       = lazy(() => import('../routes/settings/index'))
 const UsersPage          = lazy(() => import('../routes/users/index'))
@@ -40,9 +43,33 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/events" element={<ProtectedRoute><EventsListPage /></ProtectedRoute>} />
-        <Route path="/dashboard/events/new" element={<ProtectedRoute><EventFormPage /></ProtectedRoute>} />
+        <Route path="/dashboard/events/new" element={<ProtectedRoute roles={['super_admin', 'admin', 'vendor']}><EventFormPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/:eventId/edit" element={<ProtectedRoute><EventFormPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/:eventId" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
+        <Route
+          path="/dashboard/bookings"
+          element={
+            <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff', 'customer_support']}>
+              <BookingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/menu-pricing"
+          element={
+            <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff']}>
+              <MenuPricingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/sales-reports"
+          element={
+            <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff', 'finance']}>
+              <SalesReportsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/dashboard/calendar"
           element={

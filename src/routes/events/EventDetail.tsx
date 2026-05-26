@@ -103,6 +103,7 @@ export default function EventDetailPage() {
   const navigate = useNavigate()
   const user = useAdminUser()
   const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
+  const canDeleteEvent = user.role !== 'vendor_staff'
   const { data: event, isLoading } = useAdminEvent(eventId ?? '', { vendorScoped: isVendorRole })
   const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
   const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
@@ -253,13 +254,15 @@ export default function EventDetailPage() {
               Edit
             </button>
 
-            <button
-              onClick={handleDelete}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-admin-overlay border border-admin text-admin-50 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-colors"
-              title="Delete event"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {canDeleteEvent && (
+              <button
+                onClick={handleDelete}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-admin-overlay border border-admin text-admin-50 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-colors"
+                title="Delete event"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 

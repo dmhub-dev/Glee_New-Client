@@ -38,10 +38,11 @@ function formatEventDate(startDate: string, endDate: string, startTime: string):
 
 interface AdminEventCardProps {
   event: Event
-  onDelete: (id: string) => void
+  onDelete?: (id: string) => void
+  canDelete?: boolean
 }
 
-export default function AdminEventCard({ event, onDelete }: AdminEventCardProps) {
+export default function AdminEventCard({ event, onDelete, canDelete = true }: AdminEventCardProps) {
   const navigate = useNavigate()
   const [hovered, setHovered] = useState(false)
   const status = STATUS_CONFIG[event.status] ?? STATUS_CONFIG.draft
@@ -87,13 +88,15 @@ export default function AdminEventCard({ event, onDelete }: AdminEventCardProps)
             >
               <Pencil className="w-4 h-4" />
             </button>
-            <button
-              onClick={e => { e.stopPropagation(); onDelete(event.id) }}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-red-500/80 border border-white/20 flex items-center justify-center text-white transition-colors"
-              title="Delete event"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {canDelete && onDelete && (
+              <button
+                onClick={e => { e.stopPropagation(); onDelete(event.id) }}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-red-500/80 border border-white/20 flex items-center justify-center text-white transition-colors"
+                title="Delete event"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         )}
       </div>

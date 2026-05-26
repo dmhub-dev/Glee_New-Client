@@ -36,9 +36,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Roles & Permissions', to: '/dashboard/roles', icon: ShieldCheck, active: true, roles: ['super_admin'] },
   { label: 'Audit Logs', to: '/dashboard/audit-logs', icon: ScrollText, active: true, roles: ['super_admin'] },
   { label: 'Settings', to: '/dashboard/settings', icon: Settings, active: true, roles: ['super_admin'] },
-  { label: 'Bookings', to: '/bookings', icon: Ticket, active: false, roles: ['vendor', 'vendor_staff', 'admin', 'customer_support'] },
-  { label: 'Menu & Pricing', to: '/menu-pricing', icon: FileText, active: false, roles: ['vendor', 'vendor_staff'] },
-  { label: 'Sales Reports', to: '/sales-reports', icon: BarChart2, active: false, roles: ['vendor', 'vendor_staff'] },
+  { label: 'Bookings', to: '/dashboard/bookings', icon: Ticket, active: true, roles: ['vendor', 'vendor_staff', 'admin', 'customer_support'] },
+  { label: 'Menu & Pricing', to: '/dashboard/menu-pricing', icon: FileText, active: true, roles: ['vendor', 'vendor_staff', 'admin'] },
+  { label: 'Sales Reports', to: '/dashboard/sales-reports', icon: BarChart2, active: true, roles: ['vendor', 'vendor_staff', 'admin', 'finance'] },
   { label: 'Financials', to: '/financials', icon: BarChart2, active: false, roles: ['super_admin', 'admin', 'finance'] },
 ]
 
@@ -102,7 +102,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </div>
           ) : (
             <>
-              <img src="/glee-logo-final.svg" alt="Glee" className="h-12 max-w-[160px] object-contain" />
+              <img src="/glee-logo-final.svg" alt="Glee" className="h-29 max-w-[160px] object-contain" />
               <button
                 onClick={onClose}
                 className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-admin-40 hover:text-admin-70 hover:bg-admin-overlay transition-colors"

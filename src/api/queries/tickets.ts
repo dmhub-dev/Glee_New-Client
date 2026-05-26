@@ -1,5 +1,5 @@
 import { apiFetch } from '../client'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export interface InitiateGuestPurchaseParams {
   eventId: string
@@ -59,6 +59,7 @@ export interface AdminEventTicket {
     name: string
     price: string | number
   } | null
+  checkedInAt?: string | null
 }
 
 export interface AdminEventTicketsResult {
@@ -83,5 +84,29 @@ export function useAdminEventTickets(eventId: string | undefined) {
     queryKey: ['admin', 'event-tickets', eventId],
     queryFn: () => getAdminEventTickets(eventId as string),
     enabled: Boolean(eventId),
+  })
+}
+
+export function checkInTicket(ticketId: string): Promise<void> {
+  return apiFetch(`/api/v1/admin/event-ticket/${ticketId}/check-in`, { method: 'PATCH' })
+}
+
+export function revertTicketCheckIn(ticketId: string): Promise<void> {
+  return apiFetch(`/api/v1/admin/event-ticket/${ticketId}/check-in/revert`, { method: 'PATCH' })
+}
+
+export function useCheckInTicket(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ticketId: string) => checkInTicket(ticketId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
+  })
+}
+
+export function useRevertTicketCheckIn(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ticketId: string) => revertTicketCheckIn(ticketId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
   })
 }

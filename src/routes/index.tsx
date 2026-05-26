@@ -121,6 +121,7 @@ export default function DashboardPage() {
   const user = useAdminUser()
   const isSuperAdmin = user.role === 'super_admin'
   const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
+  const isVendorStaff = user.role === 'vendor_staff'
   const navigate = useNavigate()
   const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
 
@@ -204,28 +205,41 @@ export default function DashboardPage() {
 
     return (
       <AdminLayout
-        title="Vendor Dashboard"
-        subtitle={`Welcome ${user.name.split(' ')[0]}, manage your events, ticket sales, and attendees.`}
+        title={isVendorStaff ? 'Vendor Staff Dashboard' : 'Vendor Dashboard'}
+        subtitle={isVendorStaff ? `Welcome ${user.name.split(' ')[0]}, handle event operations, bookings, and check-ins.` : `Welcome ${user.name.split(' ')[0]}, manage your events, ticket sales, and attendees.`}
       >
         <div className="space-y-5">
           <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-neon-pink">Vendor workspace</p>
-                <h2 className="mt-2 font-heading text-xl font-black text-foreground">Publish events and track sales on Glee</h2>
+                <p className="text-xs font-semibold uppercase tracking-wider text-neon-pink">{isVendorStaff ? 'Vendor staff workspace' : 'Vendor workspace'}</p>
+                <h2 className="mt-2 font-heading text-xl font-black text-foreground">{isVendorStaff ? 'Operate events and guest flow on Glee' : 'Publish events and track sales on Glee'}</h2>
                 <p className="mt-2 max-w-2xl text-sm text-admin-50">
-                  This account is for external event partners. Focus on creating events, keeping ticket and menu details current, and monitoring purchases.
+                  {isVendorStaff
+                    ? 'This account is attached to a vendor. Focus on existing events, bookings, check-ins, menu details, and customer activity.'
+                    : 'This account is for external event partners. Focus on creating events, keeping ticket and menu details current, and monitoring purchases.'}
                 </p>
                 <Badge variant="outline" className="mt-3 border-admin text-admin-50">Only your vendor data is visible</Badge>
               </div>
-              <button
-                type="button"
-                onClick={() => navigate('/dashboard/events/new')}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neon-pink/90"
-              >
-                <PlusCircle className="h-4 w-4" />
-                Create Event
-              </button>
+              {isVendorStaff ? (
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/bookings')}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neon-pink/90"
+                >
+                  <Ticket className="h-4 w-4" />
+                  View Check-ins
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/events/new')}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neon-pink/90"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  Create Event
+                </button>
+              )}
             </div>
           </section>
 
@@ -234,7 +248,7 @@ export default function DashboardPage() {
               Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)
             ) : (
               <>
-                <StatCard label="My Events" value={eventList.length} detail={`${liveEvents.length} live, ${pendingEvents.length} drafts`} icon={CalendarDays} onClick={() => navigate('/dashboard/events')} />
+                <StatCard label={isVendorStaff ? 'Assigned Events' : 'My Events'} value={eventList.length} detail={`${liveEvents.length} live, ${pendingEvents.length} drafts`} icon={CalendarDays} onClick={() => navigate('/dashboard/events')} />
                 <StatCard label="Tickets Sold" value={tickets.sold} detail={`${tickets.remaining.toLocaleString()} tickets still available`} icon={Ticket} onClick={() => navigate('/dashboard/events')} />
                 <StatCard label="Gross Sales" value={`KSh ${grossRevenue.toLocaleString()}`} detail="Estimated from sold ticket categories" icon={DollarSign} />
                 <StatCard label="Needs Attention" value={attentionEvents.length} detail="Postponed or cancelled events" icon={Activity} onClick={() => navigate('/dashboard/events')} />
@@ -248,7 +262,7 @@ export default function DashboardPage() {
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="font-heading text-sm font-bold text-foreground">Event Publishing Queue</h2>
-                    <p className="mt-1 text-xs text-admin-40">Drafts are not public until you publish them as active.</p>
+                    <p className="mt-1 text-xs text-admin-40">{isVendorStaff ? 'Existing vendor events that may need operational updates.' : 'Drafts are not public until you publish them as active.'}</p>
                   </div>
                   <button onClick={() => navigate('/dashboard/events')} className="text-xs font-medium text-neon-pink/70 hover:text-neon-pink">
                     Manage events
@@ -271,8 +285,8 @@ export default function DashboardPage() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <DataTile label="Club profile / locations" value={vendorLocations.length} detail="Locations used by your events" onClick={() => navigate('/dashboard/events?section=locations')} />
-                  <DataTile label="Menu items uploaded" value={menuItems} detail="Food and drink items attached to your events" onClick={() => navigate('/dashboard/events')} />
-                  <DataTile label="Ticket price groups" value={pricedTicketCategories} detail="Ticket categories and price points configured" onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Menu items uploaded" value={menuItems} detail="Food and drink items attached to your events" onClick={() => navigate('/dashboard/menu-pricing')} />
+                  <DataTile label="Ticket price groups" value={pricedTicketCategories} detail="Ticket categories and price points configured" onClick={() => navigate('/dashboard/menu-pricing')} />
                   <DataTile label="Events with availability" value={eventsWithAvailability.length} detail="Events that still have tickets to sell" onClick={() => navigate('/dashboard/events')} />
                 </div>
               </section>
@@ -291,14 +305,16 @@ export default function DashboardPage() {
                 ) : upcomingEvents.length === 0 ? (
                   <div className="rounded-lg border border-admin bg-admin-surface p-8 text-center">
                     <p className="text-sm font-medium text-admin-70">No live upcoming events yet.</p>
-                    <button onClick={() => navigate('/dashboard/events/new')} className="mt-2 text-sm font-medium text-neon-pink hover:underline">
-                      Create your first event
-                    </button>
+                    {!isVendorStaff && (
+                      <button onClick={() => navigate('/dashboard/events/new')} className="mt-2 text-sm font-medium text-neon-pink hover:underline">
+                        Create your first event
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {upcomingEvents.slice(0, 3).map(event => (
-                      <AdminEventCard key={event.id} event={event} onDelete={id => deleteMutation.mutate(id)} />
+                      <AdminEventCard key={event.id} event={event} onDelete={id => deleteMutation.mutate(id)} canDelete={!isVendorStaff} />
                     ))}
                   </div>
                 )}
@@ -328,7 +344,7 @@ export default function DashboardPage() {
                 <div className="space-y-3">
                   <DataTile label="Add event posters" value={eventList.filter(event => event.flyerSquareUrl || event.flyerPortraitUrl).length} detail="Events with public artwork" onClick={() => navigate('/dashboard/events')} />
                   <DataTile label="Configure prices" value={eventList.filter(event => event.ticketTiers.length > 0).length} detail="Events with ticket categories" onClick={() => navigate('/dashboard/events')} />
-                  <DataTile label="Table inventory" value={0} detail="Reserved table inventory will live here" onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Check-ins" value={tickets.sold} detail="Open booking and guest entry tools" onClick={() => navigate('/dashboard/bookings')} />
                   <DataTile label="Review profile" value={1} detail="Keep business contact details current" onClick={() => navigate('/dashboard/profile')} />
                 </div>
               </section>
