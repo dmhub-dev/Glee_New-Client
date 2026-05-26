@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('')
   const [isVerifying, setIsVerifying] = useState(false)
 
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/dashboard'
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -38,7 +38,7 @@ export default function LoginPage() {
         setTwoFactorEmail(result.email ?? values.email)
         return
       }
-      navigate(from, { replace: true })
+      navigate(from ?? (result.role === 'user' ? '/app' : '/dashboard'), { replace: true })
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Login failed. Please try again.')
     }
@@ -50,8 +50,8 @@ export default function LoginPage() {
     setServerError(null)
     setIsVerifying(true)
     try {
-      await verifyTwoFactor(twoFactorEmail, otp.trim())
-      navigate(from, { replace: true })
+      const result = await verifyTwoFactor(twoFactorEmail, otp.trim())
+      navigate(from ?? (result.role === 'user' ? '/app' : '/dashboard'), { replace: true })
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Verification failed. Please try again.')
     } finally {

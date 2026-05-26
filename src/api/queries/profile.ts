@@ -79,17 +79,14 @@ export function getProfile(): Promise<ProfileData> {
 }
 
 export function updateProfile(dto: UpdateProfileDto): Promise<ProfileData> {
-  return getProfile().then(current => {
-    const name = [dto.firstName ?? current.firstName, dto.lastName ?? current.lastName].filter(Boolean).join(' ')
-    return apiFetch<{ success: boolean; data: BackendMeUser }>(`/api/v1/users/${current.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ name, phone: dto.phone }),
-    }).then(() => getProfile())
-  })
+  return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me', {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  }).then(() => getProfile())
 }
 
 export function changePassword(dto: ChangePasswordDto): Promise<void> {
-  return apiFetch<void>('/api/v1/profile/me/password', {
+  return apiFetch<void>('/api/v1/me/password', {
     method: 'POST',
     body: JSON.stringify(dto),
   })

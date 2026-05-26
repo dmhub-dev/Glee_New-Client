@@ -261,7 +261,9 @@ export async function fetchEvents(): Promise<Event[]> {
     '/api/v1/event?page=1&limit=100',
     { skipAuth: true },
   )
-  return (res.data ?? []).map(mapBackendToEvent).filter(e => e.status === 'active')
+  return (res.data ?? [])
+    .map(mapBackendToEvent)
+    .filter(e => e.status === 'active' || e.status === 'postponed' || e.status === 'sold_out')
 }
 
 export async function fetchEvent(id: string): Promise<Event | undefined> {

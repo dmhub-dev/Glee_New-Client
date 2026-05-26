@@ -35,6 +35,28 @@ export function confirmTicketPurchase(verificationToken: string): Promise<void> 
   })
 }
 
+export interface PurchaseTicketParams {
+  eventId: string
+  ticketCategoryId?: string
+  noOfTickets: number
+  preOrderMenu?: { id: string; quantity: number }[]
+  useWallet?: boolean
+}
+
+export interface PurchaseTicketResult {
+  reference?: string
+  authorization_url?: string
+  access_code?: string
+  verificationToken?: string
+}
+
+export function purchaseTicket(params: PurchaseTicketParams): Promise<PurchaseTicketResult> {
+  return apiFetch<{ success: boolean; data?: PurchaseTicketResult }>('/api/v1/event/tickets/purchase', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }).then(r => r.data ?? {})
+}
+
 export interface AdminEventTicket {
   id: string
   eventId: string
@@ -108,5 +130,43 @@ export function useRevertTicketCheckIn(eventId?: string) {
   return useMutation({
     mutationFn: (ticketId: string) => revertTicketCheckIn(ticketId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
+  })
+}
+
+export interface MyTicketGroup {
+  event: {
+    id: string
+    name: string
+    description?: string | null
+    photos?: string[]
+    startDate?: string | null
+    endDate?: string | null
+    status?: string
+    category?: { id: string; name: string } | null
+  }
+  tickets: AdminEventTicket[]
+  noOfTicketsPurchased: number
+  totalPrice: number
+  count: number
+  lastTicketPurchasedOn?: string
+}
+
+export function getMyTickets(): Promise<MyTicketGroup[]> {
+  return apiFetch<{ success: boolean; data: MyTicketGroup[] }>('/api/v1/event/tickets/my?page=1&limit=100')
+    .then(r => r.data ?? [])
+}
+
+export function useMyTickets() {
+  return useQuery({ queryKey: ['me', 'tickets'], queryFn: getMyTickets })
+}
+
+export function usePurchaseTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (params: PurchaseTicketParams) => purchaseTicket(params),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me', 'tickets'] })
+      qc.invalidateQueries({ queryKey: ['wallet'] })
+    },
   })
 }

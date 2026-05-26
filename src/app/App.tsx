@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
+import type { UserRole } from '@glee/types'
 import { Skeleton } from '@glee/ui'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 
@@ -21,6 +22,24 @@ const RolesPage          = lazy(() => import('../routes/roles/index'))
 const ProfilePage        = lazy(() => import('../routes/profile/index'))
 const LocationDetailPage = lazy(() => import('../routes/locations/$locationId'))
 const AuditLogsPage      = lazy(() => import('../routes/audit-logs/index'))
+const CustomerDashboardPage = lazy(() => import('../customer/dashboard/index'))
+const CustomerEventsPage = lazy(() => import('../customer/events/index'))
+const CustomerEventPage  = lazy(() => import('../customer/events/$eventId'))
+const CustomerTicketsPage = lazy(() => import('../customer/tickets/index'))
+const CustomerWalletPage = lazy(() => import('../customer/wallet/index'))
+const CustomerProfilePage = lazy(() => import('../customer/profile/index'))
+
+const DASHBOARD_ROLES: UserRole[] = [
+  'super_admin',
+  'admin',
+  'operations_manager',
+  'commercial_manager',
+  'finance',
+  'vendor',
+  'vendor_staff',
+  'customer_support',
+  'content_manager',
+]
 
 function PageSkeleton() {
   return (
@@ -41,11 +60,17 @@ export default function App() {
         <Route path="/events/:eventId" element={<PublicEventPage />} />
         <Route path="/checkout" element={<PublicCheckoutPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-        <Route path="/dashboard/events" element={<ProtectedRoute><EventsListPage /></ProtectedRoute>} />
+        <Route path="/app" element={<ProtectedRoute roles={['user']}><CustomerDashboardPage /></ProtectedRoute>} />
+        <Route path="/app/events" element={<ProtectedRoute roles={['user']}><CustomerEventsPage /></ProtectedRoute>} />
+        <Route path="/app/events/:eventId" element={<ProtectedRoute roles={['user']}><CustomerEventPage /></ProtectedRoute>} />
+        <Route path="/app/tickets" element={<ProtectedRoute roles={['user']}><CustomerTicketsPage /></ProtectedRoute>} />
+        <Route path="/app/wallet" element={<ProtectedRoute roles={['user']}><CustomerWalletPage /></ProtectedRoute>} />
+        <Route path="/app/profile" element={<ProtectedRoute roles={['user']}><CustomerProfilePage /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
+        <Route path="/dashboard/events" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventsListPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/new" element={<ProtectedRoute roles={['super_admin', 'admin', 'vendor']}><EventFormPage /></ProtectedRoute>} />
-        <Route path="/dashboard/events/:eventId/edit" element={<ProtectedRoute><EventFormPage /></ProtectedRoute>} />
-        <Route path="/dashboard/events/:eventId" element={<ProtectedRoute><EventDetailPage /></ProtectedRoute>} />
+        <Route path="/dashboard/events/:eventId/edit" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventFormPage /></ProtectedRoute>} />
+        <Route path="/dashboard/events/:eventId" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventDetailPage /></ProtectedRoute>} />
         <Route
           path="/dashboard/bookings"
           element={
@@ -113,7 +138,7 @@ export default function App() {
         <Route
           path="/dashboard/profile"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={DASHBOARD_ROLES}>
               <ProfilePage />
             </ProtectedRoute>
           }

@@ -4,8 +4,7 @@ import type { AuthUser } from '@glee/api'
 import { apiLogin, apiLogout, apiMe, apiVerifyLoginTwoFactor } from '@glee/api'
 import { tokens } from '@glee/utils'
 
-// Roles permitted in the authenticated dashboard. Public users stay on the public side.
-const DASHBOARD_ROLES = new Set([
+const AUTH_ROLES = new Set([
   'super_admin',
   'admin',
   'operations_manager',
@@ -15,14 +14,15 @@ const DASHBOARD_ROLES = new Set([
   'vendor_staff',
   'customer_support',
   'content_manager',
+  'user',
 ])
 
 interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; email?: string; message?: string }>
-  verifyTwoFactor: (email: string, otp: string) => Promise<void>
+  login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; email?: string; message?: string; role?: string | null }>
+  verifyTwoFactor: (email: string, otp: string) => Promise<{ role: string | null }>
   logout: () => Promise<void>
 }
 
@@ -31,7 +31,7 @@ const AuthContext = createContext<AuthContextValue>({
   isLoading: true,
   isAuthenticated: false,
   login: async () => ({ requiresTwoFactor: false }),
-  verifyTwoFactor: async () => {},
+  verifyTwoFactor: async () => ({ role: null }),
   logout: async () => {},
 })
 
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     apiMe()
       .then(me => {
-        if (DASHBOARD_ROLES.has(me.role)) setUser(me)
+        if (AUTH_ROLES.has(me.role)) setUser(me)
         else tokens.clear()
       })
       .catch(() => tokens.clear())
@@ -61,28 +61,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const result = await apiLogin(email, password)
     if ('requiresTwoFactor' in result) {
-      if (result.role && !DASHBOARD_ROLES.has(result.role)) {
-        throw new Error('Access denied — your account does not have dashboard access.')
+      if (result.role && !AUTH_ROLES.has(result.role)) {
+        throw new Error('Access denied — your account does not have access.')
       }
-      return { requiresTwoFactor: true, email: result.email, message: result.message }
+      return { requiresTwoFactor: true, email: result.email, message: result.message, role: result.role }
     }
-    if (!DASHBOARD_ROLES.has(result.user.role)) {
-      throw new Error('Access denied — your account does not have dashboard access.')
+    if (!AUTH_ROLES.has(result.user.role)) {
+      throw new Error('Access denied — your account does not have access.')
     }
     tokens.setAccess(result.accessToken)
     tokens.setRefresh(result.refreshToken)
     setUser(result.user)
-    return { requiresTwoFactor: false }
+    return { requiresTwoFactor: false, role: result.user.role }
   }, [])
 
   const verifyTwoFactor = useCallback(async (email: string, otp: string) => {
     const { accessToken, refreshToken, user: me } = await apiVerifyLoginTwoFactor(email, otp)
-    if (!DASHBOARD_ROLES.has(me.role)) {
-      throw new Error('Access denied — your account does not have dashboard access.')
+    if (!AUTH_ROLES.has(me.role)) {
+      throw new Error('Access denied — your account does not have access.')
     }
     tokens.setAccess(accessToken)
     tokens.setRefresh(refreshToken)
     setUser(me)
+    return { role: me.role }
   }, [])
 
   const logout = useCallback(async () => {
