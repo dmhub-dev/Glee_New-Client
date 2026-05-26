@@ -13,6 +13,9 @@ const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
 const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
 const CalendarPage       = lazy(() => import('../routes/calendar/index'))
 const SettingsPage       = lazy(() => import('../routes/settings/index'))
+const UsersPage          = lazy(() => import('../routes/users/index'))
+const RolesPage          = lazy(() => import('../routes/roles/index'))
+const ProfilePage        = lazy(() => import('../routes/profile/index'))
 const LocationDetailPage = lazy(() => import('../routes/locations/$locationId'))
 const AuditLogsPage      = lazy(() => import('../routes/audit-logs/index'))
 
@@ -60,7 +63,7 @@ export default function App() {
           path="/dashboard/users"
           element={
             <ProtectedRoute roles={['super_admin', 'admin']}>
-              <SettingsPage defaultTab="users" />
+              <UsersPage />
             </ProtectedRoute>
           }
         />
@@ -68,7 +71,7 @@ export default function App() {
           path="/dashboard/roles"
           element={
             <ProtectedRoute roles={['super_admin']}>
-              <SettingsPage defaultTab="roles" />
+              <RolesPage />
             </ProtectedRoute>
           }
         />
@@ -84,7 +87,7 @@ export default function App() {
           path="/dashboard/profile"
           element={
             <ProtectedRoute>
-              <SettingsPage defaultTab="profile" />
+              <ProfilePage />
             </ProtectedRoute>
           }
         />

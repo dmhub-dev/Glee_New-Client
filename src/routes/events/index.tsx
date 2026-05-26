@@ -1,16 +1,25 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAdminEvents, useDeleteEvent } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { Skeleton, Input, Progress } from '@glee/ui'
-import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2, Tags, MapPinned } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
+import CategoriesTab from '../settings/CategoriesTab'
+import LocationsTab from '../settings/LocationsTab'
 
 type StatusTab = Event['status']
+type EventSection = 'events' | 'categories' | 'locations'
 
-const TABS: { key: StatusTab; label: string }[] = [
+const EVENT_SECTIONS: { key: EventSection; label: string; icon: typeof Calendar }[] = [
+  { key: 'events',     label: 'Events',     icon: Calendar },
+  { key: 'categories', label: 'Categories', icon: Tags },
+  { key: 'locations',  label: 'Locations',  icon: MapPinned },
+]
+
+const STATUS_TABS: { key: StatusTab; label: string }[] = [
   { key: 'active',    label: 'Active'    },
   { key: 'draft',     label: 'Draft'     },
   { key: 'postponed', label: 'Postponed' },
@@ -66,11 +75,18 @@ function lowestPrice(event: Event): number {
 
 export default function EventsListPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { data: events, isLoading } = useAdminEvents()
   const deleteMutation = useDeleteEvent()
   const [activeTab, setActiveTab] = useState<StatusTab>('active')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const rawSection = searchParams.get('section')
+  const activeSection: EventSection = rawSection === 'categories' || rawSection === 'locations' ? rawSection : 'events'
+
+  function handleSectionChange(section: EventSection) {
+    setSearchParams(section === 'events' ? {} : { section })
+  }
 
   const filtered = useMemo(() => {
     if (!events) return []
@@ -86,7 +102,7 @@ export default function EventsListPage() {
 
   const countByStatus = useMemo(() => {
     if (!events) return {} as Record<StatusTab, number>
-    return TABS.reduce((acc, tab) => {
+    return STATUS_TABS.reduce((acc, tab) => {
       acc[tab.key] = events.filter(e => e.status === tab.key).length
       return acc
     }, {} as Record<StatusTab, number>)
@@ -99,8 +115,37 @@ export default function EventsListPage() {
   }
 
   return (
-    <AdminLayout title="Events" subtitle="Manage and publish your events">
+    <AdminLayout
+      title={activeSection === 'events' ? 'Events' : activeSection === 'categories' ? 'Event Categories' : 'Event Locations'}
+      subtitle="Manage event inventory, categories, and locations from one place"
+    >
       <div className="space-y-4">
+        <div className="flex gap-1 overflow-x-auto border-b border-admin">
+          {EVENT_SECTIONS.map(section => {
+            const Icon = section.icon
+            return (
+              <button
+                key={section.key}
+                type="button"
+                onClick={() => handleSectionChange(section.key)}
+                className={cn(
+                  'flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
+                  activeSection === section.key
+                    ? 'border-neon-pink text-neon-pink'
+                    : 'border-transparent text-admin-40 hover:text-admin-70',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {section.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {activeSection === 'categories' && <CategoriesTab />}
+        {activeSection === 'locations' && <LocationsTab />}
+        {activeSection === 'events' && (
+          <>
 
         {/* Top bar */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
@@ -144,7 +189,7 @@ export default function EventsListPage() {
 
         {/* Status tabs */}
         <div className="flex gap-0 border-b border-admin overflow-x-auto">
-          {TABS.map(tab => (
+          {STATUS_TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -185,7 +230,7 @@ export default function EventsListPage() {
               <Calendar className="w-6 h-6 text-neon-pink/50" />
             </div>
             <p className="text-admin-40 text-sm mb-3">
-              {search ? `No events matching "${search}"` : `No ${TABS.find(t => t.key === activeTab)?.label.toLowerCase()} events`}
+              {search ? `No events matching "${search}"` : `No ${STATUS_TABS.find(t => t.key === activeTab)?.label.toLowerCase()} events`}
             </p>
             {activeTab === 'active' && !search && (
               <button onClick={() => navigate('/dashboard/events/new')} className="text-sm text-neon-pink hover:underline font-medium">
@@ -303,6 +348,8 @@ export default function EventsListPage() {
               )
             })}
           </div>
+        )}
+          </>
         )}
       </div>
     </AdminLayout>
