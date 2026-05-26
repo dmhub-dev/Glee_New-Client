@@ -4,13 +4,16 @@ import type { AuthUser } from '@glee/api'
 import { apiLogin, apiLogout, apiMe, apiVerifyLoginTwoFactor } from '@glee/api'
 import { tokens } from '@glee/utils'
 
-// Roles permitted in the admin panel
-const ADMIN_ROLES = new Set([
+// Roles permitted in the authenticated dashboard. Public users stay on the public side.
+const DASHBOARD_ROLES = new Set([
   'super_admin',
   'admin',
   'operations_manager',
   'commercial_manager',
   'finance',
+  'vendor',
+  'vendor_staff',
+  'customer_support',
   'content_manager',
 ])
 
@@ -48,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     apiMe()
       .then(me => {
-        if (ADMIN_ROLES.has(me.role)) setUser(me)
+        if (DASHBOARD_ROLES.has(me.role)) setUser(me)
         else tokens.clear()
       })
       .catch(() => tokens.clear())
@@ -58,13 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const result = await apiLogin(email, password)
     if ('requiresTwoFactor' in result) {
-      if (result.role && !ADMIN_ROLES.has(result.role)) {
-        throw new Error('Access denied — your account does not have admin access.')
+      if (result.role && !DASHBOARD_ROLES.has(result.role)) {
+        throw new Error('Access denied — your account does not have dashboard access.')
       }
       return { requiresTwoFactor: true, email: result.email, message: result.message }
     }
-    if (!ADMIN_ROLES.has(result.user.role)) {
-      throw new Error('Access denied — your account does not have admin access.')
+    if (!DASHBOARD_ROLES.has(result.user.role)) {
+      throw new Error('Access denied — your account does not have dashboard access.')
     }
     tokens.setAccess(result.accessToken)
     tokens.setRefresh(result.refreshToken)
@@ -74,8 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyTwoFactor = useCallback(async (email: string, otp: string) => {
     const { accessToken, refreshToken, user: me } = await apiVerifyLoginTwoFactor(email, otp)
-    if (!ADMIN_ROLES.has(me.role)) {
-      throw new Error('Access denied — your account does not have admin access.')
+    if (!DASHBOARD_ROLES.has(me.role)) {
+      throw new Error('Access denied — your account does not have dashboard access.')
     }
     tokens.setAccess(accessToken)
     tokens.setRefresh(refreshToken)

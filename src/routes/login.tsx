@@ -67,8 +67,8 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-4">
           <img src="/glee-logo-final.svg" alt="Glee" className="h-16" />
           <div className="text-center">
-            <h1 className="font-heading font-black text-2xl text-foreground">Admin Panel</h1>
-            <p className="text-sm text-admin-40 mt-1">Sign in to manage your platform</p>
+            <h1 className="font-heading font-black text-2xl text-foreground">Glee Dashboard</h1>
+            <p className="text-sm text-admin-40 mt-1">Sign in to continue</p>
           </div>
         </div>
 
@@ -166,7 +166,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-admin-20">Glee Admin · Restricted Access</p>
+        <p className="text-center text-xs text-admin-20">Glee · Restricted Access</p>
       </div>
     </div>
   )
