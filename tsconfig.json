@@ -13,13 +13,16 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@glee/types": ["packages/types/src/index.ts"],
-      "@glee/api": ["packages/api/src/index.ts"],
-      "@glee/ui": ["packages/ui/src/index.ts"],
-      "@glee/utils": ["packages/utils/src/index.ts"]
+      "@glee/types": ["src/types/index.ts"],
+      "@glee/api": ["src/api/index.ts"],
+      "@glee/ui": ["src/ui/index.ts"],
+      "@glee/ui/globals.css": ["src/ui/globals.css"],
+      "@glee/utils": ["src/utils/index.ts"]
     }
   },
+  "include": ["src", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
