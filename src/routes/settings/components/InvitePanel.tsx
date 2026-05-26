@@ -50,9 +50,10 @@ function daysUntil(value: string | null) {
   return `${days} day${days === 1 ? '' : 's'} left`
 }
 
-export default function InvitePanel() {
+export default function InvitePanel({ vendorStaffOnly = false }: { vendorStaffOnly?: boolean }) {
   const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null)
   const { toast } = useToast()
+  const assignableRoles = vendorStaffOnly ? (['vendor_staff'] as UserRole[]) : ASSIGNABLE_ROLES
 
   const { data: invites, isLoading: invitesLoading } = usePendingInvites()
   const inviteMutation = useInviteUser()
@@ -60,13 +61,13 @@ export default function InvitePanel() {
 
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
-    defaultValues: { email: '', role: 'vendor' },
+    defaultValues: { email: '', role: vendorStaffOnly ? 'vendor_staff' : 'vendor' },
   })
 
   async function onInviteSubmit(values: InviteFormValues) {
     try {
       await inviteMutation.mutateAsync(values)
-      form.reset()
+      form.reset({ email: '', role: vendorStaffOnly ? 'vendor_staff' : 'vendor' })
       toast({ title: 'Invite sent', description: `Invited ${values.email} as ${ROLE_LABELS[values.role]}` })
     } catch {
       toast({ title: 'Failed to send invite', variant: 'destructive' })
@@ -91,8 +92,10 @@ export default function InvitePanel() {
     <section className="bg-admin-surface border border-admin rounded-2xl p-6 shadow-admin">
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-heading font-bold text-base text-foreground">Invite User</h2>
-          <p className="mt-1 text-xs text-admin-40">Send role-based dashboard access and track pending invitations.</p>
+          <h2 className="font-heading font-bold text-base text-foreground">{vendorStaffOnly ? 'Invite Vendor Staff' : 'Invite User'}</h2>
+          <p className="mt-1 text-xs text-admin-40">
+            {vendorStaffOnly ? 'Send dashboard access to staff who should help manage your events.' : 'Send role-based dashboard access and track pending invitations.'}
+          </p>
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-pink/10 text-neon-pink">
           <UserRoundPlus className="h-5 w-5" />
@@ -131,7 +134,7 @@ export default function InvitePanel() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {ASSIGNABLE_ROLES.map(r => (
+                    {assignableRoles.map(r => (
                       <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
                     ))}
                   </SelectContent>

@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const ACCOUNT_NAV_ITEMS: NavItem[] = [
   { label: 'Users', to: '/dashboard/users', icon: Users, active: true, roles: ['super_admin', 'admin'] },
+  { label: 'Staff', to: '/dashboard/users', icon: Users, active: true, roles: ['vendor'] },
   { label: 'Profile', to: '/dashboard/profile', icon: UserCircle, active: true },
 ]
 
