@@ -24,7 +24,10 @@ export interface PendingInvite {
   id: string
   email: string
   role: UserRole
+  status: string
   invitedAt: string
+  expiresAt: string | null
+  invitedBy: { id: string; name: string; email: string } | null
 }
 
 interface BackendUserRecord {
@@ -47,6 +50,9 @@ interface BackendInvite {
   id: string
   email: string
   role: string | { name: string } | null
+  status?: string | null
+  expiresAt?: string | null
+  invitedBy?: { id: string; name: string; email: string } | null
   createdAt: string
 }
 
@@ -120,12 +126,17 @@ export function getUser(userId: string): Promise<AdminUserRecord> {
 
 export function listPendingInvites(): Promise<PendingInvite[]> {
   return apiFetch<{ success: boolean; data: BackendInvite[] }>('/api/v1/invitations').then(r =>
-    (r.data ?? []).map(inv => ({
-      id: inv.id,
-      email: inv.email,
-      role: fromBackendRole(inv.role),
-      invitedAt: inv.createdAt,
-    })),
+    (r.data ?? [])
+      .filter(inv => (inv.status ?? 'PENDING') === 'PENDING')
+      .map(inv => ({
+        id: inv.id,
+        email: inv.email,
+        role: fromBackendRole(inv.role),
+        status: inv.status ?? 'PENDING',
+        invitedAt: inv.createdAt,
+        expiresAt: inv.expiresAt ?? null,
+        invitedBy: inv.invitedBy ?? null,
+      })),
   )
 }
 

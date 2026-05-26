@@ -66,7 +66,134 @@ function newMenuItem(): EventFormValues['menuItems'][number] {
 
 function newSchedule(): EventFormValues['schedules'][number] {
   const today = new Date().toISOString().slice(0, 10)
-  return { name: '', description: '', startDate: today, endDate: today, startTime: '09:00', endTime: '18:00' }
+  return { name: 'Event Itinerary', description: '', startDate: today, endDate: today, startTime: '09:00', endTime: '18:00' }
+}
+
+function newDaySchedule(dayNumber: number, date?: string): EventFormValues['schedules'][number] {
+  const day = date ?? new Date().toISOString().slice(0, 10)
+  return { name: `Day ${dayNumber}`, description: '', startDate: day, endDate: day, startTime: '09:00', endTime: '18:00' }
+}
+
+function addDays(date: string, days: number) {
+  const value = new Date(`${date}T00:00:00`)
+  value.setDate(value.getDate() + days)
+  return value.toISOString().slice(0, 10)
+}
+
+function getScheduleEndDate(schedule: EventFormValues['schedules'][number]) {
+  return schedule.endTime <= schedule.startTime ? addDays(schedule.startDate, 1) : schedule.startDate
+}
+
+function scheduleStartValue(schedule: EventFormValues['schedules'][number]) {
+  return new Date(`${schedule.startDate}T${schedule.startTime}:00`).getTime()
+}
+
+function scheduleEndValue(schedule: EventFormValues['schedules'][number]) {
+  return new Date(`${schedule.endDate}T${schedule.endTime}:00`).getTime()
+}
+
+function sortSchedules(schedules: EventFormValues['schedules']) {
+  return [...schedules].sort((a, b) => scheduleStartValue(a) - scheduleStartValue(b))
+}
+
+function parseTimelineRows(value: string) {
+  const rows = value
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const match = line.match(/^(.+?)\s*(?:-{2,}|—|–)\s*(.+)$/)
+      return match ? { time: match[1].trim(), text: match[2].trim() } : { time: '', text: line }
+    })
+
+  return rows.length > 0 ? rows : [{ time: '', text: '' }]
+}
+
+function formatTimelineRows(rows: Array<{ time: string; text: string }>) {
+  return rows
+    .filter(row => row.time.trim() || row.text.trim())
+    .map(row => row.time.trim() ? `${row.time.trim()} -------- ${row.text.trim()}` : row.text.trim())
+    .join('\n')
+}
+
+function TimelineEditor({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  const [rows, setRows] = useState(() => parseTimelineRows(value))
+  const lastValueRef = useRef(value)
+
+  useEffect(() => {
+    if (value !== lastValueRef.current) {
+      lastValueRef.current = value
+      setRows(parseTimelineRows(value))
+    }
+  }, [value])
+
+  function updateRow(index: number, next: Partial<{ time: string; text: string }>) {
+    const nextRows = rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...next } : row)
+    setRows(nextRows)
+    lastValueRef.current = formatTimelineRows(nextRows)
+    onChange(formatTimelineRows(nextRows))
+  }
+
+  function addRow() {
+    setRows([...rows, { time: '', text: '' }])
+  }
+
+  function removeRow(index: number) {
+    const nextRows = rows.filter((_, rowIndex) => rowIndex !== index)
+    const safeRows = nextRows.length ? nextRows : [{ time: '', text: '' }]
+    setRows(safeRows)
+    lastValueRef.current = formatTimelineRows(safeRows)
+    onChange(formatTimelineRows(safeRows))
+  }
+
+  return (
+    <div className="rounded-xl border border-admin-md bg-admin-input p-3">
+      <div className="space-y-2">
+        {rows.map((row, index) => (
+          <div key={index} className="grid gap-2 sm:grid-cols-[104px_1fr_32px]">
+            <Input
+              value={row.time}
+              onChange={event => updateRow(index, { time: event.target.value })}
+              placeholder="2:00pm"
+              className="h-9 bg-admin-surface border-admin text-sm font-mono text-neon-pink placeholder:text-admin-30"
+            />
+            <Input
+              value={row.text}
+              onChange={event => updateRow(index, { text: event.target.value })}
+              placeholder="Guest arrival, welcome drinks, and check-in"
+              className="h-9 bg-admin-surface border-admin text-sm placeholder:text-admin-30"
+            />
+            <button
+              type="button"
+              onClick={() => removeRow(index)}
+              disabled={rows.length === 1}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-admin text-admin-30 transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30"
+              title="Remove timeline row"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-admin pt-3">
+        <p className="text-[11px] text-admin-40">Rows are saved as a timeline and shown in this order.</p>
+        <button
+          type="button"
+          onClick={addRow}
+          className="flex shrink-0 items-center gap-1.5 rounded-full border border-admin bg-admin-overlay px-3 py-1.5 text-xs font-medium text-admin-60 transition-colors hover:border-neon-pink/30 hover:text-neon-pink"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Row
+        </button>
+      </div>
+    </div>
+  )
 }
 
 const MENU_CATEGORIES: { value: EventFormValues['menuItems'][number]['category']; label: string }[] = [
@@ -175,6 +302,7 @@ export default function EventFormPage() {
   const [landscapes, setLandscapes] = useState<{ url: string; file?: File }[]>([])
   const [portraits,  setPortraits]  = useState<{ url: string; file?: File }[]>([])
   const [mediums,    setMediums]    = useState<{ url: string; file?: File }[]>([])
+  const [eventDurationMode, setEventDurationMode] = useState<'single' | 'multi'>('single')
   const posterInputRef  = useRef<HTMLInputElement>(null)
   const posterTargetRef = useRef<'landscape' | 'portrait' | 'medium'>('landscape')
 
@@ -209,10 +337,37 @@ export default function EventFormPage() {
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({ control, name: 'schedules' })
   const formValues = watch()
 
+  function switchDurationMode(mode: 'single' | 'multi') {
+    setEventDurationMode(mode)
+    const schedules = formValues.schedules?.length ? formValues.schedules : [newSchedule()]
+    if (mode === 'single') {
+      const first = schedules[0]
+      setValue('schedules', [{
+        ...first,
+        name: 'Event Itinerary',
+        endDate: getScheduleEndDate(first),
+      }], { shouldDirty: true, shouldValidate: true })
+      return
+    }
+
+    const first = schedules[0]
+    const firstDay = {
+      ...first,
+      name: 'Day 1',
+      endDate: getScheduleEndDate(first),
+    }
+    setValue('schedules', schedules.length > 1 ? schedules.map((schedule, index) => ({
+      ...schedule,
+      name: `Day ${index + 1}`,
+      endDate: getScheduleEndDate(schedule),
+    })) : [firstDay, newDaySchedule(2, addDays(first.startDate, 1))], { shouldDirty: true, shouldValidate: true })
+  }
+
   useEffect(() => {
     const schedules = formValues.schedules ?? []
-    const first = schedules[0]
-    const last = schedules[schedules.length - 1]
+    const sortedSchedules = sortSchedules(schedules)
+    const first = sortedSchedules[0]
+    const last = [...sortedSchedules].sort((a, b) => scheduleEndValue(a) - scheduleEndValue(b)).at(-1)
     if (!first || !last) return
     if (first.startDate && first.startDate !== formValues.startDate) setValue('startDate', first.startDate)
     if (first.startTime && first.startTime !== formValues.startTime) setValue('startTime', first.startTime)
@@ -221,8 +376,22 @@ export default function EventFormPage() {
   }, [formValues.schedules, formValues.startDate, formValues.startTime, formValues.endDate, formValues.endTime, setValue])
 
   useEffect(() => {
+    ;(formValues.schedules ?? []).forEach((schedule, index) => {
+      const expectedName = eventDurationMode === 'single' ? 'Event Itinerary' : `Day ${index + 1}`
+      const expectedEndDate = getScheduleEndDate(schedule)
+      if (schedule.name !== expectedName) {
+        setValue(`schedules.${index}.name`, expectedName, { shouldValidate: true })
+      }
+      if (schedule.endDate !== expectedEndDate) {
+        setValue(`schedules.${index}.endDate`, expectedEndDate, { shouldValidate: true })
+      }
+    })
+  }, [eventDurationMode, formValues.schedules, setValue])
+
+  useEffect(() => {
     if (!existingEvent) return
     const categoryName = categoriesData?.find(c => c.id === existingEvent.categoryId)?.name ?? ''
+    setEventDurationMode((existingEvent.schedules?.length ?? 0) > 1 ? 'multi' : 'single')
     reset({
       title:       existingEvent.title,
       description: existingEvent.description,
@@ -311,7 +480,7 @@ export default function EventFormPage() {
       startTime: values.startTime,
       endTime: values.endTime,
       ticketTiers: values.ticketTiers,
-      schedules: values.schedules,
+      schedules: sortSchedules(values.schedules),
       posterFiles: posterFiles.length > 0 ? posterFiles : undefined,
       menuItems: values.menuItems?.length ? values.menuItems : undefined,
     }
@@ -367,6 +536,9 @@ export default function EventFormPage() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
+  const visibleStatusOptions = isNew
+    ? STATUS_OPTIONS.filter(option => option.value === 'draft' || option.value === 'active')
+    : STATUS_OPTIONS
 
   return (
     <AdminLayout title={isNew ? 'Create Event' : `Edit Event`}>
@@ -427,8 +599,8 @@ export default function EventFormPage() {
                   control={control}
                   name="status"
                   render={({ field }) => (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
-                      {STATUS_OPTIONS.map(option => {
+                    <div className={`grid grid-cols-1 gap-2 ${isNew ? 'sm:grid-cols-2' : 'sm:grid-cols-5'}`}>
+                      {visibleStatusOptions.map(option => {
                         const selected = field.value === option.value
                         return (
                           <button
@@ -460,63 +632,89 @@ export default function EventFormPage() {
 
             {/* Schedule */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h2 className="font-heading font-bold text-sm text-foreground">Date, Time & Event Schedule</h2>
-                  <p className="mt-1 text-xs text-admin-40">The first schedule start and final schedule end define the event dates.</p>
+                  <h2 className="font-heading font-bold text-sm text-foreground">Date, Time & Itinerary</h2>
+                  <p className="mt-1 text-xs text-admin-40">Choose whether this is one event day or a multi-day event, then add the timeline for each day.</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => appendSchedule(newSchedule())}
-                  className="flex items-center gap-2 text-sm text-neon-pink/70 hover:text-neon-pink transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Schedule
-                </button>
+                <div className="grid w-full grid-cols-2 gap-2 rounded-xl border border-admin bg-admin-overlay p-1 lg:w-80">
+                  {[
+                    { value: 'single' as const, label: 'Single Day' },
+                    { value: 'multi' as const, label: 'Multiple Days' },
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => switchDurationMode(option.value)}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        eventDurationMode === option.value
+                          ? 'bg-neon-pink text-white'
+                          : 'text-admin-50 hover:bg-admin-surface hover:text-admin-80'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {eventDurationMode === 'single' ? (
+                <div className="rounded-xl border border-admin bg-admin-overlay px-4 py-3 text-xs text-admin-40">
+                  For overnight events, keep one date and choose an end time earlier than the start time. The system will treat the event as ending the next morning.
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-xl border border-admin bg-admin-overlay px-4 py-3">
+                  <p className="text-xs text-admin-40">Each day gets its own date, start time, end time, and timeline.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const schedules = formValues.schedules ?? []
+                      const last = schedules[schedules.length - 1]
+                      appendSchedule(newDaySchedule(schedules.length + 1, last ? addDays(last.startDate, 1) : undefined))
+                    }}
+                    className="flex items-center gap-2 text-sm text-neon-pink/70 hover:text-neon-pink transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Day
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {scheduleFields.map((field, index) => (
-                  <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 text-xs text-admin-40 font-mono">
-                        <CalendarClock className="h-3.5 w-3.5 text-neon-pink" />
-                        Schedule {index + 1}
-                      </span>
+                  <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-neon-pink/10 text-neon-pink">
+                          <CalendarClock className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <span className="block text-xs text-admin-40 font-mono">
+                            {eventDurationMode === 'single' ? 'Event Day' : `Day ${index + 1}`}
+                          </span>
+                          <span className="block text-[11px] text-admin-30">
+                            {eventDurationMode === 'single'
+                              ? 'One date with a start and end time.'
+                              : 'Date and time window for this event day.'}
+                          </span>
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeSchedule(index)}
-                        disabled={scheduleFields.length === 1}
+                        disabled={eventDurationMode === 'single' || scheduleFields.length === 1}
                         className="w-6 h-6 rounded flex items-center justify-center text-admin-20 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-admin-50">Name *</Label>
-                      <Input
-                        {...register(`schedules.${index}.name`)}
-                        placeholder="e.g. Summer Music Carnival"
-                        className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
-                      />
-                      {errors.schedules?.[index]?.name && (
-                        <p className="text-xs text-red-400">{errors.schedules[index]?.name?.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-admin-50">Description *</Label>
-                      <Textarea
-                        {...register(`schedules.${index}.description`)}
-                        rows={3}
-                        placeholder="9:00am–10:00am guest arrival, 10:00am–12:00pm opening performances..."
-                        className="text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30 resize-none"
-                      />
-                      {errors.schedules?.[index]?.description && (
-                        <p className="text-xs text-red-400">{errors.schedules[index]?.description?.message}</p>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+
+                    <input type="hidden" {...register(`schedules.${index}.name`)} />
+                    <input type="hidden" {...register(`schedules.${index}.endDate`)} />
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <div className="space-y-1">
-                        <Label className="text-xs text-admin-50">Start Date *</Label>
+                        <Label className="text-xs text-admin-50">{eventDurationMode === 'single' ? 'Event Date *' : `Day ${index + 1} Date *`}</Label>
                         <Input type="date" {...register(`schedules.${index}.startDate`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
                       </div>
                       <div className="space-y-1">
@@ -524,13 +722,25 @@ export default function EventFormPage() {
                         <Input type="time" {...register(`schedules.${index}.startTime`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-admin-50">End Date *</Label>
-                        <Input type="date" {...register(`schedules.${index}.endDate`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
-                      </div>
-                      <div className="space-y-1">
                         <Label className="text-xs text-admin-50">End Time *</Label>
                         <Input type="time" {...register(`schedules.${index}.endTime`)} className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30" />
+                        {formValues.schedules?.[index] && formValues.schedules[index].endTime <= formValues.schedules[index].startTime && (
+                          <p className="text-[11px] text-admin-40">Ends the next day.</p>
+                        )}
                       </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-admin-50">{eventDurationMode === 'single' ? 'Timeline *' : `Day ${index + 1} Timeline *`}</Label>
+                      <Controller
+                        control={control}
+                        name={`schedules.${index}.description`}
+                        render={({ field }) => (
+                          <TimelineEditor value={field.value} onChange={field.onChange} />
+                        )}
+                      />
+                      {errors.schedules?.[index]?.description && (
+                        <p className="text-xs text-red-400">{errors.schedules[index]?.description?.message}</p>
+                      )}
                     </div>
                   </div>
                 ))}

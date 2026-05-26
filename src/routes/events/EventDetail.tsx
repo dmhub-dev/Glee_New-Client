@@ -54,6 +54,45 @@ function formatDateTimeRange(startValue: string, endValue: string): string {
   return sameDay ? `${startDate} · ${startTime} - ${endTime}` : `${startDate} ${startTime} - ${endDate} ${endTime}`
 }
 
+function formatScheduleDay(value: string): string {
+  return new Date(value).toLocaleDateString('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function formatScheduleTime(value: string): string {
+  return new Date(value).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+}
+
+function getScheduleGroups(schedules: NonNullable<Event['schedules']>) {
+  return [...schedules]
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+    .reduce<Array<{ key: string; label: string; items: NonNullable<Event['schedules']> }>>((groups, schedule) => {
+      const key = new Date(schedule.startDate).toISOString().slice(0, 10)
+      const existing = groups.find(group => group.key === key)
+      if (existing) {
+        existing.items.push(schedule)
+      } else {
+        groups.push({ key, label: formatScheduleDay(schedule.startDate), items: [schedule] })
+      }
+      return groups
+    }, [])
+}
+
+function parseTimelineDescription(description: string) {
+  return description
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const match = line.match(/^(.+?)\s*(?:-{2,}|—|–)\s*(.+)$/)
+      return match ? { time: match[1].trim(), text: match[2].trim() } : { time: null, text: line }
+    })
+}
+
 function money(value: number) {
   return `KSh ${Math.max(0, value).toLocaleString()}`
 }
@@ -154,6 +193,7 @@ export default function EventDetailPage() {
   const totalPurchaseRevenue = purchasedTickets.reduce((sum, ticket) => sum + Number(ticket.totalPrice ?? ticket.payment?.amount ?? 0), 0)
   const menuRevenue = Math.max(0, totalPurchaseRevenue - ticketRevenue)
   const attendeePreview = purchasedTickets.slice(0, 5)
+  const scheduleGroups = getScheduleGroups(event.schedules ?? [])
 
   return (
     <AdminLayout title="Event Details">
@@ -281,27 +321,61 @@ export default function EventDetailPage() {
             </div>
 
             {/* Schedule */}
-            <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+            <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-heading font-bold text-sm text-foreground">Event Schedule</h2>
-                <span className="text-xs text-admin-40">{event.schedules?.length ?? 0} schedule item{(event.schedules?.length ?? 0) === 1 ? '' : 's'}</span>
+                <div>
+                  <h2 className="font-heading font-bold text-sm text-foreground">Event Schedule</h2>
+                  <p className="mt-1 text-xs text-admin-40">Timeline ordered by start time</p>
+                </div>
+                <span className="rounded-full border border-admin bg-admin-overlay px-2.5 py-1 text-xs text-admin-40">
+                  {event.schedules?.length ?? 0} item{(event.schedules?.length ?? 0) === 1 ? '' : 's'}
+                </span>
               </div>
-              {(event.schedules ?? []).length === 0 ? (
+              {scheduleGroups.length === 0 ? (
                 <div className="rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
                   No detailed schedule has been added yet.
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {(event.schedules ?? []).map((schedule, index) => (
-                    <div key={schedule.id ?? `${schedule.name}-${index}`} className="rounded-xl border border-admin bg-admin-overlay p-4">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-6">
+                  {scheduleGroups.map((group, groupIndex) => (
+                    <div key={group.key} className="relative">
+                      <div className="mb-3 flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-pink text-sm font-black text-white">
+                          {groupIndex + 1}
+                        </div>
                         <div>
-                          <p className="text-sm font-semibold text-foreground">{schedule.name}</p>
-                          <p className="mt-1 text-sm leading-relaxed text-admin-50 whitespace-pre-line">{schedule.description}</p>
+                          <p className="font-heading text-base font-black text-foreground">{group.label}</p>
+                          <p className="text-xs text-admin-40">{group.items.length} scheduled moment{group.items.length === 1 ? '' : 's'}</p>
                         </div>
-                        <div className="shrink-0 rounded-lg border border-neon-pink/20 bg-neon-pink/10 px-3 py-2 text-xs font-medium text-neon-pink">
-                          {formatDateTimeRange(schedule.startDate, schedule.endDate)}
-                        </div>
+                      </div>
+                      <div className="relative ml-5 space-y-0 border-l border-dashed border-admin-md pl-6">
+                        {group.items.map((schedule, index) => {
+                          const endDate = new Date(schedule.endDate)
+                          const crossesDay = new Date(schedule.startDate).toDateString() !== endDate.toDateString()
+                          return (
+                            <div key={schedule.id ?? `${schedule.name}-${index}`} className="relative pb-5 last:pb-0">
+                              <span className="absolute -left-[31px] top-2 flex h-3 w-3 rounded-full border-2 border-admin-body bg-neon-pink" />
+                              <div className="rounded-xl border border-admin bg-admin-overlay p-4">
+                                <div className="grid gap-3 sm:grid-cols-[150px_1fr]">
+                                  <div className="font-mono text-sm font-semibold text-neon-pink">
+                                    <p>{formatScheduleTime(schedule.startDate)}</p>
+                                    <p className="mt-1 text-xs text-admin-40">to {formatScheduleTime(schedule.endDate)}</p>
+                                    {crossesDay && (
+                                      <p className="mt-2 text-[11px] text-admin-40">
+                                        Ends {endDate.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-base font-semibold text-foreground">{schedule.name}</p>
+                                    <ScheduleDescription description={schedule.description} />
+                                    <p className="mt-3 text-xs text-admin-30">{formatDateTimeRange(schedule.startDate, schedule.endDate)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
@@ -541,6 +615,29 @@ function RevenueCard({ icon: Icon, label, value }: { icon: typeof Ticket; label:
         <p className="text-xs text-admin-40">{label}</p>
         <p className="font-heading text-lg font-black text-foreground">{value}</p>
       </div>
+    </div>
+  )
+}
+
+function ScheduleDescription({ description }: { description: string }) {
+  const rows = parseTimelineDescription(description)
+
+  if (rows.length <= 1 && !rows[0]?.time) {
+    return <p className="mt-2 text-sm leading-relaxed text-admin-50 whitespace-pre-line">{description}</p>
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      {rows.map((row, index) => (
+        row.time ? (
+          <div key={`${row.time}-${index}`} className="grid gap-2 rounded-lg border border-admin bg-admin-surface/50 px-3 py-2 sm:grid-cols-[86px_1fr]">
+            <span className="font-mono text-xs font-semibold text-neon-pink">{row.time}</span>
+            <span className="text-sm leading-relaxed text-admin-70">{row.text}</span>
+          </div>
+        ) : (
+          <p key={`${row.text}-${index}`} className="text-sm leading-relaxed text-admin-50">{row.text}</p>
+        )
+      ))}
     </div>
   )
 }
