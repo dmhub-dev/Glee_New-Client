@@ -517,6 +517,7 @@ export default function EventFormPage() {
     status: formValues.status === 'active' ? 'active' : 'draft',
     location: locationsData?.find(l => l.id === formValues.locationId)?.name,
     locationId: formValues.locationId,
+    categoryName: formValues.category || undefined,
     schedules: formValues.schedules?.map(s => ({
       name: s.name,
       description: s.description,

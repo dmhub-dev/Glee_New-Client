@@ -46,6 +46,7 @@ export default function AdminEventCard({ event, onDelete }: AdminEventCardProps)
   const [hovered, setHovered] = useState(false)
   const status = STATUS_CONFIG[event.status] ?? STATUS_CONFIG.draft
   const soldPercent = ticketsSoldPercent(event)
+  const categoryLabel = event.categoryName ?? 'Uncategorized'
 
   return (
     <div
@@ -67,9 +68,9 @@ export default function AdminEventCard({ event, onDelete }: AdminEventCardProps)
           className={cn('w-full h-full object-cover transition-transform duration-300', hovered && 'scale-105')}
           onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
         />
-        {/* Venue badge */}
+        {/* Category badge */}
         <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-full px-2 py-0.5 max-w-[45%] truncate">
-          {event.venueId}
+          {categoryLabel}
         </div>
         {/* Status badge */}
         <div className={cn('absolute top-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 text-xs font-medium', status.text)}>

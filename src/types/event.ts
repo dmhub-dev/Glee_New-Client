@@ -43,6 +43,7 @@ export interface Event {
   locationId?: string
   dresscode?: string
   categoryId?: string
+  categoryName?: string
   createdAt: string
   updatedAt: string
 }

@@ -51,6 +51,7 @@ interface BackendEvent {
   menuItems: BackendEventMenuItem[]
   schedules?: BackendEventSchedule[]
   categoryId?: string | null
+  category?: { id: string; name: string } | null
   vendorId?: string | null
 }
 
@@ -131,6 +132,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     location:         locationStr,
     locationId:       raw.location?.id ?? undefined,
     categoryId:       raw.categoryId ?? undefined,
+    categoryName:     raw.category?.name ?? undefined,
     createdAt:        raw.createdAt,
     updatedAt:        raw.updatedAt,
   }

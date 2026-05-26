@@ -95,6 +95,7 @@ export default function EventsListPage() {
       .filter(e =>
         search.trim() === '' ||
         e.title.toLowerCase().includes(search.toLowerCase()) ||
+        (e.categoryName ?? '').toLowerCase().includes(search.toLowerCase()) ||
         (e.location ?? '').toLowerCase().includes(search.toLowerCase()) ||
         e.venueId.toLowerCase().includes(search.toLowerCase())
       )
@@ -251,7 +252,8 @@ export default function EventsListPage() {
               const soldPct = ticketsSoldPercent(event)
               const remaining = ticketsRemaining(event)
               const price = lowestPrice(event)
-              const categoryClass = CATEGORY_COLOURS[event.venueId] ?? CATEGORY_COLOURS.Other
+              const categoryLabel = event.categoryName ?? 'Uncategorized'
+              const categoryClass = CATEGORY_COLOURS[categoryLabel] ?? CATEGORY_COLOURS.Other
               return (
                 <div
                   key={event.id}
@@ -279,7 +281,7 @@ export default function EventsListPage() {
                         {/* Category + title */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={cn('text-[11px] font-medium px-2 py-0.5 rounded-full border', categoryClass)}>
-                            {event.venueId}
+                            {categoryLabel}
                           </span>
                         </div>
                         <h3 className="font-heading font-bold text-sm text-foreground line-clamp-1">{event.title}</h3>
