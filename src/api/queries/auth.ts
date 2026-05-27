@@ -24,6 +24,22 @@ export interface TwoFactorRequiredResponse {
 
 export type LoginResult = LoginResponse | TwoFactorRequiredResponse
 
+export interface RegisterUserParams {
+  name: string
+  email: string
+  password: string
+}
+
+export interface RegisterUserResult {
+  id: string
+  name: string
+  email: string
+}
+
+export interface UserExistsResult {
+  isUserExists: boolean
+}
+
 interface BackendUser {
   id: string
   name: string
@@ -94,6 +110,36 @@ export function apiVerifyLoginTwoFactor(email: string, otp: string): Promise<Log
     refreshToken: raw.refreshToken,
     user: toAuthUser(raw.user),
   }))
+}
+
+export function apiRegisterUser(params: RegisterUserParams): Promise<RegisterUserResult> {
+  return apiFetch<{ success: boolean; message: string; data: RegisterUserResult }>('/api/v1/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: params.name,
+      email: params.email,
+      password: params.password,
+      confirmPassword: params.password,
+      role: 'USER',
+    }),
+    skipAuth: true,
+  }).then(raw => raw.data)
+}
+
+export function apiVerifySignupOtp(email: string, otp: string): Promise<void> {
+  return apiFetch<void>('/api/v1/register/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp: Number(otp) }),
+    skipAuth: true,
+  })
+}
+
+export function apiCheckUserExists(email: string): Promise<UserExistsResult> {
+  return apiFetch<{ success: boolean; message: string; data: UserExistsResult }>('/api/v1/user-exists', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    skipAuth: true,
+  }).then(raw => raw.data)
 }
 
 export function apiLogout(): Promise<void> {

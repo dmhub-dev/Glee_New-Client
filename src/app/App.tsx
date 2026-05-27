@@ -5,6 +5,7 @@ import { Skeleton } from '@glee/ui'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 
 const LoginPage          = lazy(() => import('../routes/login'))
+const SignupPage         = lazy(() => import('../routes/signup'))
 const PublicHomePage     = lazy(() => import('../public/routes/index'))
 const PublicEventPage    = lazy(() => import('../public/routes/events/$eventId'))
 const PublicCheckoutPage = lazy(() => import('../public/routes/checkout/index'))
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="/events/:eventId" element={<PublicEventPage />} />
         <Route path="/checkout" element={<PublicCheckoutPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
         <Route path="/app" element={<ProtectedRoute roles={['user']}><CustomerDashboardPage /></ProtectedRoute>} />
         <Route path="/app/events" element={<ProtectedRoute roles={['user']}><CustomerEventsPage /></ProtectedRoute>} />
         <Route path="/app/events/:eventId" element={<ProtectedRoute roles={['user']}><CustomerEventPage /></ProtectedRoute>} />

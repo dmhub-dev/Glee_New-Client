@@ -98,6 +98,7 @@ Routes:
 /events/:eventId       Public event detail and guest ticket purchase
 /checkout              Public checkout route
 /login                 Login for all authenticated roles
+/signup                Customer signup and email OTP confirmation
 ```
 
 Relevant files:
@@ -142,6 +143,7 @@ Customer behavior:
 - Can pay with wallet or Paystack.
 - Can buy menu add-ons with tickets when the event is purchasable.
 - Can manage profile details, 2FA preference, notification preferences, and password.
+- Can sign up from `/signup`; the account is activated after email OTP confirmation.
 
 ### Operations Dashboard
 

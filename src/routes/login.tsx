@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,7 +10,7 @@ import { Eye, EyeOff, LogIn } from 'lucide-react'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 type LoginValues = z.infer<typeof loginSchema>
 
@@ -24,7 +24,8 @@ export default function LoginPage() {
   const [otp, setOtp] = useState('')
   const [isVerifying, setIsVerifying] = useState(false)
 
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname
+  const routeState = location.state as { from?: { pathname: string }; message?: string } | null
+  const from = routeState?.from?.pathname
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -78,6 +79,11 @@ export default function LoginPage() {
           {serverError && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3">
               {serverError}
+            </div>
+          )}
+          {routeState?.message && !serverError && (
+            <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-xl px-4 py-3">
+              {routeState.message}
             </div>
           )}
 
@@ -166,7 +172,9 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-admin-20">Glee · Restricted Access</p>
+        <p className="text-center text-xs text-admin-30">
+          New to Glee? <Link to="/signup" className="font-semibold text-neon-pink hover:underline">Create an account</Link>
+        </p>
       </div>
     </div>
   )
