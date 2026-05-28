@@ -104,6 +104,17 @@ export interface AdminEventTicket {
     price: string | number
   } | null
   checkedInAt?: string | null
+  ticketCheckIns?: Array<{
+    id: string
+    ticketRef: string
+    ticketNumber: number
+    checkedInAt: string
+    checkedInBy?: {
+      id?: string
+      name?: string | null
+      email?: string | null
+    } | null
+  }>
 }
 
 export interface AdminEventTicketsResult {
@@ -135,6 +146,32 @@ export function checkInTicket(ticketId: string): Promise<void> {
   return apiFetch(`/api/v1/admin/event-ticket/${ticketId}/check-in`, { method: 'PATCH' })
 }
 
+export interface CheckInTicketByQrParams {
+  eventId: string
+  ticketRef: string
+}
+
+export interface CheckInTicketByQrResult {
+  ticket: AdminEventTicket
+  checkIn: {
+    id: string
+    ticketRef: string
+    ticketNumber: number
+    checkedInAt: string
+  }
+  ticketRef: string
+  ticketNumber: number
+  checkedInCount: number
+  remainingCount: number
+}
+
+export function checkInTicketByQr(params: CheckInTicketByQrParams): Promise<CheckInTicketByQrResult> {
+  return apiFetch<{ success: boolean; data: CheckInTicketByQrResult }>('/api/v1/admin/event-ticket/check-in/qr', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }).then(r => r.data)
+}
+
 export function revertTicketCheckIn(ticketId: string): Promise<void> {
   return apiFetch(`/api/v1/admin/event-ticket/${ticketId}/check-in/revert`, { method: 'PATCH' })
 }
@@ -143,6 +180,14 @@ export function useCheckInTicket(eventId?: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (ticketId: string) => checkInTicket(ticketId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
+  })
+}
+
+export function useCheckInTicketByQr(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (params: CheckInTicketByQrParams) => checkInTicketByQr(params),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
   })
 }

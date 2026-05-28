@@ -18,6 +18,7 @@ const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
 const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
 const EventAttendeesPage = lazy(() => import('../routes/events/EventAttendees'))
 const BookingsPage       = lazy(() => import('../routes/bookings/index'))
+const BookingEventPage   = lazy(() => import('../routes/bookings/$eventId'))
 const MenuPricingPage    = lazy(() => import('../routes/menu-pricing/index'))
 const SalesReportsPage   = lazy(() => import('../routes/sales-reports/index'))
 const CalendarPage       = lazy(() => import('../routes/calendar/index'))
@@ -89,6 +90,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff', 'customer_support']}>
               <BookingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/bookings/:eventId"
+          element={
+            <ProtectedRoute roles={['vendor', 'vendor_staff', 'admin', 'customer_support']}>
+              <BookingEventPage />
             </ProtectedRoute>
           }
         />
