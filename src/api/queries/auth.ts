@@ -147,6 +147,27 @@ export function apiCheckUserExists(email: string): Promise<UserExistsResult> {
   }).then(raw => raw.data)
 }
 
+export function apiForgotPassword(email: string): Promise<string> {
+  return apiFetch<{ success: boolean; message: string }>('/api/v1/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    skipAuth: true,
+  }).then(raw => raw.message)
+}
+
+export function apiResetPassword(params: { email: string; otp: string; password: string; confirmPassword: string }): Promise<string> {
+  return apiFetch<{ success: boolean; message: string }>('/api/v1/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: params.email,
+      otp: Number(params.otp),
+      password: params.password,
+      confirmPassword: params.confirmPassword,
+    }),
+    skipAuth: true,
+  }).then(raw => raw.message)
+}
+
 export function apiAcceptInvitation(token: string, password: string): Promise<void> {
   return apiFetch<void>(`/api/v1/invitations/accept/${token}`, {
     method: 'POST',
