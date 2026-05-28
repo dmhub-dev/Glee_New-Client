@@ -10,6 +10,8 @@ export interface ProfileData {
   phone: string
   role: UserRole
   avatarUrl: string | null
+  address?: string
+  profileStatus?: boolean
 }
 
 interface BackendMeUser {
@@ -21,12 +23,15 @@ interface BackendMeUser {
   role: string | { name: string } | null
   twoFactorEnabled?: boolean
   lastLoginAt?: string | null
+  address?: string | null
+  profileStatus?: boolean
 }
 
 export interface UpdateProfileDto {
   firstName?: string
   lastName?: string
   phone?: string
+  address?: string
 }
 
 export interface ChangePasswordDto {
@@ -74,6 +79,8 @@ export function getProfile(): Promise<ProfileData> {
       phone: r.data.phone ?? '',
       role: (role ?? '').toLowerCase() as UserRole,
       avatarUrl: r.data.profileImage ?? null,
+      address: r.data.address ?? '',
+      profileStatus: r.data.profileStatus ?? true,
     }
   })
 }

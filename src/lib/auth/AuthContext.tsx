@@ -23,6 +23,7 @@ interface AuthContextValue {
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; email?: string; message?: string; role?: string | null }>
   verifyTwoFactor: (email: string, otp: string) => Promise<{ role: string | null }>
+  refreshUser: () => Promise<AuthUser | null>
   logout: () => Promise<void>
 }
 
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextValue>({
   isAuthenticated: false,
   login: async () => ({ requiresTwoFactor: false }),
   verifyTwoFactor: async () => ({ role: null }),
+  refreshUser: async () => null,
   logout: async () => {},
 })
 
@@ -86,6 +88,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { role: me.role }
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const me = await apiMe()
+    if (AUTH_ROLES.has(me.role)) {
+      setUser(me)
+      return me
+    }
+    tokens.clear()
+    setUser(null)
+    return null
+  }, [])
+
   const logout = useCallback(async () => {
     await apiLogout().catch(() => {})
     tokens.clear()
@@ -93,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, verifyTwoFactor, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, verifyTwoFactor, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   )

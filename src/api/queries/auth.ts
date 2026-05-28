@@ -7,6 +7,8 @@ export interface AuthUser {
   email: string
   role: UserRole
   avatarUrl: string | null
+  profileStatus?: boolean
+  twoFactorEnabled?: boolean
 }
 
 export interface LoginResponse {
@@ -47,6 +49,7 @@ interface BackendUser {
   role: string | { name: string } | null
   profileImage?: string | null
   twoFactorEnabled?: boolean
+  profileStatus?: boolean
 }
 
 interface BackendLoginResponse {
@@ -75,6 +78,8 @@ function toAuthUser(raw: BackendUser): AuthUser {
     email: raw.email,
     role: (role ?? '').toLowerCase() as UserRole,
     avatarUrl: raw.profileImage ?? null,
+    profileStatus: raw.profileStatus ?? true,
+    twoFactorEnabled: raw.twoFactorEnabled ?? false,
   }
 }
 
@@ -140,6 +145,14 @@ export function apiCheckUserExists(email: string): Promise<UserExistsResult> {
     body: JSON.stringify({ email }),
     skipAuth: true,
   }).then(raw => raw.data)
+}
+
+export function apiAcceptInvitation(token: string, password: string): Promise<void> {
+  return apiFetch<void>(`/api/v1/invitations/accept/${token}`, {
+    method: 'POST',
+    body: JSON.stringify({ password, confirmPassword: password }),
+    skipAuth: true,
+  })
 }
 
 export function apiLogout(): Promise<void> {

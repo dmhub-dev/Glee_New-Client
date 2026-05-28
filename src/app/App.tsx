@@ -6,6 +6,8 @@ import ProtectedRoute from '../components/auth/ProtectedRoute'
 
 const LoginPage          = lazy(() => import('../routes/login'))
 const SignupPage         = lazy(() => import('../routes/signup'))
+const AcceptInvitationPage = lazy(() => import('../routes/invitations/accept'))
+const CompleteProfilePage  = lazy(() => import('../routes/complete-profile'))
 const PublicHomePage     = lazy(() => import('../public/routes/index'))
 const PublicEventPage    = lazy(() => import('../public/routes/events/$eventId'))
 const PublicCheckoutPage = lazy(() => import('../public/routes/checkout/index'))
@@ -62,6 +64,8 @@ export default function App() {
         <Route path="/checkout" element={<PublicCheckoutPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
+        <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfilePage /></ProtectedRoute>} />
         <Route path="/app" element={<ProtectedRoute roles={['user']}><CustomerDashboardPage /></ProtectedRoute>} />
         <Route path="/app/events" element={<ProtectedRoute roles={['user']}><CustomerEventsPage /></ProtectedRoute>} />
         <Route path="/app/events/:eventId" element={<ProtectedRoute roles={['user']}><CustomerEventPage /></ProtectedRoute>} />
