@@ -31,6 +31,7 @@ const CustomerDashboardPage = lazy(() => import('../customer/dashboard/index'))
 const CustomerEventsPage = lazy(() => import('../customer/events/index'))
 const CustomerEventPage  = lazy(() => import('../customer/events/$eventId'))
 const CustomerTicketsPage = lazy(() => import('../customer/tickets/index'))
+const CustomerTicketDetailPage = lazy(() => import('../customer/tickets/$eventId'))
 const CustomerWalletPage = lazy(() => import('../customer/wallet/index'))
 const CustomerProfilePage = lazy(() => import('../customer/profile/index'))
 
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="/app/events" element={<ProtectedRoute roles={['user']}><CustomerEventsPage /></ProtectedRoute>} />
         <Route path="/app/events/:eventId" element={<ProtectedRoute roles={['user']}><CustomerEventPage /></ProtectedRoute>} />
         <Route path="/app/tickets" element={<ProtectedRoute roles={['user']}><CustomerTicketsPage /></ProtectedRoute>} />
+        <Route path="/app/tickets/:eventId" element={<ProtectedRoute roles={['user']}><CustomerTicketDetailPage /></ProtectedRoute>} />
         <Route path="/app/wallet" element={<ProtectedRoute roles={['user']}><CustomerWalletPage /></ProtectedRoute>} />
         <Route path="/app/profile" element={<ProtectedRoute roles={['user']}><CustomerProfilePage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
