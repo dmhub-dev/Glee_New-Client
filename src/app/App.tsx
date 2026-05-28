@@ -11,6 +11,7 @@ const CompleteProfilePage  = lazy(() => import('../routes/complete-profile'))
 const PublicHomePage     = lazy(() => import('../public/routes/index'))
 const PublicEventPage    = lazy(() => import('../public/routes/events/$eventId'))
 const PublicCheckoutPage = lazy(() => import('../public/routes/checkout/index'))
+const EventTicketConfirmPage = lazy(() => import('../public/routes/payment/EventTicketConfirm'))
 const DashboardPage      = lazy(() => import('../routes/index'))
 const EventsListPage     = lazy(() => import('../routes/events/index'))
 const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="/" element={<PublicHomePage />} />
         <Route path="/events/:eventId" element={<PublicEventPage />} />
         <Route path="/checkout" element={<PublicCheckoutPage />} />
+        <Route path="/payment/event-ticket/confirm" element={<EventTicketConfirmPage />} />
         <Route path="/login" element={<LoginPage mode="dashboard" />} />
         <Route path="/user/login" element={<LoginPage mode="user" />} />
         <Route path="/signup" element={<SignupPage />} />

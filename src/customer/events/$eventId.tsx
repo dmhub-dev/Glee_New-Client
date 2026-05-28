@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet } from '@glee/api'
+import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticketVerificationStorageKey } from '@glee/api'
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, Clock, CreditCard, MapPin, Minus, Plus, ShoppingBag, Ticket, Wallet } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
@@ -117,8 +117,15 @@ export default function CustomerEventDetailPage() {
         useWallet,
         walletPaymentType: useWallet ? paymentType : undefined,
         installmentCount: paymentType === 'INSTALLMENT' ? installmentCount : undefined,
+        callbackUrl: `${window.location.origin}/payment/event-ticket/confirm`,
       })
       if (!useWallet && result.authorization_url) {
+        if (result.reference && result.verificationToken) {
+          sessionStorage.setItem(
+            ticketVerificationStorageKey(result.reference),
+            result.verificationToken,
+          )
+        }
         window.location.href = result.authorization_url
         return
       }

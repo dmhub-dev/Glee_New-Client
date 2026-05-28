@@ -7,7 +7,7 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminUser } from '../../app/providers'
 import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories, useLocations } from '@glee/api'
-import { Button, Input, Textarea, Label, Skeleton } from '@glee/ui'
+import { Button, Input, Textarea, Label, Skeleton, useToast } from '@glee/ui'
 import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
 import type { Location } from '@glee/api'
@@ -301,6 +301,7 @@ export default function EventFormPage() {
   const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
   const { data: categoriesData } = useCategories()
   const { data: locationsData } = useLocations({ vendorScoped: isVendorRole })
+  const { toast } = useToast()
 
   const [landscapes, setLandscapes] = useState<{ url: string; file?: File }[]>([])
   const [portraits,  setPortraits]  = useState<{ url: string; file?: File }[]>([])
@@ -491,12 +492,28 @@ export default function EventFormPage() {
       menuItems: values.menuItems?.length ? values.menuItems : undefined,
     }
 
-    if (isNew) {
-      await createMutation.mutateAsync(payload)
-    } else {
-      await updateMutation.mutateAsync({ id: eventId!, data: payload })
+    try {
+      if (isNew) {
+        await createMutation.mutateAsync(payload)
+      } else {
+        await updateMutation.mutateAsync({ id: eventId!, data: payload })
+      }
+      toast({
+        title: asDraft ? 'Event saved as draft' : values.status === 'active' ? 'Event published' : 'Event saved',
+      })
+      navigate('/dashboard/events')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Please check the event details and try again.'
+      toast({ title: 'Could not save event', description: message, variant: 'destructive' })
     }
-    navigate('/dashboard/events')
+  }
+
+  function onInvalid() {
+    toast({
+      title: 'Event details need attention',
+      description: 'Please complete the required fields before publishing.',
+      variant: 'destructive',
+    })
   }
 
   if (!isNew && isLoading) {
@@ -546,6 +563,7 @@ export default function EventFormPage() {
   const visibleStatusOptions = isNew
     ? STATUS_OPTIONS.filter(option => option.value === 'draft' || option.value === 'active')
     : STATUS_OPTIONS
+  const isSaving = isSubmitting || createMutation.isPending || updateMutation.isPending
 
   return (
     <AdminLayout title={isNew ? 'Create Event' : `Edit Event`}>
@@ -569,7 +587,7 @@ export default function EventFormPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(v => onSubmit(v))} className="space-y-6">
+          <form onSubmit={handleSubmit(v => onSubmit(v), onInvalid)} className="space-y-6">
 
             {/* Basic info */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
@@ -1013,18 +1031,18 @@ export default function EventFormPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleSubmit(v => onSubmit(v, true))}
-                  disabled={isSubmitting}
+                  onClick={handleSubmit(v => onSubmit(v, true), onInvalid)}
+                  disabled={isSaving}
                   className="rounded-full border-white/20 text-admin-70 hover:bg-admin-input hover:border-white/40"
                 >
                   Save as Draft
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSaving}
                   className="rounded-full bg-neon-pink hover:bg-[#cc2272] text-white font-semibold px-6"
                 >
-                  {isSubmitting ? 'Saving...' : (formValues.status === 'active' ? 'Publish Event' : 'Save Event')}
+                  {isSaving ? 'Saving...' : (formValues.status === 'active' ? 'Publish Event' : 'Save Event')}
                 </Button>
               </div>
             </div>

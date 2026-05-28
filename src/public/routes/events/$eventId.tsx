@@ -1,15 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { usePaystackPayment } from 'react-paystack'
 import { useEvent } from '@glee/api'
 import {
   Button, Skeleton, useToast, Separator,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@glee/ui'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
-import { initiateGuestPurchase, confirmTicketPurchase } from '@glee/api'
+import { initiateGuestPurchase, ticketVerificationStorageKey } from '@glee/api'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
 
@@ -25,12 +24,7 @@ export default function EventDetailPage() {
   const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set())
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [accessCode, setAccessCode] = useState<string | null>(null)
   const [isPreparing, setIsPreparing] = useState(false)
-  const [pendingPayment, setPendingPayment] = useState(false)
-  const paymentRef = useRef(`glee-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-  const verificationTokenRef = useRef<string | null>(null)
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -53,44 +47,6 @@ export default function EventDetailPage() {
   const ticketTotal = selectedItems.reduce((sum, { tier, quantity }) => sum + tier.price * quantity, 0)
   const menuTotal = selectedMenuItems.reduce((sum, { item, quantity }) => sum + item.price * quantity, 0)
   const totalPrice = ticketTotal + menuTotal
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initializePayment = usePaystackPayment({
-    reference: paymentRef.current,
-    email: watchedValues.email || 'placeholder@glee.app',
-    amount: totalPrice * 100,
-    currency: 'KES',
-    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY ?? '',
-    metadata: { custom_fields: [] },
-    ...(accessCode ? { access_code: accessCode } : {}),
-  } as any)
-
-  // Runs after state settles — initializePayment closure now has the correct access_code
-  useEffect(() => {
-    if (!pendingPayment || !accessCode) return
-    setPendingPayment(false)
-    setIsProcessing(true)
-    initializePayment({
-      onSuccess: async () => {
-        setIsProcessing(false)
-        try {
-          await confirmTicketPurchase(verificationTokenRef.current!)
-        } catch {
-          // payment succeeded — don't block success screen on ticket creation error
-        }
-        setIsSuccess(true)
-        toast({ title: 'Ticket confirmed!', description: 'Check your email for the QR code.' })
-      },
-      onClose: () => {
-        setIsProcessing(false)
-        setAccessCode(null)
-        paymentRef.current = `glee-${Date.now()}-${Math.random().toString(36).slice(2)}`
-        toast({ title: 'Payment cancelled', description: 'You can try again.', variant: 'destructive' })
-      },
-    })
-  // initializePayment intentionally excluded — calling it from the effect that set up access_code
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingPayment, accessCode])
 
   if (isLoading) {
     return (
@@ -141,14 +97,20 @@ export default function EventDetailPage() {
         guestName: watchedValues.fullName,
         guestEmail: watchedValues.email,
         guestPhone: watchedValues.phone,
+        callbackUrl: `${window.location.origin}/payment/event-ticket/confirm`,
         menuItems: selectedMenuItems.length
           ? selectedMenuItems.map(({ item, quantity }) => ({ id: item.id, quantity }))
           : undefined,
       })
-      verificationTokenRef.current = intent.verificationToken
-      paymentRef.current = intent.reference
-      setAccessCode(intent.access_code)  // triggers re-render with access_code in usePaystackPayment
-      setPendingPayment(true)            // useEffect fires after re-render, calls initializePayment
+      if (!intent.authorization_url) {
+        throw new Error('Paystack did not return a checkout URL')
+      }
+      sessionStorage.setItem(
+        ticketVerificationStorageKey(intent.reference),
+        intent.verificationToken,
+      )
+      setIsProcessing(true)
+      window.location.href = intent.authorization_url
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Could not initiate payment'
       toast({ title: 'Payment error', description: message, variant: 'destructive' })
@@ -468,7 +430,7 @@ export default function EventDetailPage() {
       </div>
 
       {/* Checkout overlay */}
-      {checkoutOpen && !isSuccess && (
+      {checkoutOpen && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={e => { if (e.target === e.currentTarget && !isProcessing) setCheckoutOpen(false) }}
@@ -676,33 +638,6 @@ export default function EventDetailPage() {
         </div>
       </footer>
 
-      {/* Success overlay */}
-      {isSuccess && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f0f15] border border-white/15 rounded-2xl w-full max-w-md p-10 flex flex-col items-center text-center gap-5">
-            <div className="text-6xl">🎉</div>
-            <h2 className="font-heading font-black text-3xl text-white">Ticket Confirmed!</h2>
-            <p className="text-white/70 font-semibold">{event.title}</p>
-            <div className="flex flex-col gap-1.5 w-full">
-              {selectedItems.map(({ tier, quantity }) => (
-                <p key={tier.id} className="text-white/50 font-mono text-sm">
-                  {tier.name} × {quantity} · KSh {(tier.price * quantity).toLocaleString()}
-                </p>
-              ))}
-            </div>
-            <p className="text-white/50 text-sm max-w-xs">
-              Confirmation email with your QR code sent to{' '}
-              <strong className="text-white">{watchedValues.email}</strong>
-            </p>
-            <Button
-              onClick={() => navigate('/')}
-              className="rounded-full bg-neon-pink hover:bg-neon-hover text-white font-semibold shadow-neon px-8 transition-all hover:scale-[1.03]"
-            >
-              Back to Events
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

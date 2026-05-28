@@ -9,6 +9,7 @@ export interface InitiateGuestPurchaseParams {
   guestEmail: string
   guestPhone: string
   menuItems?: { id: string; quantity: number }[]
+  callbackUrl?: string
 }
 
 export interface InitiateGuestPurchaseResult {
@@ -43,6 +44,7 @@ export interface PurchaseTicketParams {
   useWallet?: boolean
   walletPaymentType?: 'FULL' | 'INSTALLMENT'
   installmentCount?: number
+  callbackUrl?: string
 }
 
 export interface PurchaseTicketResult {
@@ -57,6 +59,10 @@ export function purchaseTicket(params: PurchaseTicketParams): Promise<PurchaseTi
     method: 'POST',
     body: JSON.stringify(params),
   }).then(r => r.data ?? {})
+}
+
+export function ticketVerificationStorageKey(reference: string) {
+  return `glee:event-ticket-verification:${reference}`
 }
 
 export interface AdminEventTicket {
