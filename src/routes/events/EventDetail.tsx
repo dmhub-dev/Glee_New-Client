@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, type EventApiPayload } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Progress } from '@glee/ui'
+import { Skeleton, Progress } from '@glee/ui'
 import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
@@ -107,9 +107,8 @@ export default function EventDetailPage() {
   const { data: event, isLoading } = useAdminEvent(eventId ?? '', { vendorScoped: isVendorRole })
   const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
   const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
-  const { data: ticketData, isLoading: ticketsLoading } = useAdminEventTickets(eventId)
+  const { data: ticketData } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
-  const [attendeesOpen, setAttendeesOpen] = useState(false)
 
   function handleStatusChange(newStatus: Event['status']) {
     if (!event) return
@@ -196,7 +195,6 @@ export default function EventDetailPage() {
   }, 0)
   const totalPurchaseRevenue = purchasedTickets.reduce((sum, ticket) => sum + Number(ticket.totalPrice ?? ticket.payment?.amount ?? 0), 0)
   const menuRevenue = Math.max(0, totalPurchaseRevenue - ticketRevenue)
-  const attendeePreview = purchasedTickets.slice(0, 5)
   const scheduleGroups = getScheduleGroups(event.schedules ?? [])
 
   return (
@@ -264,6 +262,22 @@ export default function EventDetailPage() {
               </button>
             )}
           </div>
+        </div>
+
+        <div className="flex w-fit rounded-full border border-admin bg-admin-surface p-1">
+          <button
+            type="button"
+            className="rounded-full bg-neon-pink px-4 py-1.5 text-xs font-semibold text-white"
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(`/dashboard/events/${event.id}/attendees`)}
+            className="rounded-full px-4 py-1.5 text-xs font-semibold text-admin-50 transition hover:text-neon-pink"
+          >
+            Attendees
+          </button>
         </div>
 
         {/* Two-column layout */}
@@ -424,44 +438,6 @@ export default function EventDetailPage() {
               </div>
             </div>
 
-            {/* Attendees */}
-            <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-heading font-bold text-sm text-foreground">Attendees</h2>
-                  <p className="mt-1 text-xs text-admin-40">People who have purchased tickets for this event</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAttendeesOpen(true)}
-                  className="rounded-full border border-admin bg-admin-overlay px-3 py-1.5 text-xs font-medium text-admin-60 hover:border-neon-pink/30 hover:text-neon-pink"
-                >
-                  View full list
-                </button>
-              </div>
-              {ticketsLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-12 rounded-lg" />)}
-                </div>
-              ) : attendeePreview.length === 0 ? (
-                <div className="rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
-                  No attendees have purchased tickets yet.
-                </div>
-              ) : (
-                <div className="divide-y divide-admin rounded-xl border border-admin bg-admin-overlay">
-                  {attendeePreview.map(ticket => (
-                    <div key={ticket.id} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-[1fr_1fr_auto] sm:items-center">
-                      <div>
-                        <p className="font-medium text-admin-90">{ticket.user?.name ?? 'Guest attendee'}</p>
-                        <p className="text-xs text-admin-40">{ticket.user?.email ?? 'No email'}</p>
-                      </div>
-                      <p className="text-xs text-admin-50">{ticket.user?.phone ?? 'No phone'}</p>
-                      <p className="font-mono text-xs text-neon-pink">{ticket.quantity} ticket{ticket.quantity === 1 ? '' : 's'}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Right: stats + breakdown */}
@@ -569,44 +545,6 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
-      <Dialog open={attendeesOpen} onOpenChange={setAttendeesOpen}>
-        <DialogContent className="max-h-[86vh] max-w-4xl overflow-y-auto border-admin bg-admin-surface">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Event attendees</DialogTitle>
-            <DialogDescription>{event.title}</DialogDescription>
-          </DialogHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Phone</th>
-                  <th className="px-4 py-3 font-medium">Tickets</th>
-                  <th className="px-4 py-3 font-medium">Amount</th>
-                  <th className="px-4 py-3 font-medium">Purchased</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-admin">
-                {purchasedTickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-admin-40">No attendees yet.</td>
-                  </tr>
-                ) : purchasedTickets.map(ticket => (
-                  <tr key={ticket.id} className="hover:bg-admin-overlay">
-                    <td className="px-4 py-3 font-medium text-admin-90">{ticket.user?.name ?? 'Guest attendee'}</td>
-                    <td className="px-4 py-3 text-admin-50">{ticket.user?.email ?? '-'}</td>
-                    <td className="px-4 py-3 text-admin-50">{ticket.user?.phone ?? '-'}</td>
-                    <td className="px-4 py-3 font-mono text-neon-pink">{ticket.quantity}</td>
-                    <td className="px-4 py-3 font-mono text-admin-70">{money(Number(ticket.totalPrice ?? ticket.payment?.amount ?? 0))}</td>
-                    <td className="px-4 py-3 text-admin-40">{new Date(ticket.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </DialogContent>
-      </Dialog>
     </AdminLayout>
   )
 }

@@ -65,6 +65,10 @@ export interface AdminEventTicket {
   userId: string | null
   quantity: number
   totalPrice: string | number
+  amountPaid?: string | number
+  outstandingAmount?: string | number
+  paymentDueDate?: string | null
+  paymentPlan?: unknown
   createdAt: string
   user: {
     id?: string
@@ -76,6 +80,9 @@ export interface AdminEventTicket {
     amount?: string | number | null
     totalPrice?: string | number | null
     noOfItems?: number | null
+    paymentMethod?: string | null
+    paymentStatus?: string | null
+    isPaid?: boolean | null
     metadata?: unknown
   } | null
   ticketCategory?: {
@@ -92,8 +99,8 @@ export interface AdminEventTicketsResult {
   page: number
 }
 
-export function getAdminEventTickets(eventId: string): Promise<AdminEventTicketsResult> {
-  const params = new URLSearchParams({ eventId, page: '1', limit: '100' })
+export function getAdminEventTickets(eventId: string, page = 1, limit = 100): Promise<AdminEventTicketsResult> {
+  const params = new URLSearchParams({ eventId, page: String(page), limit: String(limit) })
   return apiFetch<{ success: boolean; data: AdminEventTicket[]; totalPages?: number; page?: number }>(
     `/api/v1/admin/event-ticket?${params.toString()}`,
   ).then(r => ({
@@ -103,10 +110,10 @@ export function getAdminEventTickets(eventId: string): Promise<AdminEventTickets
   }))
 }
 
-export function useAdminEventTickets(eventId: string | undefined) {
+export function useAdminEventTickets(eventId: string | undefined, page = 1, limit = 100) {
   return useQuery({
-    queryKey: ['admin', 'event-tickets', eventId],
-    queryFn: () => getAdminEventTickets(eventId as string),
+    queryKey: ['admin', 'event-tickets', eventId, page, limit],
+    queryFn: () => getAdminEventTickets(eventId as string, page, limit),
     enabled: Boolean(eventId),
   })
 }

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
 import {
@@ -31,6 +32,7 @@ function ticketBuyer(ticket: AdminEventTicket) {
 
 function EventBookingsPanel({ event, canCheckIn }: { event: Event; canCheckIn: boolean }) {
   const { toast } = useToast()
+  const navigate = useNavigate()
   const { data, isLoading } = useAdminEventTickets(event.id)
   const checkIn = useCheckInTicket(event.id)
   const revert = useRevertTicketCheckIn(event.id)
@@ -55,7 +57,15 @@ function EventBookingsPanel({ event, canCheckIn }: { event: Event; canCheckIn: b
 
   return (
     <section className="rounded-lg border border-admin bg-admin-surface shadow-admin">
-      <div className="flex flex-col gap-3 border-b border-admin p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => navigate(`/dashboard/events/${event.id}/attendees`)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') navigate(`/dashboard/events/${event.id}/attendees`)
+        }}
+        className="flex cursor-pointer flex-col gap-3 border-b border-admin p-4 transition hover:bg-admin-overlay/60 lg:flex-row lg:items-center lg:justify-between"
+      >
         <div>
           <h2 className="font-heading text-sm font-bold text-foreground">{event.title}</h2>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-admin-40">
@@ -66,6 +76,9 @@ function EventBookingsPanel({ event, canCheckIn }: { event: Event; canCheckIn: b
         <div className="flex flex-wrap gap-2">
           <Badge className="border-admin bg-admin-overlay text-admin-60">{sold.toLocaleString()} tickets</Badge>
           <Badge className="border-neon-pink/30 bg-neon-pink/10 text-neon-pink">{money(revenue)}</Badge>
+          <Button size="sm" variant="outline" className="border-admin bg-admin-input text-xs">
+            View attendees
+          </Button>
         </div>
       </div>
 

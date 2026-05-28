@@ -15,6 +15,7 @@ const DashboardPage      = lazy(() => import('../routes/index'))
 const EventsListPage     = lazy(() => import('../routes/events/index'))
 const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
 const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
+const EventAttendeesPage = lazy(() => import('../routes/events/EventAttendees'))
 const BookingsPage       = lazy(() => import('../routes/bookings/index'))
 const MenuPricingPage    = lazy(() => import('../routes/menu-pricing/index'))
 const SalesReportsPage   = lazy(() => import('../routes/sales-reports/index'))
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="/dashboard/events" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventsListPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/new" element={<ProtectedRoute roles={['super_admin', 'admin', 'vendor']}><EventFormPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/:eventId/edit" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventFormPage /></ProtectedRoute>} />
+        <Route path="/dashboard/events/:eventId/attendees" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventAttendeesPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/:eventId" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventDetailPage /></ProtectedRoute>} />
         <Route
           path="/dashboard/bookings"
