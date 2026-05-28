@@ -8,7 +8,7 @@ import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminUser } from '../../app/providers'
 import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories, useLocations } from '@glee/api'
 import { Button, Input, Textarea, Label, Skeleton, useToast } from '@glee/ui'
-import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
 import type { Location } from '@glee/api'
 
@@ -316,6 +316,24 @@ function LocationPicker({
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+function VendorApprovalNotice() {
+  return (
+    <div className="rounded-2xl border border-neon-pink/30 bg-neon-pink/10 p-4 shadow-admin">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-pink text-white">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-heading text-base font-black text-foreground">Pending approval</p>
+          <p className="mt-1 text-sm leading-6 text-admin-70">
+            Vendor events are submitted to Glee Admin for review. Once approved, the event becomes active and visible for public ticket purchases.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -663,6 +681,8 @@ export default function EventFormPage() {
             Back to Events
           </button>
 
+          {isVendorRole && <VendorApprovalNotice />}
+
           {!isNew && existingEvent?.status === 'active' && (
             <div className="bg-neon-pink/10 border border-neon-pink/20 rounded-xl px-4 py-3 text-sm text-neon-pink">
               This event is active — changes will update immediately.
@@ -701,11 +721,9 @@ export default function EventFormPage() {
               </div>
 
               {isVendorRole ? (
-                <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3">
-                  <p className="text-sm font-semibold text-sky-300">Pending approval</p>
-                  <p className="mt-1 text-xs leading-5 text-sky-100/80">
-                    Vendor events are submitted to Glee Admin for review. Once approved, the event becomes active and visible for public ticket purchases.
-                  </p>
+                <div className="rounded-xl border border-admin bg-admin-overlay px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neon-pink">Status</p>
+                  <p className="mt-1 text-sm font-medium text-admin-80">This event will be submitted as Pending Approval.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
