@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useDashboardOverview, useDashboardRecentSales, useDashboardRevenueSeries } from '../../../lib/queries/stats'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '../../../lib/api/client'
 import type {
   DailyEarningsRow,
   DailyTicketsSoldRow,
@@ -11,9 +12,106 @@ import type {
 } from '../types'
 import { asNumber, daysForRange, formatDayLabel, normalizePaymentStatus, normalizeTransactionType } from '../utils'
 
+const financialsKeys = {
+  overview: (range: TimeRange, upcomingLimit: number, recentSalesLimit: number) =>
+    ['admin', 'financials', 'overview', range, upcomingLimit, recentSalesLimit] as const,
+  recentSales: (limit: number) => ['admin', 'financials', 'recent-sales', limit] as const,
+  revenue: (days: number) => ['admin', 'financials', 'revenue', days] as const,
+  dailyEarnings: (range: TimeRange) => ['admin', 'financials', 'daily-earnings', range] as const,
+  ticketRevenue: (range: TimeRange) => ['admin', 'financials', 'ticket-revenue', range] as const,
+  highestSellingEvent: (range: TimeRange) => ['admin', 'financials', 'highest-selling-event', range] as const,
+}
+
+function unwrapData<T>(res: unknown): T {
+  if (res && typeof res === 'object') {
+    const anyRes = res as { data?: unknown }
+    if (anyRes.data !== undefined) return anyRes.data as T
+  }
+  return res as T
+}
+
+async function getFinancialsOverview(range: TimeRange, upcomingLimit: number, recentSalesLimit: number) {
+  const res = await apiFetch<unknown>(
+    `/api/v1/financials/overview?range=${range}&upcomingLimit=${upcomingLimit}&recentSalesLimit=${recentSalesLimit}`,
+  )
+  return unwrapData<Record<string, unknown>>(res) ?? {}
+}
+
+async function getFinancialsRecentSales(limit: number) {
+  const res = await apiFetch<unknown>(`/api/v1/financials/recent-sales?limit=${limit}`)
+  const data = unwrapData<unknown>(res)
+  return Array.isArray(data) ? data : Array.isArray((data as any)?.recentSales) ? (data as any).recentSales : []
+}
+
+async function getFinancialsRevenue(days = 14) {
+  const res = await apiFetch<unknown>(`/api/v1/financials/revenue?days=${days}`)
+  const data = unwrapData<unknown>(res)
+  const rows = Array.isArray(data) ? data : Array.isArray((data as any)?.series) ? (data as any).series : []
+  return rows
+    .map((r: any) => ({
+      date: String(r?.date ?? r?.day ?? r?.createdAt ?? r?.created_at ?? ''),
+      revenue: asNumber(r?.revenue ?? r?.amount ?? r?.totalRevenue ?? r?.total_revenue ?? r?.value),
+      profit: r?.profit !== undefined ? asNumber(r?.profit) : undefined,
+    }))
+    .filter((r: any) => !!r.date)
+}
+
+async function getFinancialsDailyEarnings(range: TimeRange) {
+  const res = await apiFetch<unknown>(`/api/v1/financials/daily-earnings?range=${range}`)
+  const data = unwrapData<unknown>(res)
+  const rows = Array.isArray(data) ? data : Array.isArray((data as any)?.series) ? (data as any).series : []
+  return rows
+    .map((r: any) => ({
+      date: String(r?.date ?? r?.day ?? r?.createdAt ?? r?.created_at ?? ''),
+      ticketEarnings: asNumber(r?.ticketEarnings ?? r?.ticketRevenue ?? r?.ticket_revenue ?? r?.ticket_earnings),
+      menuEarnings: asNumber(r?.menuEarnings ?? r?.menuRevenue ?? r?.menu_revenue ?? r?.menu_earnings),
+      ticketsSold: asNumber(r?.ticketsSold ?? r?.tickets_sold),
+      earnings: asNumber(r?.earnings ?? r?.revenue ?? r?.amount ?? r?.total ?? r?.value),
+    }))
+    .filter((r: any) => !!r.date)
+}
+
+async function getFinancialsTicketRevenue(range: TimeRange): Promise<number> {
+  const res = await apiFetch<unknown>(`/api/v1/financials/ticket-revenue?range=${range}`)
+  const data = unwrapData<any>(res)
+  return asNumber(data?.ticketRevenue ?? data?.ticket_revenue ?? data?.revenue ?? data?.amount ?? data?.total ?? data?.value ?? data)
+}
+
+async function getFinancialsHighestSellingEvent(range: TimeRange): Promise<HighestSellingEvent | null> {
+  const res = await apiFetch<unknown>(`/api/v1/financials/highest-selling-event?range=${range}`)
+  const data = unwrapData<any>(res)
+  if (!data) return null
+
+  const event = data?.event ?? data?.highestSellingEvent ?? data?.highest_selling_event ?? data
+  const id = String(event?.id ?? event?._id ?? data?.id ?? data?._id ?? '')
+  const title = String(event?.title ?? event?.name ?? data?.title ?? data?.name ?? '').trim()
+  const sold = asNumber(event?.ticketsSold ?? event?.tickets_sold ?? event?.sold ?? event?.count ?? data?.ticketsSold ?? data?.tickets_sold)
+
+  if (!id && !title) return null
+  return { id: id || title || 'top', title: title || '—', sold }
+}
+
 export function useFinancialMetrics() {
-  const { data: overview, isLoading: overviewLoading } = useDashboardOverview(6)
-  const { data: recentSalesRaw, isLoading: recentSalesLoading } = useDashboardRecentSales(200)
+  const overviewRange: TimeRange = 'this_month'
+  const { data: overview, isLoading: overviewLoading } = useQuery({
+    queryKey: financialsKeys.overview(overviewRange, 6, 200),
+    queryFn: () => getFinancialsOverview(overviewRange, 6, 200),
+  })
+
+  const { data: recentSalesRaw, isLoading: recentSalesLoading } = useQuery({
+    queryKey: financialsKeys.recentSales(200),
+    queryFn: () => getFinancialsRecentSales(200),
+  })
+
+  const { data: ticketRevenueRaw } = useQuery({
+    queryKey: financialsKeys.ticketRevenue(overviewRange),
+    queryFn: () => getFinancialsTicketRevenue(overviewRange),
+  })
+
+  const { data: highestSellingEventRaw } = useQuery({
+    queryKey: financialsKeys.highestSellingEvent(overviewRange),
+    queryFn: () => getFinancialsHighestSellingEvent(overviewRange),
+  })
 
   const [earningsRange, setEarningsRange] = useState<TimeRange>('this_week')
   const [ticketsSoldRange, setTicketsSoldRange] = useState<TimeRange>('this_week')
@@ -21,15 +119,22 @@ export function useFinancialMetrics() {
   const earningsDays = daysForRange(earningsRange)
   const ticketsTrendDays = daysForRange(ticketsSoldRange)
 
-  const { data: earningsSeriesRaw, isLoading: earningsSeriesLoading } = useDashboardRevenueSeries(earningsDays)
-  const { data: trendSeriesRaw } = useDashboardRevenueSeries(14)
+  const { data: dailyEarningsRaw, isLoading: earningsSeriesLoading } = useQuery({
+    queryKey: financialsKeys.dailyEarnings(earningsRange),
+    queryFn: () => getFinancialsDailyEarnings(earningsRange),
+  })
+
+  const { data: trendSeriesRaw } = useQuery({
+    queryKey: financialsKeys.revenue(14),
+    queryFn: () => getFinancialsRevenue(14),
+  })
 
   useEffect(() => {
-    console.log('[financials] /dashboard/revenue response', { earningsRange, days: earningsDays, earningsSeriesRaw })
-  }, [earningsDays, earningsRange, earningsSeriesRaw])
+    console.log('[financials] /financials/daily-earnings response', { earningsRange, days: earningsDays, dailyEarningsRaw })
+  }, [dailyEarningsRaw, earningsDays, earningsRange])
 
   useEffect(() => {
-    console.log('[financials] /dashboard/overview response', overview)
+    console.log('[financials] /financials/overview response', overview)
   }, [overview])
 
   const overviewStats = useMemo(() => {
@@ -70,6 +175,8 @@ export function useFinancialMetrics() {
   }, [recentSalesRaw])
 
   const ticketEarnings = useMemo(() => {
+    const fromEndpoint = asNumber(ticketRevenueRaw)
+    if (fromEndpoint > 0) return fromEndpoint
     const direct = asNumber(
       (overviewStats as any).totalTicketEarnings ??
         (overviewStats as any).ticketEarnings ??
@@ -82,7 +189,7 @@ export function useFinancialMetrics() {
     return transactions
       .filter((t: TransactionRow) => t.type === 'ticket' && t.status === 'completed')
       .reduce((s: number, t: TransactionRow) => s + (t.amount ?? 0), 0)
-  }, [overviewStats, transactions])
+  }, [overviewStats, ticketRevenueRaw, transactions])
 
   const menuItemsEarnings = useMemo(() => {
     const direct = asNumber(
@@ -141,15 +248,16 @@ export function useFinancialMetrics() {
   }, [ticketEarnings, ticketsSold])
 
   const highestSellingEvent = useMemo((): HighestSellingEvent | null => {
+    if (highestSellingEventRaw) return highestSellingEventRaw
     const topEvents: any[] = Array.isArray((overview as any)?.topEvents) ? ((overview as any).topEvents as any[]) : []
     const first = topEvents[0]
     if (!first) return null
     const sold = asNumber(first?.ticketsSold ?? first?.tickets_sold ?? first?.sold ?? first?.count)
     return { id: String(first?.id ?? 'top'), title: String(first?.title ?? '—'), sold }
-  }, [overview])
+  }, [highestSellingEventRaw, overview])
 
   const trends = useMemo(() => {
-    const rows = (trendSeriesRaw ?? []).filter(r => !!(r as any)?.date) as any[]
+    const rows = (trendSeriesRaw ?? []).filter((r: any) => !!r?.date) as any[]
     if (rows.length < 2) return { earningsTrend: null as number | null }
 
     const prev = rows[rows.length - 2]
@@ -164,28 +272,17 @@ export function useFinancialMetrics() {
   const earningsTrendDir: Trend = trends.earningsTrend !== null && trends.earningsTrend < 0 ? 'down' : 'up'
 
   const dailyEarnings = useMemo((): DailyEarningsRow[] => {
-    if (earningsRange === 'this_year') {
-      const series = (earningsSeriesRaw ?? []) as any[]
-      const buckets = new Map<string, number>()
-      for (const row of series) {
-        const d = new Date(String(row?.date ?? ''))
-        if (Number.isNaN(d.getTime())) continue
-        const label = d.toLocaleString('en-US', { month: 'short' })
-        buckets.set(label, (buckets.get(label) ?? 0) + asNumber(row?.revenue))
-      }
-      const months = Array.from({ length: 12 }, (_, i) =>
-        new Date(new Date().getFullYear(), i, 1).toLocaleString('en-US', { month: 'short' }),
-      )
-      return months.map(m => ({ day: m, earnings: Math.round(buckets.get(m) ?? 0) }))
-    }
-
     const days = earningsDays
-    const series = (earningsSeriesRaw ?? []) as any[]
-    const byDay = new Map<string, number>()
+    const series = (dailyEarningsRaw ?? []) as any[]
+    const byDay = new Map<string, { ticketEarnings: number; menuEarnings: number; earnings: number }>()
     for (const row of series) {
-      const key = String(row?.date ?? '')
+      const key = String(row?.date ?? row?.day ?? '')
       if (!key) continue
-      byDay.set(key.slice(0, 10), asNumber(row?.revenue))
+      const ticketEarnings = asNumber(row?.ticketEarnings ?? row?.ticketRevenue ?? row?.ticket_revenue ?? row?.ticket_earnings)
+      const menuEarnings = asNumber(row?.menuEarnings ?? row?.menuRevenue ?? row?.menu_revenue ?? row?.menu_earnings)
+      const total = asNumber(row?.earnings ?? row?.total ?? row?.revenue ?? row?.amount ?? row?.value)
+      const earnings = total > 0 ? total : ticketEarnings + menuEarnings
+      byDay.set(key.slice(0, 10), { ticketEarnings, menuEarnings, earnings })
     }
 
     const today = new Date()
@@ -194,10 +291,15 @@ export function useFinancialMetrics() {
       const d = new Date(today)
       d.setDate(today.getDate() - i)
       const key = d.toISOString().slice(0, 10)
-      const earnings = Math.round(byDay.get(key) ?? 0)
-      return { day: formatDayLabel(key, days), earnings }
+      const found = byDay.get(key) ?? { ticketEarnings: 0, menuEarnings: 0, earnings: 0 }
+      return {
+        day: formatDayLabel(key, days),
+        ticketEarnings: Math.round(found.ticketEarnings),
+        menuEarnings: Math.round(found.menuEarnings),
+        earnings: Math.round(found.earnings),
+      }
     })
-  }, [earningsDays, earningsRange, earningsSeriesRaw])
+  }, [dailyEarningsRaw, earningsDays])
 
   const dailyTicketsSoldTrend = useMemo((): DailyTicketsSoldRow[] => {
     const rows = (Array.isArray(recentSalesRaw) ? recentSalesRaw : []) as any[]
@@ -237,7 +339,12 @@ export function useFinancialMetrics() {
   }, [recentSalesRaw, ticketsSoldRange, ticketsTrendDays])
 
   const menuRevenueDonut = useMemo((): MenuBreakdownRow[] => {
-    const raw = (overview as any)?.menuItemsBreakdown ?? (overview as any)?.menuRevenueByCategory ?? (overview as any)?.menu_items_breakdown
+    const raw =
+      (overview as any)?.menuItemsBreakdown ??
+      (overview as any)?.menuRevenueByCategory ??
+      (overview as any)?.menu_items_breakdown ??
+      (overview as any)?.menu_items_revenue_by_category ??
+      (overview as any)?.menuRevenueBreakdown
     console.log('[financials] menu breakdown raw (from overview)', raw)
     const parsed: MenuBreakdownRow[] = []
 

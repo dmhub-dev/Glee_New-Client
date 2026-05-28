@@ -11,6 +11,39 @@ import {
 import { TOOLTIP_STYLE } from '../constants'
 import type { DailyEarningsRow, TimeRange } from '../types'
 
+type TopPillBarProps = {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  fill?: string
+}
+
+function TopPillBar({ x = 0, y = 0, width = 0, height = 0, fill = '#FF2D8F' }: TopPillBarProps) {
+  const w = Math.max(0, width)
+  const h = Math.max(0, height)
+  if (w === 0 || h === 0) return null
+
+  const r = Math.max(0, Math.min(w / 2, h))
+  const right = x + w
+  const bottom = y + h
+
+  return (
+    <path
+      d={[
+        `M ${x} ${y + r}`,
+        `A ${r} ${r} 0 0 1 ${x + r} ${y}`,
+        `L ${right - r} ${y}`,
+        `A ${r} ${r} 0 0 1 ${right} ${y + r}`,
+        `L ${right} ${bottom}`,
+        `L ${x} ${bottom}`,
+        'Z',
+      ].join(' ')}
+      fill={fill}
+    />
+  )
+}
+
 export default function EarningsChart({
   dailyEarnings,
   earningsRange,
@@ -22,7 +55,7 @@ export default function EarningsChart({
   setEarningsRange: (v: TimeRange) => void
   loading: boolean
 }) {
-  const total = dailyEarnings.reduce((s, d) => s + d.earnings, 0) ?? 0
+  const total = dailyEarnings.reduce((s, d) => s + (d.earnings ?? 0), 0) ?? 0
 
   return (
     <div className="bg-admin-surface rounded-2xl p-5">
@@ -57,7 +90,8 @@ export default function EarningsChart({
               formatter={(v, name) => [`Ksh ${typeof v === 'number' ? v.toLocaleString() : String(v ?? '')}`, String(name ?? '')]}
               contentStyle={TOOLTIP_STYLE}
             />
-            <Bar dataKey="earnings" name="Earnings" fill="#FF2D8F" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="ticketEarnings" name="Tickets" fill="#FF2D8F" shape={<TopPillBar />} />
+            <Bar dataKey="menuEarnings" name="Menu Items" fill="#7C3AED" shape={<TopPillBar />} />
           </BarChart>
         </ResponsiveContainer>
       ) : (

@@ -23,7 +23,7 @@ export type TransactionTypeFilter = 'all' | TransactionType
 
 export type MenuBreakdownRow = { name: string; value: number }
 
-export type DailyEarningsRow = { day: string; earnings: number }
+export type DailyEarningsRow = { day: string; ticketEarnings: number; menuEarnings: number; earnings: number }
 export type DailyTicketsSoldRow = { day: string; sold: number }
 
 export type HighestSellingEvent = { id: string; title: string; sold: number }
