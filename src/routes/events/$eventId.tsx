@@ -21,6 +21,18 @@ const tierSchema = z.object({
   description: z.string().optional(),
 })
 
+const waveSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, 'Wave name required'),
+  description: z.string().optional(),
+  startsAt: z.string().min(1, 'Start date required'),
+  endsAt: z.string().min(1, 'End date required'),
+  ticketTiers: z.array(tierSchema).min(1, 'At least one ticket tier required'),
+}).refine(data => new Date(data.endsAt).getTime() > new Date(data.startsAt).getTime(), {
+  message: 'Wave end must be after start',
+  path: ['endsAt'],
+})
+
 const menuItemSchema = z.object({
   name: z.string().min(1, 'Name required'),
   category: z.enum(['food', 'drink', 'other']),
@@ -47,7 +59,8 @@ const eventSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
   endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().or(z.literal('')),
   locationId: z.string().min(1, 'Location required'),
-  ticketTiers: z.array(tierSchema).min(1, 'At least one wave required'),
+  ticketTiers: z.array(tierSchema).optional(),
+  ticketWaves: z.array(waveSchema).min(1, 'At least one ticket wave required'),
   menuItems: z.array(menuItemSchema).max(5, 'Max 5 menu items'),
   schedules: z.array(scheduleSchema).min(1, 'At least one schedule required'),
 }).refine(data => data.endDate >= data.startDate, {
@@ -57,8 +70,24 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>
 
-function newTier(): EventFormValues['ticketTiers'][number] {
+function newTier(): NonNullable<EventFormValues['ticketTiers']>[number] {
   return { id: `wave-${Date.now()}`, name: '', price: 0, quantity: 1, quantityRemaining: 1, description: '' }
+}
+
+function newWave(index = 0): EventFormValues['ticketWaves'][number] {
+  const today = new Date()
+  const startsAt = new Date(today)
+  startsAt.setDate(today.getDate() + index * 14)
+  const endsAt = new Date(startsAt)
+  endsAt.setDate(startsAt.getDate() + 14)
+  return {
+    id: `ticket-wave-${Date.now()}-${index}`,
+    name: `Wave ${index + 1}`,
+    description: '',
+    startsAt: startsAt.toISOString().slice(0, 16),
+    endsAt: endsAt.toISOString().slice(0, 16),
+    ticketTiers: [newTier()],
+  }
 }
 
 function newMenuItem(): EventFormValues['menuItems'][number] {
@@ -331,15 +360,32 @@ export default function EventFormPage() {
       endTime: '',
       locationId: '',
       ticketTiers: [newTier()],
+      ticketWaves: [newWave()],
       menuItems: [],
       schedules: [newSchedule()],
     },
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: 'ticketTiers' })
+  const { fields: waveFields, append: appendWave, remove: removeWave } = useFieldArray({ control, name: 'ticketWaves' })
   const { fields: menuFields, append: appendMenu, remove: removeMenu } = useFieldArray({ control, name: 'menuItems' })
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({ control, name: 'schedules' })
   const formValues = watch()
+
+  function addTierToWave(waveIndex: number) {
+    const waves = [...(formValues.ticketWaves ?? [])]
+    const wave = waves[waveIndex]
+    if (!wave) return
+    waves[waveIndex] = { ...wave, ticketTiers: [...wave.ticketTiers, newTier()] }
+    setValue('ticketWaves', waves, { shouldDirty: true, shouldValidate: true })
+  }
+
+  function removeTierFromWave(waveIndex: number, tierIndex: number) {
+    const waves = [...(formValues.ticketWaves ?? [])]
+    const wave = waves[waveIndex]
+    if (!wave || wave.ticketTiers.length <= 1) return
+    waves[waveIndex] = { ...wave, ticketTiers: wave.ticketTiers.filter((_, index) => index !== tierIndex) }
+    setValue('ticketWaves', waves, { shouldDirty: true, shouldValidate: true })
+  }
 
   function switchDurationMode(mode: 'single' | 'multi') {
     setEventDurationMode(mode)
@@ -414,6 +460,35 @@ export default function EventFormPage() {
         quantityRemaining: t.quantityRemaining,
         description:       t.description ?? '',
       })),
+      ticketWaves: existingEvent.ticketWaves?.length
+        ? existingEvent.ticketWaves.map(wave => ({
+            id: wave.id,
+            name: wave.name,
+            description: wave.description ?? '',
+            startsAt: new Date(wave.startsAt).toISOString().slice(0, 16),
+            endsAt: new Date(wave.endsAt).toISOString().slice(0, 16),
+            ticketTiers: wave.ticketTiers.map(t => ({
+              id:                t.id,
+              name:              t.name,
+              price:             t.price,
+              quantity:          t.quantity,
+              quantityRemaining: t.quantityRemaining,
+              description:       t.description ?? '',
+            })),
+          }))
+        : [{
+            ...newWave(),
+            startsAt: `${existingEvent.startDate}T${existingEvent.startTime || '00:00'}`,
+            endsAt: `${existingEvent.endDate}T${existingEvent.endTime || existingEvent.startTime || '23:59'}`,
+            ticketTiers: existingEvent.ticketTiers.map(t => ({
+              id:                t.id,
+              name:              t.name,
+              price:             t.price,
+              quantity:          t.quantity,
+              quantityRemaining: t.quantityRemaining,
+              description:       t.description ?? '',
+            })),
+          }],
       menuItems: (existingEvent.menuItems ?? []).map(m => ({
         name:        m.name,
         category:    (['food', 'drink', 'other'].includes(m.category) ? m.category : 'other') as 'food' | 'drink' | 'other',
@@ -483,7 +558,8 @@ export default function EventFormPage() {
       endDate: values.endDate,
       startTime: values.startTime,
       endTime: values.endTime,
-      ticketTiers: values.ticketTiers,
+      ticketTiers: values.ticketWaves.flatMap(wave => wave.ticketTiers),
+      ticketWaves: values.ticketWaves,
       schedules: sortSchedules(values.schedules.map(schedule => ({
         ...schedule,
         endDate: getScheduleEndDate(schedule),
@@ -527,6 +603,15 @@ export default function EventFormPage() {
     )
   }
 
+  const previewTicketTiers = (formValues.ticketWaves?.find(wave => wave.ticketTiers.length)?.ticketTiers ?? formValues.ticketTiers ?? []).map(t => ({
+    id: t.id,
+    name: t.name || 'Ticket tier',
+    price: t.price || 0,
+    quantity: t.quantity || 1,
+    quantityRemaining: t.quantity || 1,
+    description: t.description,
+  }))
+
   const previewEvent: Event = {
     id: 'preview',
     vendorId: 'admin-001',
@@ -549,14 +634,7 @@ export default function EventFormPage() {
     })),
     flyerSquareUrl:   landscapes[0]?.url ?? undefined,
     flyerPortraitUrl: portraits[0]?.url ?? undefined,
-    ticketTiers: (formValues.ticketTiers ?? []).map(t => ({
-      id: t.id,
-      name: t.name || 'Wave',
-      price: t.price || 0,
-      quantity: t.quantity || 1,
-      quantityRemaining: t.quantity || 1,
-      description: t.description,
-    })),
+    ticketTiers: previewTicketTiers,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -854,83 +932,146 @@ export default function EventFormPage() {
 
             {/* Ticket waves */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <h2 className="font-heading font-bold text-sm text-foreground">Ticket Waves</h2>
+              <div>
+                <h2 className="font-heading font-bold text-sm text-foreground">Ticket Waves</h2>
+                <p className="mt-1 text-xs text-admin-40">Create timed sales waves, then add the ticket tiers and quantities sold inside each wave.</p>
+              </div>
               <div className="space-y-3">
-                {fields.map((field, index) => (
-                  <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
+                {waveFields.map((field, waveIndex) => {
+                  const wave = formValues.ticketWaves?.[waveIndex]
+                  return (
+                  <div key={field.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-admin-40 font-mono">Wave {index + 1}</span>
+                      <span className="text-xs text-admin-40 font-mono">Wave {waveIndex + 1}</span>
                       <button
                         type="button"
-                        onClick={() => remove(index)}
-                        disabled={fields.length === 1}
+                        onClick={() => removeWave(waveIndex)}
+                        disabled={waveFields.length === 1}
                         className="w-6 h-6 rounded flex items-center justify-center text-admin-20 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid gap-3 md:grid-cols-2">
                       <div className="space-y-1">
-                        <Label className="text-xs text-admin-50">Name *</Label>
+                        <Label className="text-xs text-admin-50">Wave name *</Label>
                         <Input
-                          {...register(`ticketTiers.${index}.name`)}
-                          placeholder="e.g. Regular"
+                          {...register(`ticketWaves.${waveIndex}.name`)}
+                          placeholder="e.g. Wave 1 - Early access"
                           className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
                         />
-                        {errors.ticketTiers?.[index]?.name && (
-                          <p className="text-xs text-red-400">{errors.ticketTiers[index]?.name?.message}</p>
+                        {errors.ticketWaves?.[waveIndex]?.name && (
+                          <p className="text-xs text-red-400">{errors.ticketWaves[waveIndex]?.name?.message}</p>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-admin-50">Price (KSh) *</Label>
+                        <Label className="text-xs text-admin-50">Description</Label>
                         <Input
-                          type="number"
-                          min={0}
-                          {...register(`ticketTiers.${index}.price`, { valueAsNumber: true })}
-                          placeholder="0"
+                          {...register(`ticketWaves.${waveIndex}.description`)}
+                          placeholder="e.g. Launch promo for first buyers"
                           className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
                         />
-                        {errors.ticketTiers?.[index]?.price && (
-                          <p className="text-xs text-red-400">{errors.ticketTiers[index]?.price?.message}</p>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-admin-50">Wave starts *</Label>
+                        <Input
+                          type="datetime-local"
+                          {...register(`ticketWaves.${waveIndex}.startsAt`)}
+                          className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                        />
+                        {errors.ticketWaves?.[waveIndex]?.startsAt && (
+                          <p className="text-xs text-red-400">{errors.ticketWaves[waveIndex]?.startsAt?.message}</p>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-admin-50">Quantity *</Label>
+                        <Label className="text-xs text-admin-50">Wave ends *</Label>
                         <Input
-                          type="number"
-                          min={1}
-                          {...register(`ticketTiers.${index}.quantity`, { valueAsNumber: true })}
-                          placeholder="100"
+                          type="datetime-local"
+                          {...register(`ticketWaves.${waveIndex}.endsAt`)}
                           className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
                         />
-                        {errors.ticketTiers?.[index]?.quantity && (
-                          <p className="text-xs text-red-400">{errors.ticketTiers[index]?.quantity?.message}</p>
+                        {errors.ticketWaves?.[waveIndex]?.endsAt && (
+                          <p className="text-xs text-red-400">{errors.ticketWaves[waveIndex]?.endsAt?.message}</p>
                         )}
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-admin-50">Description (optional)</Label>
-                      <Input
-                        {...register(`ticketTiers.${index}.description`)}
-                        placeholder="e.g. Includes welcome drink and priority entry"
-                        className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
-                      />
+
+                    <div className="space-y-3 rounded-xl border border-admin bg-admin-surface p-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-admin-70">Ticket tiers in this wave</p>
+                        <button
+                          type="button"
+                          onClick={() => addTierToWave(waveIndex)}
+                          className="flex items-center gap-1 text-xs text-neon-pink/80 hover:text-neon-pink"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add tier
+                        </button>
+                      </div>
+                      {(wave?.ticketTiers ?? []).map((_, tierIndex) => (
+                        <div key={`${field.id}-tier-${tierIndex}`} className="grid gap-3 rounded-lg border border-admin bg-admin-overlay p-3 md:grid-cols-[1fr_120px_120px_32px]">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-admin-50">Tier name *</Label>
+                            <Input
+                              {...register(`ticketWaves.${waveIndex}.ticketTiers.${tierIndex}.name`)}
+                              placeholder="e.g. Early Bird, VIP"
+                              className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-admin-50">Price *</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              {...register(`ticketWaves.${waveIndex}.ticketTiers.${tierIndex}.price`, { valueAsNumber: true })}
+                              className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-admin-50">Quantity *</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              {...register(`ticketWaves.${waveIndex}.ticketTiers.${tierIndex}.quantity`, { valueAsNumber: true })}
+                              className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeTierFromWave(waveIndex, tierIndex)}
+                            disabled={(wave?.ticketTiers.length ?? 0) <= 1}
+                            className="mt-5 flex h-8 w-8 items-center justify-center rounded-md text-admin-30 hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                          <div className="md:col-span-4">
+                            <Input
+                              {...register(`ticketWaves.${waveIndex}.ticketTiers.${tierIndex}.description`)}
+                              placeholder="Optional tier details"
+                              className="h-8 text-sm bg-admin-input border-admin-md focus-visible:ring-neon-pink/30"
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
-              {fields.length < 10 && (
+              {waveFields.length < 10 && (
                 <button
                   type="button"
-                  onClick={() => append(newTier())}
+                  onClick={() => appendWave(newWave(waveFields.length))}
                   className="flex items-center gap-2 text-sm text-neon-pink/70 hover:text-neon-pink transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   Add Wave
                 </button>
               )}
-              {errors.ticketTiers?.message && (
-                <p className="text-xs text-red-400">{errors.ticketTiers.message}</p>
+              {errors.ticketWaves?.message && (
+                <p className="text-xs text-red-400">{errors.ticketWaves.message}</p>
               )}
             </section>
 

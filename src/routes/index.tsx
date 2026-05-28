@@ -70,7 +70,10 @@ function formatRelativeTime(value: string) {
 function ticketTotals(events: Event[]) {
   return events.reduce(
     (acc, event) => {
-      event.ticketTiers.forEach(tier => {
+      const tiers = event.ticketWaves?.length
+        ? event.ticketWaves.flatMap(wave => wave.ticketTiers)
+        : event.ticketTiers
+      tiers.forEach(tier => {
         acc.total += tier.quantity
         acc.remaining += tier.quantityRemaining
         acc.sold += Math.max(0, tier.quantity - tier.quantityRemaining)
@@ -191,14 +194,22 @@ export default function DashboardPage() {
 
   if (isVendorRole) {
     const grossRevenue = eventList.reduce((sum, event) => (
-      sum + event.ticketTiers.reduce((eventSum, tier) => eventSum + Math.max(0, tier.quantity - tier.quantityRemaining) * tier.price, 0)
+      sum + (event.ticketWaves?.length ? event.ticketWaves.flatMap(wave => wave.ticketTiers) : event.ticketTiers)
+        .reduce((eventSum, tier) => eventSum + Math.max(0, tier.quantity - tier.quantityRemaining) * tier.price, 0)
     ), 0)
     const pendingEvents = eventList.filter(event => event.status === 'draft')
     const liveEvents = eventList.filter(event => event.status === 'active')
     const attentionEvents = eventList.filter(event => event.status === 'postponed' || event.status === 'cancelled')
     const menuItems = eventList.reduce((sum, event) => sum + (event.menuItems?.length ?? 0), 0)
-    const pricedTicketCategories = eventList.reduce((sum, event) => sum + event.ticketTiers.length, 0)
-    const eventsWithAvailability = eventList.filter(event => event.ticketTiers.some(tier => tier.quantityRemaining > 0))
+    const allTicketWaves = eventList.flatMap(event => event.ticketWaves ?? [])
+    const activeTicketWaves = allTicketWaves.filter(wave => wave.status === 'active')
+    const upcomingTicketWaves = allTicketWaves.filter(wave => wave.status === 'upcoming')
+    const completedTicketWaves = allTicketWaves.filter(wave => wave.status === 'completed')
+    const pricedTicketCategories = eventList.reduce((sum, event) => sum + (event.ticketWaves?.length ? event.ticketWaves.flatMap(wave => wave.ticketTiers).length : event.ticketTiers.length), 0)
+    const eventsWithAvailability = eventList.filter(event => {
+      const tiers = event.activeTicketWave?.ticketTiers ?? event.ticketTiers
+      return tiers.some(tier => tier.quantityRemaining > 0)
+    })
     const vendorLocations = locationList.filter(location =>
       eventList.some(event => event.locationId === location.id || event.venueId === location.id),
     )
@@ -286,8 +297,26 @@ export default function DashboardPage() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <DataTile label="Club profile / locations" value={vendorLocations.length} detail="Locations used by your events" onClick={() => navigate('/dashboard/events?section=locations')} />
                   <DataTile label="Menu items uploaded" value={menuItems} detail="Food and drink items attached to your events" onClick={() => navigate('/dashboard/menu-pricing')} />
-                  <DataTile label="Ticket price groups" value={pricedTicketCategories} detail="Ticket categories and price points configured" onClick={() => navigate('/dashboard/menu-pricing')} />
+                  <DataTile label="Ticket waves" value={allTicketWaves.length || eventList.filter(event => event.ticketTiers.length > 0).length} detail={`${activeTicketWaves.length} active, ${upcomingTicketWaves.length} upcoming`} onClick={() => navigate('/dashboard/events')} />
+                  <DataTile label="Ticket price groups" value={pricedTicketCategories} detail="Tiers configured across all waves" onClick={() => navigate('/dashboard/menu-pricing')} />
                   <DataTile label="Events with availability" value={eventsWithAvailability.length} detail="Events that still have tickets to sell" onClick={() => navigate('/dashboard/events')} />
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-foreground">Ticket Wave Pipeline</h2>
+                    <p className="mt-1 text-xs text-admin-40">Active and upcoming promotional sales windows for your events.</p>
+                  </div>
+                  <button onClick={() => navigate('/dashboard/events')} className="text-xs font-medium text-neon-pink/70 hover:text-neon-pink">
+                    Manage waves
+                  </button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <FocusRow label="Active waves" value={activeTicketWaves.length} detail="Currently selling" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Upcoming waves" value={upcomingTicketWaves.length} detail="Scheduled to open next" onClick={() => navigate('/dashboard/events')} />
+                  <FocusRow label="Completed waves" value={completedTicketWaves.length} detail="Sold out or timeline ended" onClick={() => navigate('/dashboard/events')} />
                 </div>
               </section>
 

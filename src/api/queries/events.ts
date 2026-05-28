@@ -6,10 +6,22 @@ import { apiFetch } from '../client'
 
 interface BackendTicketCategory {
   id: string
+  waveId?: string | null
   name: string
   price: string | number
   capacity: number | null
   available: number | null
+}
+
+interface BackendTicketWave {
+  id: string
+  name: string
+  description?: string | null
+  sequence: number
+  startsAt: string
+  endsAt: string
+  status: string
+  ticketCategories: BackendTicketCategory[]
 }
 
 interface BackendEventMenuItem {
@@ -48,6 +60,7 @@ interface BackendEvent {
   updatedAt: string
   location: { id: string; name: string; address: string } | null
   ticketCategories: BackendTicketCategory[]
+  ticketWaves?: BackendTicketWave[]
   menuItems: BackendEventMenuItem[]
   schedules?: BackendEventSchedule[]
   categoryId?: string | null
@@ -73,6 +86,13 @@ const STATUS_TO_BACKEND: Record<string, string> = {
   sold_out:  'SOLD_OUT',
 }
 
+const WAVE_STATUS_TO_CLIENT: Record<string, 'upcoming' | 'active' | 'completed' | 'cancelled'> = {
+  UPCOMING:  'upcoming',
+  ACTIVE:    'active',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+}
+
 // ── Mapper ─────────────────────────────────────────────────────────────────────
 
 function mapBackendToEvent(raw: BackendEvent): Event {
@@ -84,14 +104,31 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     || undefined
   const photos = raw.photos ?? raw.bannerImages ?? []
 
-  const ticketTiers = raw.ticketCategories?.length
-    ? raw.ticketCategories.map(tc => ({
+  const mapTicketCategory = (tc: BackendTicketCategory, wave?: BackendTicketWave) => ({
         id:                tc.id,
+        waveId:            tc.waveId ?? wave?.id,
+        waveName:          wave?.name,
         name:              tc.name,
         price:             Number(tc.price),
         quantity:          tc.capacity ?? 0,
         quantityRemaining: tc.available ?? tc.capacity ?? 0,
-      }))
+      })
+  const ticketWaves = raw.ticketWaves?.map(wave => ({
+    id:          wave.id,
+    name:        wave.name,
+    description: wave.description ?? undefined,
+    sequence:    wave.sequence,
+    startsAt:    wave.startsAt,
+    endsAt:      wave.endsAt,
+    status:      WAVE_STATUS_TO_CLIENT[wave.status] ?? 'upcoming',
+    ticketTiers: wave.ticketCategories?.map(tc => mapTicketCategory(tc, wave)) ?? [],
+  })) ?? []
+  const activeTicketWave = ticketWaves.find(wave => wave.status === 'active')
+  const visibleWave = activeTicketWave ?? ticketWaves.find(wave => wave.status === 'upcoming')
+  const ticketTiers = visibleWave
+    ? visibleWave.ticketTiers
+    : raw.ticketCategories?.length
+    ? raw.ticketCategories.map(tc => mapTicketCategory(tc))
     : (() => {
         const price     = Number(raw.price) || 0
         const capacity  = raw.capacity ?? 0
@@ -129,6 +166,8 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     flyerSquareUrl:   photos[0] ?? undefined,
     flyerPortraitUrl: photos[1] ?? photos[0] ?? undefined,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
+    ticketWaves,
+    activeTicketWave,
     location:         locationStr,
     locationId:       raw.location?.id ?? undefined,
     categoryId:       raw.categoryId ?? undefined,
@@ -157,6 +196,21 @@ export interface EventApiPayload {
     quantity: number
     quantityRemaining: number
     description?: string
+  }>
+  ticketWaves?: Array<{
+    id: string
+    name: string
+    description?: string
+    startsAt: string
+    endsAt: string
+    ticketTiers: Array<{
+      id: string
+      name: string
+      price: number
+      quantity: number
+      quantityRemaining: number
+      description?: string
+    }>
   }>
   menuItems?: Array<{
     name: string
@@ -209,9 +263,26 @@ function buildFormData(payload: EventApiPayload): FormData {
   const endIso   = eventDateRange.end.toISOString()
 
   fd.append('date', JSON.stringify({ start: startIso, end: endIso }))
-  fd.append('ticketCategories', JSON.stringify(
-    payload.ticketTiers.map(t => ({ name: t.name, price: t.price, capacity: t.quantity })),
-  ))
+  if (payload.ticketWaves?.length) {
+    fd.append('ticketWaves', JSON.stringify(
+      payload.ticketWaves.map(wave => ({
+        name: wave.name,
+        description: wave.description,
+        startsAt: new Date(wave.startsAt).toISOString(),
+        endsAt: new Date(wave.endsAt).toISOString(),
+        ticketCategories: wave.ticketTiers.map(t => ({
+          name: t.name,
+          price: t.price,
+          capacity: t.quantity,
+          description: t.description,
+        })),
+      })),
+    ))
+  } else {
+    fd.append('ticketCategories', JSON.stringify(
+      payload.ticketTiers.map(t => ({ name: t.name, price: t.price, capacity: t.quantity })),
+    ))
+  }
 
   if (payload.schedules?.length) {
     fd.append('eventSchedule', JSON.stringify(

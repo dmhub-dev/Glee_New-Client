@@ -182,12 +182,14 @@ export default function EventDetailPage() {
   }
 
   const status = STATUS_CONFIG[event.status] ?? STATUS_CONFIG.draft
-  const totalTickets = event.ticketTiers.reduce((s, t) => s + t.quantity, 0)
-  const soldTickets = event.ticketTiers.reduce((s, t) => s + (t.quantity - t.quantityRemaining), 0)
+  const allTicketTiers = event.ticketWaves?.length ? event.ticketWaves.flatMap(wave => wave.ticketTiers) : event.ticketTiers
+  const activeTicketTiers = event.activeTicketWave?.ticketTiers ?? event.ticketTiers
+  const totalTickets = allTicketTiers.reduce((s, t) => s + t.quantity, 0)
+  const soldTickets = allTicketTiers.reduce((s, t) => s + (t.quantity - t.quantityRemaining), 0)
   const remaining = totalTickets - soldTickets
   const soldPct = totalTickets === 0 ? 0 : Math.round((soldTickets / totalTickets) * 100)
-  const revenue = event.ticketTiers.reduce((s, t) => s + (t.quantity - t.quantityRemaining) * t.price, 0)
-  const lowestPrice = event.ticketTiers.length > 0 ? Math.min(...event.ticketTiers.map(t => t.price)) : 0
+  const revenue = allTicketTiers.reduce((s, t) => s + (t.quantity - t.quantityRemaining) * t.price, 0)
+  const lowestPrice = activeTicketTiers.length > 0 ? Math.min(...activeTicketTiers.map(t => t.price)) : 0
   const purchasedTickets = ticketData?.tickets ?? []
   const ticketRevenue = purchasedTickets.reduce((sum, ticket) => {
     const unitPrice = Number(ticket.ticketCategory?.price ?? 0)
@@ -405,24 +407,40 @@ export default function EventDetailPage() {
 
             {/* Ticket tiers */}
             <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-              <h2 className="font-heading font-bold text-sm text-foreground">Ticket Tiers</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading font-bold text-sm text-foreground">Ticket Waves</h2>
+                {event.activeTicketWave && (
+                  <span className="rounded-full border border-neon-pink/25 bg-neon-pink/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neon-pink">
+                    {event.activeTicketWave.name} active
+                  </span>
+                )}
+              </div>
               <div className="space-y-3">
-                {event.ticketTiers.map((tier, i) => {
-                  const tierSold = tier.quantity - tier.quantityRemaining
-                  const tierPct = tier.quantity === 0 ? 0 : Math.round((tierSold / tier.quantity) * 100)
-                  const color = TIER_COLORS[i % TIER_COLORS.length]
-                  return (
-                    <div key={tier.id} className="bg-admin-overlay border border-admin rounded-xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                          <span className="font-semibold text-sm text-foreground">{tier.name}</span>
-                          {tier.description && (
-                            <span className="text-xs text-admin-30 hidden sm:inline">— {tier.description}</span>
-                          )}
-                        </div>
-                        <span className="font-heading font-black text-base text-neon-pink">KSh {tier.price.toLocaleString()}</span>
+                {(event.ticketWaves?.length ? event.ticketWaves : [{ id: 'legacy', name: 'Current tickets', status: 'active' as const, ticketTiers: event.ticketTiers, sequence: 1, startsAt: event.startDate, endsAt: event.endDate }]).map((wave, waveIndex) => (
+                  <div key={wave.id} className="rounded-xl border border-admin bg-admin-overlay p-4">
+                    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{wave.name}</p>
+                        <p className="text-xs text-admin-40">
+                          {new Date(wave.startsAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })} - {new Date(wave.endsAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
                       </div>
+                      <span className="w-fit rounded-full border border-admin bg-admin-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-admin-50">{wave.status}</span>
+                    </div>
+                    <div className="space-y-3">
+                      {wave.ticketTiers.map((tier, tierIndex) => {
+                        const tierSold = tier.quantity - tier.quantityRemaining
+                        const tierPct = tier.quantity === 0 ? 0 : Math.round((tierSold / tier.quantity) * 100)
+                        const color = TIER_COLORS[(waveIndex + tierIndex) % TIER_COLORS.length]
+                        return (
+                          <div key={tier.id} className="rounded-lg border border-admin bg-admin-surface p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                                <span className="truncate text-sm font-semibold text-foreground">{tier.name}</span>
+                              </div>
+                              <span className="shrink-0 font-heading text-sm font-black text-neon-pink">KSh {tier.price.toLocaleString()}</span>
+                            </div>
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs">
                           <span className="text-admin-40">{tierSold.toLocaleString()} / {tier.quantity.toLocaleString()} sold</span>
@@ -432,9 +450,12 @@ export default function EventDetailPage() {
                           <div className="h-full rounded-full transition-all duration-500" style={{ width: `${tierPct}%`, backgroundColor: color }} />
                         </div>
                       </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -502,7 +523,7 @@ export default function EventDetailPage() {
             <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
               <h2 className="font-heading font-bold text-sm text-foreground">Tier Breakdown</h2>
               <div className="space-y-3">
-                {event.ticketTiers.map((tier, i) => {
+                {allTicketTiers.map((tier, i) => {
                   const color = TIER_COLORS[i % TIER_COLORS.length]
                   const pct = totalTickets === 0 ? 0 : Math.round((tier.quantity / totalTickets) * 100)
                   return (
