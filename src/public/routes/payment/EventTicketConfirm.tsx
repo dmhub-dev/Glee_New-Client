@@ -20,17 +20,12 @@ export default function EventTicketConfirmPage() {
 
     const storageKey = ticketVerificationStorageKey(reference)
     const verificationToken = sessionStorage.getItem(storageKey)
-    if (!verificationToken) {
-      setStatus('error')
-      setMessage('Could not find this payment session. Please contact support if your card was charged.')
-      return
-    }
 
-    confirmTicketPurchase(verificationToken)
+    confirmTicketPurchase(verificationToken ? { verificationToken } : { reference })
       .then(() => {
         sessionStorage.removeItem(storageKey)
         setStatus('success')
-        setMessage('Your ticket has been confirmed. Check your email for the ticket details.')
+        setMessage('Your payment has been confirmed. Check your email for your event ticket and order details.')
       })
       .catch(error => {
         setStatus('error')
@@ -51,18 +46,13 @@ export default function EventTicketConfirmPage() {
           {status === 'success' ? '✓' : status === 'error' ? '!' : '...'}
         </div>
         <h1 className="mt-5 font-heading text-2xl font-black">
-          {status === 'success' ? 'Ticket Confirmed' : status === 'error' ? 'Payment Needs Review' : 'Confirming Payment'}
+          {status === 'success' ? 'Payment Confirmed' : status === 'error' ? 'Payment Needs Review' : 'Confirming Payment'}
         </h1>
         <p className="mt-3 text-sm leading-6 text-white/60">{message}</p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button asChild className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
             <Link to="/">Browse Events</Link>
           </Button>
-          {status === 'success' && (
-            <Button asChild variant="outline" className="rounded-full border-white/15 bg-transparent text-white hover:bg-white/10">
-              <Link to="/user/login">View My Tickets</Link>
-            </Button>
-          )}
         </div>
       </section>
     </main>

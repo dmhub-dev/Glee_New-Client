@@ -28,10 +28,13 @@ export function initiateGuestPurchase(
   ).then(r => r.data)
 }
 
-export function confirmTicketPurchase(verificationToken: string): Promise<void> {
+export function confirmTicketPurchase(input: string | { verificationToken?: string; reference?: string }): Promise<void> {
+  const payload = typeof input === 'string'
+    ? { verificationToken: input }
+    : input
   return apiFetch<void>('/api/v1/event/tickets/confirm-purchase', {
     method: 'POST',
-    body: JSON.stringify({ verificationToken }),
+    body: JSON.stringify(payload),
     skipAuth: true,
   })
 }
