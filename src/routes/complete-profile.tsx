@@ -18,7 +18,7 @@ const completeProfileSchema = z.object({
 type CompleteProfileValues = z.infer<typeof completeProfileSchema>
 
 function destinationForRole(role?: string | null) {
-  return role === 'user' ? '/app' : '/dashboard'
+  return role === 'user' ? '/app/events' : '/dashboard'
 }
 
 export default function CompleteProfilePage() {

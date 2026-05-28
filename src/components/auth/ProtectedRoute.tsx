@@ -32,7 +32,7 @@ export default function ProtectedRoute({ children, roles }: Props) {
   }
 
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to={user.role === 'user' ? '/app' : '/dashboard'} replace />
+    return <Navigate to={user.role === 'user' ? '/app/events' : '/dashboard'} replace />
   }
 
   return <>{children}</>

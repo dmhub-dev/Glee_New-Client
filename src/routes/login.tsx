@@ -56,7 +56,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
   }
 
   function defaultDestination(role?: string | null) {
-    return role === 'user' ? '/app' : '/dashboard'
+    return role === 'user' ? '/app/events' : '/dashboard'
   }
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>({
