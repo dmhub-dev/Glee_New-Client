@@ -609,7 +609,7 @@ export default function EventDetailPage() {
                 ? 'Preparing payment…'
                 : isProcessing
                   ? 'Opening Paystack…'
-                  : `Pay KSh ${totalPrice.toLocaleString()} with Paystack`}
+                  : 'Proceed to Pay'}
             </Button>
             <p className="text-xs text-white/30 text-center -mt-2">Secured by Paystack</p>
           </div>
