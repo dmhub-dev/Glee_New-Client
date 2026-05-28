@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useEvent, usePurchaseTicket, useWallet } from '@glee/api'
-import { Badge, Button, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
-import { Calendar, Clock, MapPin, Minus, Plus, ShoppingBag, Ticket, Wallet } from 'lucide-react'
+import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
+import { Calendar, CheckCircle2, Clock, CreditCard, MapPin, Minus, Plus, ShoppingBag, Ticket, Wallet } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
@@ -21,6 +21,39 @@ function formatDateTime(value: string) {
   })
 }
 
+function formatDate(value: Date) {
+  return value.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+function getFinalPaymentDate(eventStartDate?: string) {
+  if (!eventStartDate) return null
+  const date = new Date(`${eventStartDate}T23:59:59`)
+  date.setDate(date.getDate() - 7)
+  return date
+}
+
+function buildInstallmentPlan(ticketTotal: number, menuTotal: number, eventStartDate: string | undefined, count: number) {
+  const finalDueDate = getFinalPaymentDate(eventStartDate)
+  if (!finalDueDate) return null
+  const deposit = Math.round((ticketTotal * 0.3 + menuTotal) * 100) / 100
+  const remaining = Math.round((ticketTotal + menuTotal - deposit) * 100) / 100
+  const baseAmount = Math.round((remaining / count) * 100) / 100
+  const today = new Date()
+  const days = Math.max(1, Math.floor((finalDueDate.getTime() - today.getTime()) / 86400000))
+  const installments = Array.from({ length: count }, (_, index) => {
+    const dueDate = addDays(today, Math.round(((index + 1) * days) / count))
+    const amount = index === count - 1 ? Math.round((remaining - baseAmount * (count - 1)) * 100) / 100 : baseAmount
+    return { label: `Payment ${index + 1}`, amount, dueDate: dueDate > finalDueDate ? finalDueDate : dueDate }
+  })
+  return { count, deposit, remaining, finalDueDate, installments }
+}
+
 export default function CustomerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const { data: event, isLoading } = useEvent(eventId ?? '')
@@ -30,6 +63,9 @@ export default function CustomerEventDetailPage() {
   const [selectedTierId, setSelectedTierId] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [menuQtys, setMenuQtys] = useState<Record<string, number>>({})
+  const [walletModalOpen, setWalletModalOpen] = useState(false)
+  const [walletPaymentType, setWalletPaymentType] = useState<'FULL' | 'INSTALLMENT'>('FULL')
+  const [installmentCount, setInstallmentCount] = useState(2)
 
   const selectedTier = useMemo(() => event?.ticketTiers.find(tier => tier.id === selectedTierId) ?? event?.ticketTiers[0], [event, selectedTierId])
   const selectedMenu = useMemo(() => {
@@ -41,12 +77,24 @@ export default function CustomerEventDetailPage() {
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
   const total = ticketTotal + menuTotal
   const walletBalance = Number(wallet?.balance ?? 0)
+  const installmentOptions = useMemo(() => {
+    const finalDue = getFinalPaymentDate(event?.startDate)
+    if (!finalDue) return []
+    const daysUntilDue = Math.floor((finalDue.getTime() - Date.now()) / 86400000)
+    if (daysUntilDue < 7) return []
+    return daysUntilDue >= 45 ? [2, 3] : [2]
+  }, [event?.startDate])
+  const selectedInstallmentPlan = useMemo(
+    () => buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, installmentCount),
+    [ticketTotal, menuTotal, event?.startDate, installmentCount],
+  )
+  const walletMinimumDue = walletPaymentType === 'INSTALLMENT' && selectedInstallmentPlan ? selectedInstallmentPlan.deposit : total
   const posterSrc = event?.flyerPortraitUrl ?? event?.flyerSquareUrl ?? PLACEHOLDER
   const isSoldOut = event?.status === 'sold_out' || Boolean(event?.ticketTiers.length && event.ticketTiers.every(tier => tier.quantityRemaining <= 0))
   const selectedTierSoldOut = !selectedTier || selectedTier.quantityRemaining <= 0
   const canPurchase = Boolean(event && selectedTier && !isSoldOut && !selectedTierSoldOut && total > 0)
 
-  async function handlePurchase(useWallet: boolean) {
+  async function handlePurchase(useWallet: boolean, paymentType: 'FULL' | 'INSTALLMENT' = 'FULL') {
     if (!event || !selectedTier || !canPurchase) return
     try {
       const result = await purchase.mutateAsync({
@@ -55,12 +103,20 @@ export default function CustomerEventDetailPage() {
         noOfTickets: quantity,
         preOrderMenu: selectedMenu.length ? selectedMenu.map(({ item, quantity }) => ({ id: item.id, quantity })) : undefined,
         useWallet,
+        walletPaymentType: useWallet ? paymentType : undefined,
+        installmentCount: paymentType === 'INSTALLMENT' ? installmentCount : undefined,
       })
       if (!useWallet && result.authorization_url) {
         window.location.href = result.authorization_url
         return
       }
-      toast({ title: 'Ticket purchased', description: 'Your ticket is now in My Tickets.' })
+      setWalletModalOpen(false)
+      toast({
+        title: paymentType === 'INSTALLMENT' ? 'Ticket reserved' : 'Ticket purchased',
+        description: paymentType === 'INSTALLMENT'
+          ? 'Your ticket is in My Tickets. We will remind you about your remaining payments.'
+          : 'Your ticket is now in My Tickets.',
+      })
     } catch (error) {
       toast({ title: 'Purchase failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
     }
@@ -118,7 +174,7 @@ export default function CustomerEventDetailPage() {
               <div>
                 <h2 className="font-heading text-2xl font-black text-foreground">Book Tickets</h2>
                 <p className="mt-1 text-sm text-admin-50">
-                  {isSoldOut ? 'This event is sold out. Ticket and menu purchases are closed.' : 'Choose a ticket, add menu items, then pay with wallet or Paystack.'}
+                  {isSoldOut ? 'This event is sold out. Ticket and menu purchases are closed.' : 'Choose a ticket, add menu items, then proceed with your preferred payment option.'}
                 </p>
               </div>
               <div className="rounded-xl border border-admin bg-admin-input px-4 py-3 text-right">
@@ -190,13 +246,13 @@ export default function CustomerEventDetailPage() {
             )}
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Button disabled={!canPurchase || purchase.isPending || walletBalance < total} onClick={() => handlePurchase(true)} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50">
+              <Button disabled={!canPurchase || purchase.isPending} onClick={() => setWalletModalOpen(true)} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50">
                 <Wallet className="h-4 w-4" />
-                Pay with Wallet
+                Pay with Glee Wallet
               </Button>
               <Button disabled={!canPurchase || purchase.isPending} onClick={() => handlePurchase(false)} variant="outline" className="gap-2 border-admin bg-admin-input">
                 <Ticket className="h-4 w-4" />
-                Pay with Paystack
+                Proceed to Pay
               </Button>
             </div>
           </section>
@@ -260,6 +316,146 @@ export default function CustomerEventDetailPage() {
           </Tabs>
         </div>
       </div>
+
+      <Dialog open={walletModalOpen} onOpenChange={setWalletModalOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto border-admin bg-admin-surface sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Pay with Glee Wallet</DialogTitle>
+            <DialogDescription>
+              Review your wallet balance and choose how you want to pay for this ticket.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-admin bg-admin-input p-4">
+                <p className="text-xs text-admin-40">Wallet balance</p>
+                <p className="mt-1 font-heading text-2xl font-black text-foreground">{money(walletBalance)}</p>
+              </div>
+              <div className="rounded-xl border border-admin bg-admin-input p-4">
+                <p className="text-xs text-admin-40">Ticket total</p>
+                <p className="mt-1 font-heading text-2xl font-black text-foreground">{money(ticketTotal)}</p>
+              </div>
+              <div className="rounded-xl border border-admin bg-admin-input p-4">
+                <p className="text-xs text-admin-40">Order total</p>
+                <p className="mt-1 font-heading text-2xl font-black text-neon-pink">{money(total)}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setWalletPaymentType('FULL')}
+                className={[
+                  'rounded-xl border p-4 text-left transition',
+                  walletPaymentType === 'FULL' ? 'border-neon-pink bg-neon-pink/10' : 'border-admin bg-admin-input hover:border-neon-pink/30',
+                ].join(' ')}
+              >
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-neon-pink" />
+                  <p className="font-semibold text-foreground">Pay full amount</p>
+                </div>
+                <p className="mt-2 text-sm text-admin-50">Deduct {money(total)} from your Glee Wallet and confirm the ticket now.</p>
+              </button>
+
+              <button
+                type="button"
+                disabled={!installmentOptions.length}
+                onClick={() => {
+                  setWalletPaymentType('INSTALLMENT')
+                  setInstallmentCount(installmentOptions.includes(installmentCount) ? installmentCount : installmentOptions[0] ?? 2)
+                }}
+                className={[
+                  'rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50',
+                  walletPaymentType === 'INSTALLMENT' ? 'border-neon-pink bg-neon-pink/10' : 'border-admin bg-admin-input hover:border-neon-pink/30',
+                ].join(' ')}
+              >
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-neon-pink" />
+                  <p className="font-semibold text-foreground">Pay with installments</p>
+                </div>
+                <p className="mt-2 text-sm text-admin-50">
+                  Reserve with 30% of the ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}, then clear the balance before the event.
+                </p>
+              </button>
+            </div>
+
+            {walletPaymentType === 'INSTALLMENT' && selectedInstallmentPlan && (
+              <div className="rounded-xl border border-neon-pink/25 bg-neon-pink/10 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-semibold text-foreground">Reservation deposit</p>
+                    <p className="mt-1 text-sm text-admin-60">
+                      Pay {money(selectedInstallmentPlan.deposit)} now. Remaining balance: {money(selectedInstallmentPlan.remaining)}.
+                    </p>
+                    <p className="mt-1 text-xs text-admin-50">
+                      Final payment must be completed by {formatDate(selectedInstallmentPlan.finalDueDate)}.
+                    </p>
+                  </div>
+                  <Badge className="w-fit border-neon-pink/30 bg-neon-pink/10 text-neon-pink">30% reserve</Badge>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {installmentOptions.map(option => {
+                    const plan = buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, option)
+                    if (!plan) return null
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setInstallmentCount(option)}
+                        className={[
+                          'rounded-lg border p-3 text-left transition',
+                          installmentCount === option ? 'border-neon-pink bg-admin-surface' : 'border-admin bg-admin-input hover:border-neon-pink/30',
+                        ].join(' ')}
+                      >
+                        <p className="font-semibold text-foreground">{option} remaining payments</p>
+                        <p className="mt-1 text-xs text-admin-50">From {money(plan.installments[0]?.amount ?? 0)} per payment</p>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {selectedInstallmentPlan.installments.map(row => (
+                    <div key={`${row.label}-${row.dueDate.toISOString()}`} className="flex items-center justify-between gap-3 rounded-lg border border-admin bg-admin-surface px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-neon-pink" />
+                        <p className="text-sm font-medium text-foreground">{row.label}</p>
+                      </div>
+                      <p className="text-right text-sm text-admin-60">{money(row.amount)} by {formatDate(row.dueDate)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-4 rounded-lg border border-admin bg-admin-surface p-3 text-xs leading-5 text-admin-60">
+                  We will keep in touch with reminders for the selected payment plan. Your confirmation email will include the deposit, installment dates, and the rule to clear the balance one week before the event.
+                </p>
+              </div>
+            )}
+
+            {walletBalance < walletMinimumDue && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                Your wallet needs at least {money(walletMinimumDue)} for this option. Top up your wallet or choose another payment method.
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => setWalletModalOpen(false)} className="border-admin bg-admin-input">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={!canPurchase || purchase.isPending || walletBalance < walletMinimumDue}
+                onClick={() => handlePurchase(true, walletPaymentType)}
+                className="bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50"
+              >
+                {purchase.isPending ? 'Processing...' : walletPaymentType === 'INSTALLMENT' ? 'Confirm Reservation' : 'Confirm Payment'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </CustomerLayout>
   )
 }

@@ -41,6 +41,8 @@ export interface PurchaseTicketParams {
   noOfTickets: number
   preOrderMenu?: { id: string; quantity: number }[]
   useWallet?: boolean
+  walletPaymentType?: 'FULL' | 'INSTALLMENT'
+  installmentCount?: number
 }
 
 export interface PurchaseTicketResult {
