@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { Bell, Globe2, Mail, Shield, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bell, CalendarCog, Globe2, Mail, Shield, SlidersHorizontal } from 'lucide-react'
 import AdminLayout from '../../components/layout/AdminLayout'
-import { Button, Input, Switch } from '@glee/ui'
+import { Button, Input, Skeleton, Switch, useToast } from '@glee/ui'
+import { useEventCheckoutSettings, useUpdateEventCheckoutSettings } from '@glee/api'
 
 const SETTING_GROUPS = [
   {
@@ -40,6 +41,33 @@ export default function SettingsPage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false)
   const [publicCheckout, setPublicCheckout] = useState(true)
   const [auditAlerts, setAuditAlerts] = useState(true)
+  const { data: eventSettings, isLoading: eventSettingsLoading } = useEventCheckoutSettings()
+  const updateEventSettings = useUpdateEventCheckoutSettings()
+  const { toast } = useToast()
+  const [depositPercent, setDepositPercent] = useState('30')
+  const [securityFeePercent, setSecurityFeePercent] = useState('5')
+
+  useEffect(() => {
+    if (!eventSettings) return
+    setDepositPercent(String(eventSettings.walletInstallmentDepositPercent))
+    setSecurityFeePercent(String(eventSettings.walletInstallmentSecurityFeePercent))
+  }, [eventSettings])
+
+  async function saveEventSettings() {
+    try {
+      await updateEventSettings.mutateAsync({
+        walletInstallmentDepositPercent: Number(depositPercent),
+        walletInstallmentSecurityFeePercent: Number(securityFeePercent),
+      })
+      toast({ title: 'Event settings saved' })
+    } catch (error) {
+      toast({
+        title: 'Could not save event settings',
+        description: error instanceof Error ? error.message : 'Please check the percentages and try again.',
+        variant: 'destructive',
+      })
+    }
+  }
 
   return (
     <AdminLayout title="Settings" subtitle="Platform configuration and operational defaults">
@@ -91,6 +119,75 @@ export default function SettingsPage() {
               Save settings
             </Button>
           </div>
+        </section>
+
+        <section className="rounded-lg border border-admin bg-admin-surface p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neon-pink/10 text-neon-pink">
+                <CalendarCog className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-heading text-lg font-bold text-foreground">Event Settings</h2>
+                <p className="mt-1 max-w-2xl text-sm text-admin-40">
+                  Control wallet installment rules for logged-in users buying event tickets. These values are applied dynamically on the customer event checkout modal.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              onClick={saveEventSettings}
+              disabled={updateEventSettings.isPending || eventSettingsLoading}
+              className="bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50"
+            >
+              {updateEventSettings.isPending ? 'Saving...' : 'Save event settings'}
+            </Button>
+          </div>
+
+          {eventSettingsLoading ? (
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <Skeleton className="h-28 rounded-lg" />
+              <Skeleton className="h-28 rounded-lg" />
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <label className="rounded-lg border border-admin bg-admin-overlay p-4">
+                <span className="text-sm font-semibold text-admin-80">Installment deposit percentage</span>
+                <span className="mt-1 block text-xs text-admin-40">
+                  Percentage of ticket value deducted immediately to reserve the ticket.
+                </span>
+                <div className="mt-4 flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={depositPercent}
+                    onChange={event => setDepositPercent(event.target.value)}
+                    className="border-admin bg-admin-input"
+                  />
+                  <span className="text-sm font-semibold text-admin-60">%</span>
+                </div>
+              </label>
+
+              <label className="rounded-lg border border-admin bg-admin-overlay p-4">
+                <span className="text-sm font-semibold text-admin-80">Security fee percentage</span>
+                <span className="mt-1 block text-xs text-admin-40">
+                  Extra fee deducted upfront to reduce risk when users reserve tickets on installments.
+                </span>
+                <div className="mt-4 flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={securityFeePercent}
+                    onChange={event => setSecurityFeePercent(event.target.value)}
+                    className="border-admin bg-admin-input"
+                  />
+                  <span className="text-sm font-semibold text-admin-60">%</span>
+                </div>
+              </label>
+            </div>
+          )}
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">

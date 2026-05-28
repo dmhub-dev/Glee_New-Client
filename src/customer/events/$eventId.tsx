@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useEvent, usePurchaseTicket, useWallet } from '@glee/api'
+import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet } from '@glee/api'
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, Clock, CreditCard, MapPin, Minus, Plus, ShoppingBag, Ticket, Wallet } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
@@ -38,10 +38,19 @@ function getFinalPaymentDate(eventStartDate?: string) {
   return date
 }
 
-function buildInstallmentPlan(ticketTotal: number, menuTotal: number, eventStartDate: string | undefined, count: number) {
+function buildInstallmentPlan(
+  ticketTotal: number,
+  menuTotal: number,
+  eventStartDate: string | undefined,
+  count: number,
+  depositPercent: number,
+  securityFeePercent: number,
+) {
   const finalDueDate = getFinalPaymentDate(eventStartDate)
   if (!finalDueDate) return null
-  const deposit = Math.round((ticketTotal * 0.3 + menuTotal) * 100) / 100
+  const deposit = Math.round((ticketTotal * (depositPercent / 100)) * 100) / 100
+  const securityFee = Math.round((ticketTotal * (securityFeePercent / 100)) * 100) / 100
+  const dueNow = Math.round((deposit + menuTotal + securityFee) * 100) / 100
   const remaining = Math.round((ticketTotal + menuTotal - deposit) * 100) / 100
   const baseAmount = Math.round((remaining / count) * 100) / 100
   const today = new Date()
@@ -51,13 +60,14 @@ function buildInstallmentPlan(ticketTotal: number, menuTotal: number, eventStart
     const amount = index === count - 1 ? Math.round((remaining - baseAmount * (count - 1)) * 100) / 100 : baseAmount
     return { label: `Payment ${index + 1}`, amount, dueDate: dueDate > finalDueDate ? finalDueDate : dueDate }
   })
-  return { count, deposit, remaining, finalDueDate, installments }
+  return { count, deposit, securityFee, dueNow, remaining, finalDueDate, installments }
 }
 
 export default function CustomerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const { data: event, isLoading } = useEvent(eventId ?? '')
   const { data: wallet } = useWallet()
+  const { data: checkoutSettings } = useEventCheckoutSettings()
   const purchase = usePurchaseTicket()
   const { toast } = useToast()
   const [selectedTierId, setSelectedTierId] = useState('')
@@ -76,6 +86,8 @@ export default function CustomerEventDetailPage() {
   const ticketTotal = (selectedTier?.price ?? 0) * quantity
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
   const total = ticketTotal + menuTotal
+  const depositPercent = checkoutSettings?.walletInstallmentDepositPercent ?? 30
+  const securityFeePercent = checkoutSettings?.walletInstallmentSecurityFeePercent ?? 5
   const walletBalance = Number(wallet?.balance ?? 0)
   const installmentOptions = useMemo(() => {
     const finalDue = getFinalPaymentDate(event?.startDate)
@@ -85,10 +97,10 @@ export default function CustomerEventDetailPage() {
     return daysUntilDue >= 45 ? [2, 3] : [2]
   }, [event?.startDate])
   const selectedInstallmentPlan = useMemo(
-    () => buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, installmentCount),
-    [ticketTotal, menuTotal, event?.startDate, installmentCount],
+    () => buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, installmentCount, depositPercent, securityFeePercent),
+    [ticketTotal, menuTotal, event?.startDate, installmentCount, depositPercent, securityFeePercent],
   )
-  const walletMinimumDue = walletPaymentType === 'INSTALLMENT' && selectedInstallmentPlan ? selectedInstallmentPlan.deposit : total
+  const walletMinimumDue = walletPaymentType === 'INSTALLMENT' && selectedInstallmentPlan ? selectedInstallmentPlan.dueNow : total
   const posterSrc = event?.flyerPortraitUrl ?? event?.flyerSquareUrl ?? PLACEHOLDER
   const isSoldOut = event?.status === 'sold_out' || Boolean(event?.ticketTiers.length && event.ticketTiers.every(tier => tier.quantityRemaining <= 0))
   const selectedTierSoldOut = !selectedTier || selectedTier.quantityRemaining <= 0
@@ -375,7 +387,7 @@ export default function CustomerEventDetailPage() {
                   <p className="font-semibold text-foreground">Pay with installments</p>
                 </div>
                 <p className="mt-2 text-sm text-admin-50">
-                  Reserve with 30% of the ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}, then clear the balance before the event.
+                  Reserve with {depositPercent}% of the ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{securityFeePercent > 0 ? ` and a ${securityFeePercent}% security fee` : ''}, then clear the balance before the event.
                 </p>
               </button>
             </div>
@@ -386,18 +398,33 @@ export default function CustomerEventDetailPage() {
                   <div>
                     <p className="font-semibold text-foreground">Reservation deposit</p>
                     <p className="mt-1 text-sm text-admin-60">
-                      Pay {money(selectedInstallmentPlan.deposit)} now. Remaining balance: {money(selectedInstallmentPlan.remaining)}.
+                      Pay {money(selectedInstallmentPlan.dueNow)} now. Remaining balance: {money(selectedInstallmentPlan.remaining)}.
                     </p>
                     <p className="mt-1 text-xs text-admin-50">
                       Final payment must be completed by {formatDate(selectedInstallmentPlan.finalDueDate)}.
                     </p>
                   </div>
-                  <Badge className="w-fit border-neon-pink/30 bg-neon-pink/10 text-neon-pink">30% reserve</Badge>
+                  <Badge className="w-fit border-neon-pink/30 bg-neon-pink/10 text-neon-pink">{depositPercent}% reserve</Badge>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-lg border border-admin bg-admin-surface p-3">
+                    <p className="text-xs text-admin-40">Deposit</p>
+                    <p className="mt-1 font-mono text-sm font-semibold text-foreground">{money(selectedInstallmentPlan.deposit)}</p>
+                  </div>
+                  <div className="rounded-lg border border-admin bg-admin-surface p-3">
+                    <p className="text-xs text-admin-40">Menu now</p>
+                    <p className="mt-1 font-mono text-sm font-semibold text-foreground">{money(menuTotal)}</p>
+                  </div>
+                  <div className="rounded-lg border border-admin bg-admin-surface p-3">
+                    <p className="text-xs text-admin-40">Security fee</p>
+                    <p className="mt-1 font-mono text-sm font-semibold text-foreground">{money(selectedInstallmentPlan.securityFee)}</p>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {installmentOptions.map(option => {
-                    const plan = buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, option)
+                    const plan = buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, option, depositPercent, securityFeePercent)
                     if (!plan) return null
                     return (
                       <button
