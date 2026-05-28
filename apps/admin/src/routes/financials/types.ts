@@ -27,3 +27,29 @@ export type DailyEarningsRow = { day: string; ticketEarnings: number; menuEarnin
 export type DailyTicketsSoldRow = { day: string; sold: number }
 
 export type HighestSellingEvent = { id: string; title: string; sold: number }
+
+export type PayoutRow = {
+  id: string
+  date: string
+  recipient: string
+  event: string
+  payoutAmount: number
+  ticketRevenue: number
+  menuRevenue: number
+  ticketsSold: number
+}
+
+export type PayoutSortKey = 'id' | 'date' | 'recipient' | 'event' | 'payoutAmount' | 'ticketRevenue' | 'menuRevenue' | 'ticketsSold'
+
+export type MonthlyTrendRow = {
+  month: string
+  earnings: number
+  payouts: number
+  pendingPayouts: number
+  balance: number
+  ticketsSold: number
+  ticketRevenue: number
+  menuRevenue: number
+}
+
+export type RevenueSeriesRow = { date: string; revenue: number; profit?: number | null }

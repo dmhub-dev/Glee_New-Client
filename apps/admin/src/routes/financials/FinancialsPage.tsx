@@ -4,7 +4,9 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import MetricCard from './components/MetricCard'
 import EarningsChart from './components/EarningsChart'
 import MenuBreakdownChart from './components/MenuBreakdownChart'
+import RecentPayoutsTable from './components/RecentPayoutsTable'
 import RevenueBreakdownChart from './components/RevenueBreakdownChart'
+import RevenueTrendChart from './components/RevenueTrendChart'
 import StatCard from './components/StatCard'
 import TicketsTrendChart from './components/TicketsTrendChart'
 import TransactionTable from './components/TransactionTable'
@@ -20,6 +22,7 @@ export default function FinancialsPage() {
     totals,
     ticketEarnings,
     menuItemsEarnings,
+    payoutStats,
     ticketsSold,
     averageTicketPrice,
     highestSellingEvent,
@@ -28,11 +31,16 @@ export default function FinancialsPage() {
     earningsRange,
     setEarningsRange,
     dailyEarnings,
+    revenueTrendView,
+    setRevenueTrendView,
+    monthlyTrendRaw,
+    weeklyRevenueRaw,
     menuRevenueDonut,
     ticketsSoldRange,
     setTicketsSoldRange,
     dailyTicketsSoldTrend,
     transactions,
+    recentPayouts,
   } = useFinancialMetrics()
 
   const {
@@ -117,6 +125,18 @@ export default function FinancialsPage() {
               )}
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+              {!overviewLoading ? (
+                <>
+                  <StatCard label="Payout Balance" value={payoutStats?.payoutBalance ?? 0} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
+                  <StatCard label="Pending Payouts" value={payoutStats?.pendingPayouts ?? 0} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
+                  <StatCard label="Total Payouts" value={payoutStats?.totalPayouts ?? 0} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
+                </>
+              ) : (
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)
+              )}
+            </div>
+
             <TransactionTable
               exportingPdf={exportingPdf}
               search={search}
@@ -157,6 +177,8 @@ export default function FinancialsPage() {
                 icon={Trophy}
               />
             </div>
+
+            <RecentPayoutsTable exportingPdf={exportingPdf} payouts={recentPayouts} />
           </div>
 
           <div className="lg:col-span-5 space-y-5">
@@ -166,13 +188,19 @@ export default function FinancialsPage() {
               setEarningsRange={setEarningsRange}
               loading={earningsSeriesLoading}
             />
-            <RevenueBreakdownChart ticketEarnings={ticketEarnings} menuItemsEarnings={menuItemsEarnings} />
-            <MenuBreakdownChart menuRevenueDonut={menuRevenueDonut} />
+            <RevenueTrendChart
+              view={revenueTrendView}
+              setView={setRevenueTrendView}
+              monthlyTrend={monthlyTrendRaw}
+              weeklyRevenue={weeklyRevenueRaw}
+            />
             <TicketsTrendChart
               dailyTicketsSoldTrend={dailyTicketsSoldTrend}
               ticketsSoldRange={ticketsSoldRange}
               setTicketsSoldRange={setTicketsSoldRange}
             />
+            <RevenueBreakdownChart ticketEarnings={ticketEarnings} menuItemsEarnings={menuItemsEarnings} />
+            <MenuBreakdownChart menuRevenueDonut={menuRevenueDonut} />
           </div>
         </div>
       </div>
