@@ -53,7 +53,7 @@ const eventSchema = z.object({
   title: z.string().min(3, 'At least 3 characters').max(120),
   description: z.string().min(10, 'At least 10 characters').max(2000),
   category: z.string().min(1, 'Category required'),
-  status: z.enum(['draft', 'active', 'postponed', 'cancelled', 'sold_out'] as const),
+  status: z.enum(['draft', 'pending_approval', 'active', 'postponed', 'cancelled', 'rejected', 'sold_out'] as const),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
   endDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM format'),
@@ -233,11 +233,13 @@ const MENU_CATEGORIES: { value: EventFormValues['menuItems'][number]['category']
 ]
 
 const STATUS_OPTIONS: { value: EventFormValues['status']; label: string; description: string; className: string }[] = [
-  { value: 'draft',     label: 'Draft',     description: 'Keep hidden while editing', className: 'border-amber-500/30 bg-amber-500/10 text-amber-400' },
-  { value: 'active',    label: 'Active',    description: 'Visible and sellable',      className: 'border-green-500/30 bg-green-500/10 text-green-400' },
-  { value: 'postponed', label: 'Postponed', description: 'Temporarily delayed',       className: 'border-orange-500/30 bg-orange-500/10 text-orange-400' },
-  { value: 'cancelled', label: 'Cancelled', description: 'No longer running',         className: 'border-red-500/30 bg-red-500/10 text-red-400' },
-  { value: 'sold_out',  label: 'Sold Out',  description: 'Capacity reached',          className: 'border-admin bg-admin-overlay text-admin-50' },
+  { value: 'draft',            label: 'Draft',            description: 'Keep hidden while editing', className: 'border-amber-500/30 bg-amber-500/10 text-amber-400' },
+  { value: 'pending_approval', label: 'Pending Approval', description: 'Waiting for admin review',  className: 'border-sky-500/30 bg-sky-500/10 text-sky-400' },
+  { value: 'active',           label: 'Active',           description: 'Visible and sellable',      className: 'border-green-500/30 bg-green-500/10 text-green-400' },
+  { value: 'postponed',        label: 'Postponed',        description: 'Temporarily delayed',       className: 'border-orange-500/30 bg-orange-500/10 text-orange-400' },
+  { value: 'cancelled',        label: 'Cancelled',        description: 'No longer running',         className: 'border-red-500/30 bg-red-500/10 text-red-400' },
+  { value: 'rejected',         label: 'Rejected',         description: 'Not approved by Glee',      className: 'border-red-500/30 bg-red-500/10 text-red-300' },
+  { value: 'sold_out',         label: 'Sold Out',         description: 'Capacity reached',          className: 'border-admin bg-admin-overlay text-admin-50' },
 ]
 
 function LocationPicker({
@@ -353,7 +355,7 @@ export default function EventFormPage() {
       title: '',
       description: '',
       category: '',
-      status: 'draft',
+      status: isVendorRole ? 'pending_approval' : 'draft',
       startDate: '',
       endDate:   '',
       startTime: '',
@@ -553,7 +555,7 @@ export default function EventFormPage() {
       description: values.description,
       categoryId,
       locationId: values.locationId,
-      status: asDraft ? 'draft' : values.status,
+      status: isVendorRole ? 'pending_approval' : (asDraft ? 'draft' : values.status),
       startDate: values.startDate,
       endDate: values.endDate,
       startTime: values.startTime,
@@ -575,7 +577,9 @@ export default function EventFormPage() {
         await updateMutation.mutateAsync({ id: eventId!, data: payload })
       }
       toast({
-        title: asDraft ? 'Event saved as draft' : values.status === 'active' ? 'Event published' : 'Event saved',
+        title: isVendorRole
+          ? (isNew ? 'Event submitted for approval' : 'Event updated')
+          : asDraft ? 'Event saved as draft' : values.status === 'active' ? 'Event published' : 'Event saved',
       })
       navigate('/dashboard/events')
     } catch (error) {
@@ -622,7 +626,7 @@ export default function EventFormPage() {
     endDate:   formValues.endDate   || formValues.startDate || new Date().toISOString().slice(0, 10),
     startTime: formValues.startTime || '20:00',
     endTime: formValues.endTime || undefined,
-    status: formValues.status === 'active' ? 'active' : 'draft',
+    status: isVendorRole ? 'pending_approval' : (formValues.status === 'active' ? 'active' : formValues.status),
     location: locationsData?.find(l => l.id === formValues.locationId)?.name,
     locationId: formValues.locationId,
     categoryName: formValues.category || undefined,
@@ -696,36 +700,45 @@ export default function EventFormPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs text-admin-50">Status</Label>
-                <Controller
-                  control={control}
-                  name="status"
-                  render={({ field }) => (
-                    <div className={`grid grid-cols-1 gap-2 ${isNew ? 'sm:grid-cols-2' : 'sm:grid-cols-5'}`}>
-                      {visibleStatusOptions.map(option => {
-                        const selected = field.value === option.value
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => field.onChange(option.value)}
-                            className={`rounded-xl border p-3 text-left transition-colors ${
-                              selected ? option.className : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80'
-                            }`}
-                          >
-                            <span className="flex items-center gap-2 text-sm font-semibold">
-                              {selected ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                              {option.label}
-                            </span>
-                            <span className="mt-1 block text-[11px] opacity-80">{option.description}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                />
-              </div>
+              {isVendorRole ? (
+                <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3">
+                  <p className="text-sm font-semibold text-sky-300">Pending approval</p>
+                  <p className="mt-1 text-xs leading-5 text-sky-100/80">
+                    Vendor events are submitted to Glee Admin for review. Once approved, the event becomes active and visible for public ticket purchases.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-xs text-admin-50">Status</Label>
+                  <Controller
+                    control={control}
+                    name="status"
+                    render={({ field }) => (
+                      <div className={`grid grid-cols-1 gap-2 ${isNew ? 'sm:grid-cols-2' : 'sm:grid-cols-5'}`}>
+                        {visibleStatusOptions.map(option => {
+                          const selected = field.value === option.value
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => field.onChange(option.value)}
+                              className={`rounded-xl border p-3 text-left transition-colors ${
+                                selected ? option.className : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80'
+                              }`}
+                            >
+                              <span className="flex items-center gap-2 text-sm font-semibold">
+                                {selected ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                {option.label}
+                              </span>
+                              <span className="mt-1 block text-[11px] opacity-80">{option.description}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  />
+                </div>
+              )}
             </section>
 
             <input type="hidden" {...register('startDate')} />
@@ -1169,21 +1182,23 @@ export default function EventFormPage() {
                 Discard changes
               </button>
               <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleSubmit(v => onSubmit(v, true), onInvalid)}
-                  disabled={isSaving}
-                  className="rounded-full border-white/20 text-admin-70 hover:bg-admin-input hover:border-white/40"
-                >
-                  Save as Draft
-                </Button>
+                {!isVendorRole && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSubmit(v => onSubmit(v, true), onInvalid)}
+                    disabled={isSaving}
+                    className="rounded-full border-white/20 text-admin-70 hover:bg-admin-input hover:border-white/40"
+                  >
+                    Save as Draft
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   disabled={isSaving}
                   className="rounded-full bg-neon-pink hover:bg-[#cc2272] text-white font-semibold px-6"
                 >
-                  {isSaving ? 'Saving...' : (formValues.status === 'active' ? 'Publish Event' : 'Save Event')}
+                  {isSaving ? 'Saving...' : isVendorRole ? (isNew ? 'Submit for Approval' : 'Save Changes') : (formValues.status === 'active' ? 'Publish Event' : 'Save Event')}
                 </Button>
               </div>
             </div>

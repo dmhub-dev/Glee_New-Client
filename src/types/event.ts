@@ -53,7 +53,7 @@ export interface Event {
   schedules?: EventSchedule[]
   flyerPortraitUrl?: string
   flyerSquareUrl?: string
-  status: 'draft' | 'active' | 'postponed' | 'cancelled' | 'sold_out'
+  status: 'draft' | 'pending_approval' | 'active' | 'postponed' | 'cancelled' | 'rejected' | 'sold_out'
   location?: string
   locationId?: string
   dresscode?: string

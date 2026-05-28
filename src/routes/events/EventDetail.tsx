@@ -1,28 +1,32 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, useIssueComplimentaryTicket, type EventApiPayload } from '@glee/api'
+import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, useIssueComplimentaryTicket, useReviewVendorEvent, type EventApiPayload } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
 import { Button, Input, Label, Skeleton, Progress, Textarea, useToast } from '@glee/ui'
-import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 
 const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
 const STATUS_CONFIG: Record<Event['status'], { label: string; dot: string; badge: string }> = {
-  active:           { label: 'Active',    dot: 'bg-green-400',   badge: 'bg-green-500/15 text-green-400 border-green-500/20'   },
-  draft:            { label: 'Draft',     dot: 'bg-amber-400',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20'   },
-  cancelled:        { label: 'Cancelled', dot: 'bg-red-500',     badge: 'bg-red-500/15 text-red-400 border-red-500/20'         },
-  postponed:        { label: 'Postponed', dot: 'bg-orange-400',  badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20'},
-  sold_out:         { label: 'Sold Out',  dot: 'bg-admin-30',    badge: 'bg-admin-overlay text-admin-40 border-admin'          },
+  active:           { label: 'Active',           dot: 'bg-green-400',   badge: 'bg-green-500/15 text-green-400 border-green-500/20'   },
+  pending_approval: { label: 'Pending Approval', dot: 'bg-sky-400',     badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20'         },
+  draft:            { label: 'Draft',            dot: 'bg-amber-400',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20'   },
+  cancelled:        { label: 'Cancelled',        dot: 'bg-red-500',     badge: 'bg-red-500/15 text-red-400 border-red-500/20'         },
+  rejected:         { label: 'Rejected',         dot: 'bg-red-400',     badge: 'bg-red-500/15 text-red-300 border-red-500/20'         },
+  postponed:        { label: 'Postponed',        dot: 'bg-orange-400',  badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20'},
+  sold_out:         { label: 'Sold Out',         dot: 'bg-admin-30',    badge: 'bg-admin-overlay text-admin-40 border-admin'          },
 }
 
 const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
   { value: 'active',    label: 'Set Active'        },
   { value: 'draft',     label: 'Move to Draft'     },
+  { value: 'pending_approval', label: 'Mark Pending Approval' },
   { value: 'postponed', label: 'Mark as Postponed' },
   { value: 'cancelled', label: 'Cancel Event'      },
+  { value: 'rejected',  label: 'Reject Event'      },
   { value: 'sold_out',  label: 'Mark Sold Out'     },
 ]
 
@@ -108,6 +112,8 @@ export default function EventDetailPage() {
   const { data: event, isLoading } = useAdminEvent(eventId ?? '', { vendorScoped: isVendorRole })
   const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
   const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
+  const reviewMutation = useReviewVendorEvent()
+  const { toast } = useToast()
   const { data: ticketData } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<EventDetailTab>('details')
@@ -147,6 +153,24 @@ export default function EventDetailPage() {
     if (window.confirm('Delete this event? This cannot be undone.')) {
       deleteMutation.mutate(event.id)
       navigate('/dashboard/events')
+    }
+  }
+
+  async function handleReview(decision: 'approve' | 'reject') {
+    if (!event) return
+    const reason = decision === 'reject'
+      ? window.prompt('Reason for rejection? This will be sent to the vendor.') ?? undefined
+      : undefined
+    if (decision === 'reject' && reason === undefined) return
+    try {
+      await reviewMutation.mutateAsync({ id: event.id, decision, reason })
+      toast({ title: decision === 'approve' ? 'Event approved' : 'Event rejected' })
+    } catch (error) {
+      toast({
+        title: 'Could not review event',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
@@ -255,6 +279,27 @@ export default function EventDetailPage() {
               <Pencil className="w-3.5 h-3.5" />
               Edit
             </button>
+
+            {(user.role === 'admin' || user.role === 'super_admin') && event.status === 'pending_approval' && (
+              <>
+                <button
+                  onClick={() => handleReview('approve')}
+                  disabled={reviewMutation.isPending}
+                  className="flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/15 transition-colors disabled:opacity-50"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleReview('reject')}
+                  disabled={reviewMutation.isPending}
+                  className="flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/15 transition-colors disabled:opacity-50"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  Reject
+                </button>
+              </>
+            )}
 
             {canDeleteEvent && (
               <button

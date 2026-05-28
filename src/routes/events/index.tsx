@@ -22,19 +22,23 @@ const EVENT_SECTIONS: { key: EventSection; label: string; icon: typeof Calendar 
 ]
 
 const STATUS_TABS: { key: StatusTab; label: string }[] = [
-  { key: 'active',    label: 'Active'    },
-  { key: 'draft',     label: 'Draft'     },
-  { key: 'postponed', label: 'Postponed' },
-  { key: 'cancelled', label: 'Cancelled' },
-  { key: 'sold_out',  label: 'Sold Out'  },
+  { key: 'pending_approval', label: 'Pending Approval' },
+  { key: 'active',           label: 'Active'           },
+  { key: 'draft',            label: 'Draft'            },
+  { key: 'postponed',        label: 'Postponed'        },
+  { key: 'cancelled',        label: 'Cancelled'        },
+  { key: 'rejected',         label: 'Rejected'         },
+  { key: 'sold_out',         label: 'Sold Out'         },
 ]
 
 const STATUS_DOT: Record<StatusTab, string> = {
-  active:    'bg-green-400',
-  draft:     'bg-amber-400',
-  postponed: 'bg-orange-400',
-  cancelled: 'bg-red-500',
-  sold_out:  'bg-admin-30',
+  active:           'bg-green-400',
+  pending_approval: 'bg-sky-400',
+  draft:            'bg-amber-400',
+  postponed:        'bg-orange-400',
+  cancelled:        'bg-red-500',
+  rejected:         'bg-red-400',
+  sold_out:         'bg-admin-30',
 }
 
 const CATEGORY_COLOURS: Record<string, string> = {
@@ -350,7 +354,7 @@ export default function EventsListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: events, isLoading } = useAdminEvents({ vendorScoped: isVendorRole })
   const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
-  const [activeTab, setActiveTab] = useState<StatusTab>('active')
+  const [activeTab, setActiveTab] = useState<StatusTab>('pending_approval')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const { data: categories, isLoading: categoriesLoading } = useCategories()

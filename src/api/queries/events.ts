@@ -71,19 +71,23 @@ interface BackendEvent {
 // ── Status maps ────────────────────────────────────────────────────────────────
 
 const BACKEND_TO_STATUS: Record<string, Event['status']> = {
-  DRAFT:     'draft',
-  ACTIVE:    'active',
-  POSTPONED: 'postponed',
-  CANCELLED: 'cancelled',
-  SOLD_OUT:  'sold_out',
+  DRAFT:            'draft',
+  PENDING_APPROVAL: 'pending_approval',
+  ACTIVE:           'active',
+  POSTPONED:        'postponed',
+  CANCELLED:        'cancelled',
+  REJECTED:         'rejected',
+  SOLD_OUT:         'sold_out',
 }
 
 const STATUS_TO_BACKEND: Record<string, string> = {
-  draft:     'DRAFT',
-  active:    'ACTIVE',
-  postponed: 'POSTPONED',
-  cancelled: 'CANCELLED',
-  sold_out:  'SOLD_OUT',
+  draft:            'DRAFT',
+  pending_approval: 'PENDING_APPROVAL',
+  active:           'ACTIVE',
+  postponed:        'POSTPONED',
+  cancelled:        'CANCELLED',
+  rejected:         'REJECTED',
+  sold_out:         'SOLD_OUT',
 }
 
 const WAVE_STATUS_TO_CLIENT: Record<string, 'upcoming' | 'active' | 'completed' | 'cancelled'> = {
@@ -381,6 +385,14 @@ export async function deleteAdminEvent(id: string, vendorScoped = false): Promis
   await apiFetch(`${vendorScoped ? '/api/v2' : '/api/v1'}/admin/event/${id}`, { method: 'DELETE' })
 }
 
+export async function reviewVendorEvent(id: string, decision: 'approve' | 'reject', reason?: string): Promise<Event> {
+  const res = await apiFetch<{ success: boolean; data: BackendEvent }>(`/api/v1/admin/event/${id}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify({ decision, reason }),
+  })
+  return mapBackendToEvent(res.data)
+}
+
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 
 type EventFilters = Parameters<typeof eventKeys.list>[0]
@@ -444,5 +456,17 @@ export function useDeleteEvent(options?: { vendorScoped?: boolean }) {
   return useMutation({
     mutationFn: (id: string) => deleteAdminEvent(id, Boolean(options?.vendorScoped)),
     onSuccess:  () => qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) }),
+  })
+}
+
+export function useReviewVendorEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, decision, reason }: { id: string; decision: 'approve' | 'reject'; reason?: string }) =>
+      reviewVendorEvent(id, decision, reason),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: eventKeys.admin.all('admin') })
+      qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id, 'admin') })
+    },
   })
 }
