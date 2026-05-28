@@ -62,7 +62,8 @@ export default function App() {
         <Route path="/" element={<PublicHomePage />} />
         <Route path="/events/:eventId" element={<PublicEventPage />} />
         <Route path="/checkout" element={<PublicCheckoutPage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage mode="dashboard" />} />
+        <Route path="/user/login" element={<LoginPage mode="user" />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
         <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfilePage /></ProtectedRoute>} />

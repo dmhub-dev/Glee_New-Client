@@ -14,10 +14,14 @@ const loginSchema = z.object({
 })
 type LoginValues = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+interface LoginPageProps {
+  mode?: 'dashboard' | 'user'
+}
+
+export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, verifyTwoFactor } = useAuth()
+  const { login, verifyTwoFactor, logout } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [twoFactorEmail, setTwoFactorEmail] = useState<string | null>(null)
@@ -26,6 +30,15 @@ export default function LoginPage() {
 
   const routeState = location.state as { from?: { pathname: string }; message?: string } | null
   const from = routeState?.from?.pathname
+  const isUserLogin = mode === 'user'
+
+  function isAllowedRole(role?: string | null) {
+    return isUserLogin ? role === 'user' : role !== 'user'
+  }
+
+  function defaultDestination(role?: string | null) {
+    return role === 'user' ? '/app' : '/dashboard'
+  }
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -36,10 +49,19 @@ export default function LoginPage() {
     try {
       const result = await login(values.email, values.password)
       if (result.requiresTwoFactor) {
+        if (!isAllowedRole(result.role)) {
+          setServerError(isUserLogin ? 'Use the dashboard login for staff accounts.' : 'Use the user login for customer accounts.')
+          return
+        }
         setTwoFactorEmail(result.email ?? values.email)
         return
       }
-      navigate(from ?? (result.role === 'user' ? '/app' : '/dashboard'), { replace: true })
+      if (!isAllowedRole(result.role)) {
+        await logout()
+        setServerError(isUserLogin ? 'Use the dashboard login for staff accounts.' : 'Use the user login for customer accounts.')
+        return
+      }
+      navigate(from ?? defaultDestination(result.role), { replace: true })
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Login failed. Please try again.')
     }
@@ -52,7 +74,12 @@ export default function LoginPage() {
     setIsVerifying(true)
     try {
       const result = await verifyTwoFactor(twoFactorEmail, otp.trim())
-      navigate(from ?? (result.role === 'user' ? '/app' : '/dashboard'), { replace: true })
+      if (!isAllowedRole(result.role)) {
+        await logout()
+        setServerError(isUserLogin ? 'Use the dashboard login for staff accounts.' : 'Use the user login for customer accounts.')
+        return
+      }
+      navigate(from ?? defaultDestination(result.role), { replace: true })
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Verification failed. Please try again.')
     } finally {
@@ -68,8 +95,8 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-4">
           <img src="/glee-logo-final.svg" alt="Glee" className="h-16" />
           <div className="text-center">
-            <h1 className="font-heading font-black text-2xl text-foreground">Glee Dashboard</h1>
-            <p className="text-sm text-admin-40 mt-1">Sign in to continue</p>
+            <h1 className="font-heading font-black text-2xl text-foreground">{isUserLogin ? 'Glee Account' : 'Glee Dashboard'}</h1>
+            <p className="text-sm text-admin-40 mt-1">{isUserLogin ? 'Sign in to your customer account' : 'Sign in to continue'}</p>
           </div>
         </div>
 
@@ -126,7 +153,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                placeholder="admin@glee.co.ke"
+                placeholder={isUserLogin ? 'you@example.com' : 'admin@glee.co.ke'}
                 {...register('email')}
                 className="bg-admin-input border-admin focus-visible:ring-neon-pink/30 placeholder:text-admin-20"
               />
@@ -172,9 +199,11 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-admin-30">
-          New to Glee? <Link to="/signup" className="font-semibold text-neon-pink hover:underline">Create an account</Link>
-        </p>
+        {isUserLogin && (
+          <p className="text-center text-xs text-admin-30">
+            New to Glee? <Link to="/signup" className="font-semibold text-neon-pink hover:underline">Create an account</Link>
+          </p>
+        )}
       </div>
     </div>
   )

@@ -76,7 +76,7 @@ export default function SignupPage() {
     setIsVerifying(true)
     try {
       await apiVerifySignupOtp(registeredEmail, otp.trim())
-      navigate('/login', { replace: true, state: { message: 'Account verified. Please sign in.' } })
+      navigate('/user/login', { replace: true, state: { message: 'Account verified. Please sign in.' } })
     } catch (error) {
       setServerError(error instanceof Error ? error.message : 'Invalid verification code.')
     } finally {
@@ -229,7 +229,7 @@ export default function SignupPage() {
         </div>
 
         <p className="text-center text-xs text-admin-30">
-          Already have an account? <Link to="/login" className="font-semibold text-neon-pink hover:underline">Sign in</Link>
+          Already have an account? <Link to="/user/login" className="font-semibold text-neon-pink hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

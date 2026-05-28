@@ -21,7 +21,10 @@ export default function ProtectedRoute({ children, roles }: Props) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    const loginPath = roles?.length === 1 && roles[0] === 'user'
+      ? '/user/login'
+      : '/login'
+    return <Navigate to={loginPath} state={{ from: location }} replace />
   }
 
   if (user?.profileStatus === false && location.pathname !== '/complete-profile') {
