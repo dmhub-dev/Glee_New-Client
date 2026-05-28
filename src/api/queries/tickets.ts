@@ -68,6 +68,10 @@ export function ticketVerificationStorageKey(reference: string) {
   return `glee:event-ticket-verification:${reference}`
 }
 
+export function ticketCheckoutContextStorageKey(reference: string) {
+  return `glee:event-ticket-context:${reference}`
+}
+
 export interface AdminEventTicket {
   id: string
   eventId: string
@@ -161,6 +165,7 @@ export interface MyTicketGroup {
     endDate?: string | null
     status?: string
     category?: { id: string; name: string } | null
+    location?: { id?: string; name?: string | null; address?: string | null } | null
   }
   tickets: AdminEventTicket[]
   noOfTicketsPurchased: number

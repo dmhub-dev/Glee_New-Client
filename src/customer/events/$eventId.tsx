@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticketVerificationStorageKey } from '@glee/api'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, Clock, CreditCard, MapPin, Minus, Plus, ShoppingBag, Ticket, Wallet } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
@@ -65,6 +65,7 @@ function buildInstallmentPlan(
 
 export default function CustomerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
+  const navigate = useNavigate()
   const { data: event, isLoading } = useEvent(eventId ?? '')
   const { data: wallet } = useWallet()
   const { data: checkoutSettings } = useEventCheckoutSettings()
@@ -74,6 +75,7 @@ export default function CustomerEventDetailPage() {
   const [quantity, setQuantity] = useState(1)
   const [menuQtys, setMenuQtys] = useState<Record<string, number>>({})
   const [walletModalOpen, setWalletModalOpen] = useState(false)
+  const [purchaseCompleteOpen, setPurchaseCompleteOpen] = useState(false)
   const [walletPaymentType, setWalletPaymentType] = useState<'FULL' | 'INSTALLMENT'>('FULL')
   const [installmentCount, setInstallmentCount] = useState(2)
 
@@ -125,11 +127,16 @@ export default function CustomerEventDetailPage() {
             ticketVerificationStorageKey(result.reference),
             result.verificationToken,
           )
+          sessionStorage.setItem(
+            ticketCheckoutContextStorageKey(result.reference),
+            JSON.stringify({ mode: 'customer', eventId: event.id }),
+          )
         }
         window.location.href = result.authorization_url
         return
       }
       setWalletModalOpen(false)
+      setPurchaseCompleteOpen(true)
       toast({
         title: paymentType === 'INSTALLMENT' ? 'Ticket reserved' : 'Ticket purchased',
         description: paymentType === 'INSTALLMENT'
@@ -335,6 +342,28 @@ export default function CustomerEventDetailPage() {
           </Tabs>
         </div>
       </div>
+
+      <Dialog open={purchaseCompleteOpen} onOpenChange={setPurchaseCompleteOpen}>
+        <DialogContent className="max-w-md border-white/10 bg-[#101017] text-white">
+          <DialogHeader>
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-300">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <DialogTitle className="text-center font-heading text-2xl font-black text-white">Ticket Confirmed</DialogTitle>
+            <DialogDescription className="text-center text-white/55">
+              Your ticket is ready in My Tickets and we have sent the confirmation to your email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Button variant="outline" onClick={() => setPurchaseCompleteOpen(false)} className="rounded-full border-white/15 bg-transparent text-white hover:bg-white/10">
+              Back to Event
+            </Button>
+            <Button onClick={() => navigate('/app/tickets')} className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
+              View Ticket
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={walletModalOpen} onOpenChange={setWalletModalOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto border-admin bg-admin-surface sm:max-w-2xl">

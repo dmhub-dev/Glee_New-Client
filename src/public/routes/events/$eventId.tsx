@@ -8,7 +8,7 @@ import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@glee/ui'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
-import { initiateGuestPurchase, ticketVerificationStorageKey } from '@glee/api'
+import { initiateGuestPurchase, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
 
@@ -108,6 +108,10 @@ export default function EventDetailPage() {
       sessionStorage.setItem(
         ticketVerificationStorageKey(intent.reference),
         intent.verificationToken,
+      )
+      sessionStorage.setItem(
+        ticketCheckoutContextStorageKey(intent.reference),
+        JSON.stringify({ mode: 'guest', eventId: event.id }),
       )
       setIsProcessing(true)
       window.location.href = intent.authorization_url
