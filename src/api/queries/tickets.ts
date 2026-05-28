@@ -155,6 +155,35 @@ export function useRevertTicketCheckIn(eventId?: string) {
   })
 }
 
+export interface IssueComplimentaryTicketParams {
+  eventId: string
+  ticketCategoryId: string
+  quantity: number
+  recipientName: string
+  recipientEmail: string
+  recipientPhone?: string
+  note?: string
+  checkInNow?: boolean
+}
+
+export function issueComplimentaryTicket(params: IssueComplimentaryTicketParams): Promise<AdminEventTicket> {
+  return apiFetch<{ success: boolean; data: AdminEventTicket }>('/api/v1/admin/event-ticket/complimentary', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }).then(r => r.data)
+}
+
+export function useIssueComplimentaryTicket(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: issueComplimentaryTicket,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] })
+      qc.invalidateQueries({ queryKey: ['admin', 'events'] })
+    },
+  })
+}
+
 export interface MyTicketGroup {
   event: {
     id: string

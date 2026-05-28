@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, type EventApiPayload } from '@glee/api'
+import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, useIssueComplimentaryTicket, type EventApiPayload } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
-import { Skeleton, Progress } from '@glee/ui'
-import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils } from 'lucide-react'
+import { Button, Input, Label, Skeleton, Progress, Textarea, useToast } from '@glee/ui'
+import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 
@@ -27,6 +27,7 @@ const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
 ]
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
+type EventDetailTab = 'details' | 'complimentary'
 
 function formatEventDate(startDate: string, endDate: string): string {
   if (endDate === startDate) {
@@ -109,6 +110,7 @@ export default function EventDetailPage() {
   const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
   const { data: ticketData } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<EventDetailTab>('details')
 
   function handleStatusChange(newStatus: Event['status']) {
     if (!event) return
@@ -266,13 +268,29 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        <div className="flex w-fit rounded-full border border-admin bg-admin-surface p-1">
+        <div className="flex w-fit flex-wrap rounded-full border border-admin bg-admin-surface p-1">
           <button
             type="button"
-            className="rounded-full bg-neon-pink px-4 py-1.5 text-xs font-semibold text-white"
+            onClick={() => setActiveTab('details')}
+            className={cn(
+              'rounded-full px-4 py-1.5 text-xs font-semibold transition',
+              activeTab === 'details' ? 'bg-neon-pink text-white' : 'text-admin-50 hover:text-neon-pink',
+            )}
           >
             Details
           </button>
+          {['super_admin', 'admin', 'vendor'].includes(user.role) && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('complimentary')}
+              className={cn(
+                'rounded-full px-4 py-1.5 text-xs font-semibold transition',
+                activeTab === 'complimentary' ? 'bg-neon-pink text-white' : 'text-admin-50 hover:text-neon-pink',
+              )}
+            >
+              Complimentary Tickets
+            </button>
+          )}
           <button
             type="button"
             onClick={() => navigate(`/dashboard/events/${event.id}/attendees`)}
@@ -283,6 +301,9 @@ export default function EventDetailPage() {
         </div>
 
         {/* Two-column layout */}
+        {activeTab === 'complimentary' ? (
+          <ComplimentaryTicketPanel event={event} />
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
           {/* Left: main content */}
@@ -565,6 +586,7 @@ export default function EventDetailPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </AdminLayout>
   )
@@ -580,6 +602,217 @@ function RevenueCard({ icon: Icon, label, value }: { icon: typeof Ticket; label:
         <p className="text-xs text-admin-40">{label}</p>
         <p className="font-heading text-lg font-black text-foreground">{value}</p>
       </div>
+    </div>
+  )
+}
+
+function ComplimentaryTicketPanel({ event }: { event: Event }) {
+  const { toast } = useToast()
+  const issueTicket = useIssueComplimentaryTicket(event.id)
+  const [ticketCategoryId, setTicketCategoryId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [recipientName, setRecipientName] = useState('')
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [recipientPhone, setRecipientPhone] = useState('')
+  const [note, setNote] = useState('')
+  const [checkInNow, setCheckInNow] = useState(false)
+
+  const waveOptions = useMemo(() => event.ticketWaves?.length
+    ? event.ticketWaves
+    : [{ id: 'current', name: 'Current tickets', status: 'active' as const, ticketTiers: event.ticketTiers, sequence: 1, startsAt: event.startDate, endsAt: event.endDate }],
+  [event])
+
+  const selectedTier = waveOptions.flatMap(wave => wave.ticketTiers).find(tier => tier.id === ticketCategoryId)
+  const completedUnsold = waveOptions
+    .filter(wave => wave.status === 'completed')
+    .reduce((sum, wave) => sum + wave.ticketTiers.reduce((tierSum, tier) => tierSum + Math.max(0, tier.quantityRemaining), 0), 0)
+
+  async function handleSubmit(submitEvent: FormEvent<HTMLFormElement>) {
+    submitEvent.preventDefault()
+    if (!ticketCategoryId || !recipientName || !recipientEmail) {
+      toast({ title: 'Missing details', description: 'Select a ticket tier and add recipient details.', variant: 'destructive' })
+      return
+    }
+
+    try {
+      await issueTicket.mutateAsync({
+        eventId: event.id,
+        ticketCategoryId,
+        quantity,
+        recipientName,
+        recipientEmail,
+        recipientPhone: recipientPhone || undefined,
+        note: note || undefined,
+        checkInNow,
+      })
+      toast({ title: 'Complimentary ticket issued' })
+      setRecipientName('')
+      setRecipientEmail('')
+      setRecipientPhone('')
+      setNote('')
+      setQuantity(1)
+      setCheckInNow(false)
+    } catch (error) {
+      toast({
+        title: 'Could not issue ticket',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-neon-pink/10 text-neon-pink">
+            <Gift className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="font-heading text-base font-bold text-foreground">Issue Complimentary Ticket</h2>
+            <p className="text-xs text-admin-40">Tickets issued here are deducted from this event's inventory immediately.</p>
+          </div>
+        </div>
+
+        <label className="space-y-1.5">
+          <Label className="text-xs text-admin-50">Ticket tier</Label>
+          <select
+            value={ticketCategoryId}
+            onChange={changeEvent => setTicketCategoryId(changeEvent.target.value)}
+            className="h-10 w-full rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground outline-none focus:border-neon-pink/50"
+          >
+            <option value="">Select ticket tier</option>
+            {waveOptions.map(wave => (
+              <optgroup key={wave.id} label={`${wave.name} (${wave.status})`}>
+                {wave.ticketTiers.map(tier => (
+                  <option key={tier.id} value={tier.id}>
+                    {tier.name} - {money(tier.price)} - {tier.quantityRemaining} available
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <label className="space-y-1.5">
+            <Label className="text-xs text-admin-50">Quantity</Label>
+            <Input
+              type="number"
+              min={1}
+              max={selectedTier?.quantityRemaining ?? undefined}
+              value={quantity}
+              onChange={changeEvent => setQuantity(Number(changeEvent.target.value) || 1)}
+              className="border-admin bg-admin-input"
+            />
+          </label>
+          <label className="space-y-1.5 md:col-span-2">
+            <Label className="text-xs text-admin-50">Recipient name</Label>
+            <Input
+              value={recipientName}
+              onChange={changeEvent => setRecipientName(changeEvent.target.value)}
+              placeholder="Guest or gate batch name"
+              className="border-admin bg-admin-input"
+            />
+          </label>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-1.5">
+            <Label className="text-xs text-admin-50">Recipient email</Label>
+            <Input
+              type="email"
+              value={recipientEmail}
+              onChange={changeEvent => setRecipientEmail(changeEvent.target.value)}
+              placeholder="guest@example.com"
+              className="border-admin bg-admin-input"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <Label className="text-xs text-admin-50">Phone</Label>
+            <Input
+              value={recipientPhone}
+              onChange={changeEvent => setRecipientPhone(changeEvent.target.value)}
+              placeholder="+254..."
+              className="border-admin bg-admin-input"
+            />
+          </label>
+        </div>
+
+        <label className="space-y-1.5">
+          <Label className="text-xs text-admin-50">Internal note</Label>
+          <Textarea
+            value={note}
+            onChange={changeEvent => setNote(changeEvent.target.value)}
+            placeholder="e.g. Promo giveaway, gate sale, partner allocation"
+            className="min-h-24 border-admin bg-admin-input"
+          />
+        </label>
+
+        <label className="flex items-center gap-3 rounded-xl border border-admin bg-admin-overlay p-3">
+          <input
+            type="checkbox"
+            checked={checkInNow}
+            onChange={changeEvent => setCheckInNow(changeEvent.target.checked)}
+            className="h-4 w-4 accent-neon-pink"
+          />
+          <span>
+            <span className="block text-sm font-medium text-admin-80">Check in immediately</span>
+            <span className="block text-xs text-admin-40">Use this for gate sales where the person is entering now.</span>
+          </span>
+        </label>
+
+        <Button
+          type="submit"
+          disabled={issueTicket.isPending || !selectedTier || quantity > (selectedTier?.quantityRemaining ?? 0)}
+          className="bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50"
+        >
+          {issueTicket.isPending ? 'Issuing...' : 'Issue Complimentary Ticket'}
+        </Button>
+      </form>
+
+      <aside className="space-y-4">
+        <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <div className="mb-4 flex items-center gap-2">
+            <Ticket className="h-4 w-4 text-neon-pink" />
+            <h2 className="font-heading text-sm font-bold text-foreground">Selected Tier</h2>
+          </div>
+          {!selectedTier ? (
+            <p className="text-sm text-admin-40">Select a tier to see availability and capacity.</p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-lg font-bold text-foreground">{selectedTier.name}</p>
+              <p className="text-sm text-admin-50">{money(selectedTier.price)}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <ComplimentaryMetric label="Capacity" value={selectedTier.quantity} />
+                <ComplimentaryMetric label="Available" value={selectedTier.quantityRemaining} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <div className="mb-4 flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-neon-pink" />
+            <h2 className="font-heading text-sm font-bold text-foreground">Wave Notes</h2>
+          </div>
+          <p className="text-sm text-admin-50">
+            Expired wave tickets no longer roll forward automatically. Completed waves keep their unsold count for review.
+          </p>
+          <p className="mt-3 rounded-xl border border-admin bg-admin-overlay p-3 text-xs text-admin-40">
+            Unsold tickets in completed waves: <span className="font-semibold text-admin-80">{completedUnsold.toLocaleString()}</span>
+          </p>
+        </div>
+      </aside>
+    </div>
+  )
+}
+
+function ComplimentaryMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-admin bg-admin-overlay p-3">
+      <p className="text-xs text-admin-40">{label}</p>
+      <p className="mt-1 font-heading text-xl font-black text-foreground">{value.toLocaleString()}</p>
     </div>
   )
 }
