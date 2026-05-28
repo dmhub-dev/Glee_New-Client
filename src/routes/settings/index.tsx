@@ -4,6 +4,8 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import { Button, Input, Skeleton, Switch, useToast } from '@glee/ui'
 import { useEventCheckoutSettings, useUpdateEventCheckoutSettings } from '@glee/api'
 
+type FeeType = 'PERCENTAGE' | 'FIXED'
+
 const SETTING_GROUPS = [
   {
     icon: Globe2,
@@ -44,20 +46,32 @@ export default function SettingsPage() {
   const { data: eventSettings, isLoading: eventSettingsLoading } = useEventCheckoutSettings()
   const updateEventSettings = useUpdateEventCheckoutSettings()
   const { toast } = useToast()
+  const [depositType, setDepositType] = useState<FeeType>('PERCENTAGE')
   const [depositPercent, setDepositPercent] = useState('30')
+  const [depositAmount, setDepositAmount] = useState('0')
+  const [securityFeeType, setSecurityFeeType] = useState<FeeType>('PERCENTAGE')
   const [securityFeePercent, setSecurityFeePercent] = useState('5')
+  const [securityFeeAmount, setSecurityFeeAmount] = useState('0')
 
   useEffect(() => {
     if (!eventSettings) return
+    setDepositType(eventSettings.walletInstallmentDepositType ?? 'PERCENTAGE')
     setDepositPercent(String(eventSettings.walletInstallmentDepositPercent))
+    setDepositAmount(String(eventSettings.walletInstallmentDepositAmount ?? 0))
+    setSecurityFeeType(eventSettings.walletInstallmentSecurityFeeType ?? 'PERCENTAGE')
     setSecurityFeePercent(String(eventSettings.walletInstallmentSecurityFeePercent))
+    setSecurityFeeAmount(String(eventSettings.walletInstallmentSecurityFeeAmount ?? 0))
   }, [eventSettings])
 
   async function saveEventSettings() {
     try {
       await updateEventSettings.mutateAsync({
+        walletInstallmentDepositType: depositType,
         walletInstallmentDepositPercent: Number(depositPercent),
+        walletInstallmentDepositAmount: Number(depositAmount),
+        walletInstallmentSecurityFeeType: securityFeeType,
         walletInstallmentSecurityFeePercent: Number(securityFeePercent),
+        walletInstallmentSecurityFeeAmount: Number(securityFeeAmount),
       })
       toast({ title: 'Event settings saved' })
     } catch (error) {
@@ -152,38 +166,68 @@ export default function SettingsPage() {
           ) : (
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <label className="rounded-lg border border-admin bg-admin-overlay p-4">
-                <span className="text-sm font-semibold text-admin-80">Installment deposit percentage</span>
+                <span className="text-sm font-semibold text-admin-80">Installment deposit</span>
                 <span className="mt-1 block text-xs text-admin-40">
-                  Percentage of ticket value deducted immediately to reserve the ticket.
+                  Amount deducted immediately to reserve the ticket. Choose a percentage of ticket value or a fixed KES amount.
                 </span>
+                <div className="mt-4 inline-flex rounded-lg border border-admin bg-admin-input p-1">
+                  {(['PERCENTAGE', 'FIXED'] as FeeType[]).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setDepositType(type)}
+                      className={[
+                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
+                        depositType === type ? 'bg-neon-pink text-white' : 'text-admin-50 hover:text-admin-90',
+                      ].join(' ')}
+                    >
+                      {type === 'PERCENTAGE' ? 'Percentage' : 'Fixed amount'}
+                    </button>
+                  ))}
+                </div>
                 <div className="mt-4 flex items-center gap-3">
                   <Input
                     type="number"
-                    min={1}
-                    max={100}
-                    value={depositPercent}
-                    onChange={event => setDepositPercent(event.target.value)}
+                    min={depositType === 'PERCENTAGE' ? 1 : 0}
+                    max={depositType === 'PERCENTAGE' ? 100 : undefined}
+                    value={depositType === 'PERCENTAGE' ? depositPercent : depositAmount}
+                    onChange={event => depositType === 'PERCENTAGE' ? setDepositPercent(event.target.value) : setDepositAmount(event.target.value)}
                     className="border-admin bg-admin-input"
                   />
-                  <span className="text-sm font-semibold text-admin-60">%</span>
+                  <span className="min-w-10 text-sm font-semibold text-admin-60">{depositType === 'PERCENTAGE' ? '%' : 'KSh'}</span>
                 </div>
               </label>
 
               <label className="rounded-lg border border-admin bg-admin-overlay p-4">
-                <span className="text-sm font-semibold text-admin-80">Security fee percentage</span>
+                <span className="text-sm font-semibold text-admin-80">Security fee</span>
                 <span className="mt-1 block text-xs text-admin-40">
                   Extra fee deducted upfront to reduce risk when users reserve tickets on installments.
                 </span>
+                <div className="mt-4 inline-flex rounded-lg border border-admin bg-admin-input p-1">
+                  {(['PERCENTAGE', 'FIXED'] as FeeType[]).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setSecurityFeeType(type)}
+                      className={[
+                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
+                        securityFeeType === type ? 'bg-neon-pink text-white' : 'text-admin-50 hover:text-admin-90',
+                      ].join(' ')}
+                    >
+                      {type === 'PERCENTAGE' ? 'Percentage' : 'Fixed amount'}
+                    </button>
+                  ))}
+                </div>
                 <div className="mt-4 flex items-center gap-3">
                   <Input
                     type="number"
                     min={0}
-                    max={100}
-                    value={securityFeePercent}
-                    onChange={event => setSecurityFeePercent(event.target.value)}
+                    max={securityFeeType === 'PERCENTAGE' ? 100 : undefined}
+                    value={securityFeeType === 'PERCENTAGE' ? securityFeePercent : securityFeeAmount}
+                    onChange={event => securityFeeType === 'PERCENTAGE' ? setSecurityFeePercent(event.target.value) : setSecurityFeeAmount(event.target.value)}
                     className="border-admin bg-admin-input"
                   />
-                  <span className="text-sm font-semibold text-admin-60">%</span>
+                  <span className="min-w-10 text-sm font-semibold text-admin-60">{securityFeeType === 'PERCENTAGE' ? '%' : 'KSh'}</span>
                 </div>
               </label>
             </div>

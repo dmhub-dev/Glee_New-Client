@@ -104,7 +104,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
   return {
     id:               raw.id,
     vendorId:         raw.vendorId ?? '',
-    venueId:          raw.location?.id ?? '',
+    venueId:          locationStr ?? raw.location?.id ?? '',
     title:            raw.name,
     description:      raw.description ?? '',
     startDate:        start ? start.toISOString().split('T')[0] : '',

@@ -2,8 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../client'
 
 export interface EventCheckoutSettings {
+  walletInstallmentDepositType: 'PERCENTAGE' | 'FIXED'
   walletInstallmentDepositPercent: number
+  walletInstallmentDepositAmount: number
+  walletInstallmentSecurityFeeType: 'PERCENTAGE' | 'FIXED'
   walletInstallmentSecurityFeePercent: number
+  walletInstallmentSecurityFeeAmount: number
 }
 
 export const settingsKeys = {
@@ -26,7 +30,7 @@ export function useEventCheckoutSettings() {
   return useQuery({
     queryKey: settingsKeys.eventCheckout,
     queryFn: getEventCheckoutSettings,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
   })
 }
 

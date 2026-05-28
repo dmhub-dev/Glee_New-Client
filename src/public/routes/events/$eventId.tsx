@@ -126,6 +126,7 @@ export default function EventDetailPage() {
   const eventDate = new Date(event.startDate)
   const startDt = new Date(`${event.startDate}T${event.startTime}`)
   const endDt = event.endTime ? new Date(`${event.endDate}T${event.endTime}`) : null
+  const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
   const posterSrc = event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
 
   return (
@@ -182,7 +183,7 @@ export default function EventDetailPage() {
             <h1 className="font-heading font-black text-4xl md:text-5xl text-white leading-tight mb-2">
               {event.title}
             </h1>
-            <p className="text-neon-pink/80 font-mono text-sm">{event.venueId}</p>
+            <p className="text-neon-pink/80 font-mono text-sm">{locationLabel}</p>
           </div>
 
           {/* Info chips */}
@@ -212,9 +213,9 @@ export default function EventDetailPage() {
                 📍
               </div>
               <div>
-                <p className="text-white/80 text-sm">{event.location ?? event.venueId}</p>
+                <p className="text-white/80 text-sm">{locationLabel}</p>
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location ?? event.venueId)}`}
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
@@ -465,7 +466,7 @@ export default function EventDetailPage() {
                 <div className="min-w-0">
                   <p className="font-semibold text-white leading-tight truncate">{event.title}</p>
                   <p className="text-xs text-white/45 mt-0.5 truncate">
-                    📍 {event.location ?? event.venueId}
+                    📍 {locationLabel}
                   </p>
                   <p className="text-xs text-white/45 font-mono mt-0.5">
                     {startDt.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}

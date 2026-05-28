@@ -26,6 +26,7 @@ interface EventCardProps {
 
 export default function EventCard({ event }: EventCardProps) {
   const navigate = useNavigate()
+  const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
 
   return (
     <div
@@ -51,7 +52,7 @@ export default function EventCard({ event }: EventCardProps) {
         <p className="text-xs text-muted-foreground font-mono">
           {formatEventDate(event.startDate, event.endDate, event.startTime)}
         </p>
-        <p className="text-xs text-glee-text-muted">{event.venueId}</p>
+        <p className="text-xs text-glee-text-muted">{locationLabel}</p>
         <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{event.description}</p>
 
         <Button

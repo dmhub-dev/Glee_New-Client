@@ -6,6 +6,7 @@ import { Calendar, CheckCircle2, Clock, CreditCard, MapPin, Minus, Plus, Shoppin
 import CustomerLayout from '../CustomerLayout'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
+type FeeType = 'PERCENTAGE' | 'FIXED'
 
 function money(value: number) {
   return `KSh ${Math.max(0, value).toLocaleString()}`
@@ -38,18 +39,32 @@ function getFinalPaymentDate(eventStartDate?: string) {
   return date
 }
 
+function calculateFee(ticketTotal: number, type: FeeType, percent: number, amount: number, capAtTicketTotal = false) {
+  const value = type === 'FIXED' ? amount : ticketTotal * (percent / 100)
+  const capped = capAtTicketTotal ? Math.min(ticketTotal, value) : value
+  return Math.round(Math.max(0, capped) * 100) / 100
+}
+
+function formatSettingLabel(type: FeeType, percent: number, amount: number) {
+  return type === 'FIXED' ? money(amount) : `${percent}%`
+}
+
 function buildInstallmentPlan(
   ticketTotal: number,
   menuTotal: number,
   eventStartDate: string | undefined,
   count: number,
+  depositType: FeeType,
   depositPercent: number,
+  depositAmount: number,
+  securityFeeType: FeeType,
   securityFeePercent: number,
+  securityFeeAmount: number,
 ) {
   const finalDueDate = getFinalPaymentDate(eventStartDate)
   if (!finalDueDate) return null
-  const deposit = Math.round((ticketTotal * (depositPercent / 100)) * 100) / 100
-  const securityFee = Math.round((ticketTotal * (securityFeePercent / 100)) * 100) / 100
+  const deposit = calculateFee(ticketTotal, depositType, depositPercent, depositAmount, true)
+  const securityFee = calculateFee(ticketTotal, securityFeeType, securityFeePercent, securityFeeAmount)
   const dueNow = Math.round((deposit + menuTotal + securityFee) * 100) / 100
   const remaining = Math.round((ticketTotal + menuTotal - deposit) * 100) / 100
   const baseAmount = Math.round((remaining / count) * 100) / 100
@@ -88,19 +103,34 @@ export default function CustomerEventDetailPage() {
   const ticketTotal = (selectedTier?.price ?? 0) * quantity
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
   const total = ticketTotal + menuTotal
+  const depositType = checkoutSettings?.walletInstallmentDepositType ?? 'PERCENTAGE'
   const depositPercent = checkoutSettings?.walletInstallmentDepositPercent ?? 30
+  const depositAmount = checkoutSettings?.walletInstallmentDepositAmount ?? 0
+  const securityFeeType = checkoutSettings?.walletInstallmentSecurityFeeType ?? 'PERCENTAGE'
   const securityFeePercent = checkoutSettings?.walletInstallmentSecurityFeePercent ?? 5
+  const securityFeeAmount = checkoutSettings?.walletInstallmentSecurityFeeAmount ?? 0
   const walletBalance = Number(wallet?.balance ?? 0)
   const installmentOptions = useMemo(() => {
     const finalDue = getFinalPaymentDate(event?.startDate)
     if (!finalDue) return []
     const daysUntilDue = Math.floor((finalDue.getTime() - Date.now()) / 86400000)
-    if (daysUntilDue < 7) return []
-    return daysUntilDue >= 45 ? [2, 3] : [2]
+    if (daysUntilDue < 1) return []
+    return daysUntilDue >= 30 ? [2, 3] : [2]
   }, [event?.startDate])
   const selectedInstallmentPlan = useMemo(
-    () => buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, installmentCount, depositPercent, securityFeePercent),
-    [ticketTotal, menuTotal, event?.startDate, installmentCount, depositPercent, securityFeePercent],
+    () => buildInstallmentPlan(
+      ticketTotal,
+      menuTotal,
+      event?.startDate,
+      installmentCount,
+      depositType,
+      depositPercent,
+      depositAmount,
+      securityFeeType,
+      securityFeePercent,
+      securityFeeAmount,
+    ),
+    [ticketTotal, menuTotal, event?.startDate, installmentCount, depositType, depositPercent, depositAmount, securityFeeType, securityFeePercent, securityFeeAmount],
   )
   const walletMinimumDue = walletPaymentType === 'INSTALLMENT' && selectedInstallmentPlan ? selectedInstallmentPlan.dueNow : total
   const posterSrc = event?.flyerPortraitUrl ?? event?.flyerSquareUrl ?? PLACEHOLDER
@@ -423,8 +453,11 @@ export default function CustomerEventDetailPage() {
                   <p className="font-semibold text-foreground">Pay with installments</p>
                 </div>
                 <p className="mt-2 text-sm text-admin-50">
-                  Reserve with {depositPercent}% of the ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{securityFeePercent > 0 ? ` and a ${securityFeePercent}% security fee` : ''}, then clear the balance before the event.
+                  Reserve with {formatSettingLabel(depositType, depositPercent, depositAmount)} of the ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{(securityFeeType === 'FIXED' ? securityFeeAmount > 0 : securityFeePercent > 0) ? ` and a ${formatSettingLabel(securityFeeType, securityFeePercent, securityFeeAmount)} security fee` : ''}, then clear the balance one week before the event.
                 </p>
+                {!installmentOptions.length && (
+                  <p className="mt-2 text-xs text-admin-40">Installments close one week before the event.</p>
+                )}
               </button>
             </div>
 
@@ -440,7 +473,9 @@ export default function CustomerEventDetailPage() {
                       Final payment must be completed by {formatDate(selectedInstallmentPlan.finalDueDate)}.
                     </p>
                   </div>
-                  <Badge className="w-fit border-neon-pink/30 bg-neon-pink/10 text-neon-pink">{depositPercent}% reserve</Badge>
+                  <Badge className="w-fit border-neon-pink/30 bg-neon-pink/10 text-neon-pink">
+                    {formatSettingLabel(depositType, depositPercent, depositAmount)} reserve
+                  </Badge>
                 </div>
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -460,7 +495,18 @@ export default function CustomerEventDetailPage() {
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {installmentOptions.map(option => {
-                    const plan = buildInstallmentPlan(ticketTotal, menuTotal, event?.startDate, option, depositPercent, securityFeePercent)
+                    const plan = buildInstallmentPlan(
+                      ticketTotal,
+                      menuTotal,
+                      event?.startDate,
+                      option,
+                      depositType,
+                      depositPercent,
+                      depositAmount,
+                      securityFeeType,
+                      securityFeePercent,
+                      securityFeeAmount,
+                    )
                     if (!plan) return null
                     return (
                       <button
