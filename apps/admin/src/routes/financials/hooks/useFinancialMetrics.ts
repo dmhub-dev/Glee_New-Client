@@ -19,7 +19,6 @@ const financialsKeys = {
   overview: (range: TimeRange, upcomingLimit: number, recentSalesLimit: number) =>
     ['admin', 'financials', 'overview', range, upcomingLimit, recentSalesLimit] as const,
   recentSales: (limit: number) => ['admin', 'financials', 'recent-sales', limit] as const,
-  revenue: (days: number) => ['admin', 'financials', 'revenue', days] as const,
   dailyEarnings: (range: TimeRange) => ['admin', 'financials', 'daily-earnings', range] as const,
   ticketRevenue: (range: TimeRange) => ['admin', 'financials', 'ticket-revenue', range] as const,
   highestSellingEvent: (range: TimeRange) => ['admin', 'financials', 'highest-selling-event', range] as const,
@@ -47,11 +46,6 @@ async function getFinancialsRecentSales(limit: number) {
   const res = await apiFetch<unknown>(`/api/v1/financials/recent-sales?limit=${limit}`)
   const data = unwrapData<unknown>(res)
   return Array.isArray(data) ? data : Array.isArray((data as any)?.recentSales) ? (data as any).recentSales : []
-}
-
-async function getFinancialsRevenue(days = 14) {
-  const res = await apiFetch<unknown>(`/api/v1/financials/revenue?days=${days}`)
-  return normalizeRevenueSeriesResponse(res)
 }
 
 async function getFinancialsRevenueByRange(range: TimeRange) {
@@ -171,11 +165,6 @@ export function useFinancialMetrics() {
     queryFn: () => getFinancialsDailyEarnings(earningsRange),
   })
 
-  const { data: trendSeriesRaw } = useQuery({
-    queryKey: financialsKeys.revenue(14),
-    queryFn: () => getFinancialsRevenue(14),
-  })
-
   const [revenueTrendView, setRevenueTrendView] = useState<TimeRange>('this_year')
 
   const { data: monthlyTrendRaw } = useQuery({
@@ -202,6 +191,32 @@ export function useFinancialMetrics() {
     const o: any = overviewData ?? {}
     return (o.payments ?? {}) as Record<string, unknown>
   }, [overviewData])
+
+  const mom = useMemo(() => {
+    const o: any = overviewData ?? {}
+    return (o.mom ?? {}) as Record<string, unknown>
+  }, [overviewData])
+
+  const momTrends = useMemo(() => {
+    function pickTrend(key: string): { trend: Trend; pct: number | null } {
+      const m: any = (mom as any)?.[key]
+      if (!m) return { trend: 'up', pct: null }
+      const dir = String(m.direction ?? '').toLowerCase()
+      const pctRaw = asNumber(m.pct)
+      if (dir === 'down') return { trend: 'down', pct: Math.abs(pctRaw) }
+      if (dir === 'flat') return { trend: 'up', pct: 0 }
+      return { trend: 'up', pct: Math.abs(pctRaw) }
+    }
+
+    return {
+      earning: pickTrend('earning'),
+      ticketRevenue: pickTrend('ticketRevenue'),
+      menuRevenue: pickTrend('menuRevenue'),
+      payoutBalance: pickTrend('payoutBalance'),
+      pendingPayouts: pickTrend('pendingPayouts'),
+      totalPayouts: pickTrend('totalPayouts'),
+    }
+  }, [mom])
 
   const payouts = useMemo(() => {
     const o: any = overviewData ?? {}
@@ -363,21 +378,6 @@ export function useFinancialMetrics() {
     return { id: String(first?.id ?? 'top'), title: String(first?.title ?? '—'), sold }
   }, [highestSellingEventRaw, overviewData])
 
-  const trends = useMemo(() => {
-    const rows = (trendSeriesRaw ?? []).filter((r: any) => !!r?.date) as any[]
-    if (rows.length < 2) return { earningsTrend: null as number | null }
-
-    const prev = rows[rows.length - 2]
-    const curr = rows[rows.length - 1]
-
-    const prevEarnings = asNumber(prev?.revenue)
-    const currEarnings = asNumber(curr?.revenue)
-    const earningsPct = prevEarnings > 0 ? ((currEarnings - prevEarnings) / prevEarnings) * 100 : null
-    return { earningsTrend: earningsPct }
-  }, [trendSeriesRaw])
-
-  const earningsTrendDir: Trend = trends.earningsTrend !== null && trends.earningsTrend < 0 ? 'down' : 'up'
-
   const dailyEarnings = useMemo((): DailyEarningsRow[] => {
     const days = earningsDays
     const series = (dailyEarningsRaw ?? []) as any[]
@@ -493,8 +493,7 @@ export function useFinancialMetrics() {
     ticketsSold,
     averageTicketPrice,
     highestSellingEvent,
-    trends,
-    earningsTrendDir,
+    momTrends,
     earningsRange,
     setEarningsRange,
     dailyEarnings,

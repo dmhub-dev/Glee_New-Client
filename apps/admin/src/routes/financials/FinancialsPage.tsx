@@ -26,8 +26,7 @@ export default function FinancialsPage() {
     ticketsSold,
     averageTicketPrice,
     highestSellingEvent,
-    trends,
-    earningsTrendDir,
+    momTrends,
     earningsRange,
     setEarningsRange,
     dailyEarnings,
@@ -116,9 +115,9 @@ export default function FinancialsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
               {!overviewLoading && !recentSalesLoading ? (
                 <>
-                  <StatCard label="Total Earnings" value={totals.earnings} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
-                  <StatCard label="Total Ticket Earnings" value={ticketEarnings} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
-                  <StatCard label="Total Menu Items Earnings" value={menuItemsEarnings} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
+                  <StatCard label="Total Earnings" value={totals.earnings} trend={momTrends.earning.trend} trendPct={momTrends.earning.pct} />
+                  <StatCard label="Total Ticket Earnings" value={ticketEarnings} trend={momTrends.ticketRevenue.trend} trendPct={momTrends.ticketRevenue.pct} />
+                  <StatCard label="Total Menu Items Earnings" value={menuItemsEarnings} trend={momTrends.menuRevenue.trend} trendPct={momTrends.menuRevenue.pct} />
                 </>
               ) : (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)
@@ -128,9 +127,9 @@ export default function FinancialsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4">
               {!overviewLoading ? (
                 <>
-                  <StatCard label="Payout Balance" value={payoutStats?.payoutBalance ?? 0} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
-                  <StatCard label="Pending Payouts" value={payoutStats?.pendingPayouts ?? 0} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
-                  <StatCard label="Total Payouts" value={payoutStats?.totalPayouts ?? 0} trend={earningsTrendDir} trendPct={trends.earningsTrend} />
+                  <StatCard label="Payout Balance" value={payoutStats?.payoutBalance ?? 0} trend={momTrends.payoutBalance.trend} trendPct={momTrends.payoutBalance.pct} />
+                  <StatCard label="Pending Payouts" value={payoutStats?.pendingPayouts ?? 0} trend={momTrends.pendingPayouts.trend} trendPct={momTrends.pendingPayouts.pct} />
+                  <StatCard label="Total Payouts" value={payoutStats?.totalPayouts ?? 0} trend={momTrends.totalPayouts.trend} trendPct={momTrends.totalPayouts.pct} />
                 </>
               ) : (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)
