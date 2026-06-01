@@ -21,6 +21,7 @@ const BookingsPage       = lazy(() => import('../routes/bookings/index'))
 const BookingEventPage   = lazy(() => import('../routes/bookings/$eventId'))
 const MenuPricingPage    = lazy(() => import('../routes/menu-pricing/index'))
 const SalesReportsPage   = lazy(() => import('../routes/sales-reports/index'))
+const FinancialsPage     = lazy(() => import('../routes/financials/index'))
 const CalendarPage       = lazy(() => import('../routes/calendar/index'))
 const SettingsPage       = lazy(() => import('../routes/settings/index'))
 const UsersPage          = lazy(() => import('../routes/users/index'))
@@ -114,6 +115,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff', 'finance']}>
               <SalesReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/financials"
+          element={
+            <ProtectedRoute roles={['super_admin', 'admin', 'finance']}>
+              <FinancialsPage />
             </ProtectedRoute>
           }
         />

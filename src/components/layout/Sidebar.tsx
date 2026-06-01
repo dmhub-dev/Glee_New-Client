@@ -39,7 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Bookings', to: '/dashboard/bookings', icon: Ticket, active: true, roles: ['vendor', 'vendor_staff', 'admin', 'customer_support'] },
   { label: 'Menu & Pricing', to: '/dashboard/menu-pricing', icon: FileText, active: true, roles: ['vendor', 'vendor_staff', 'admin'] },
   { label: 'Sales Reports', to: '/dashboard/sales-reports', icon: BarChart2, active: true, roles: ['vendor', 'vendor_staff', 'admin', 'finance'] },
-  { label: 'Financials', to: '/financials', icon: BarChart2, active: false, roles: ['super_admin', 'admin', 'finance'] },
+  { label: 'Financials', to: '/dashboard/financials', icon: BarChart2, active: true, roles: ['super_admin', 'admin', 'finance'] },
 ]
 
 const ACCOUNT_NAV_ITEMS: NavItem[] = [
