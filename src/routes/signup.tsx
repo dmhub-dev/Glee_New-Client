@@ -22,6 +22,9 @@ const signupSchema = z.object({
 
 type SignupValues = z.infer<typeof signupSchema>
 
+const otpPattern = /^\d{6,8}$/
+const cleanOtp = (value: string) => value.replace(/\D/g, '').slice(0, 8)
+
 export default function SignupPage() {
   const navigate = useNavigate()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -122,16 +125,18 @@ export default function SignupPage() {
                   id="otp"
                   inputMode="numeric"
                   autoComplete="one-time-code"
+                  maxLength={8}
                   value={otp}
-                  onChange={event => setOtp(event.target.value)}
+                  onChange={event => setOtp(cleanOtp(event.target.value))}
                   className="border-admin bg-admin-input text-center tracking-[0.35em] focus-visible:ring-neon-pink/30"
-                  placeholder="000000"
+                  placeholder="12345678"
                 />
+                {otp && !otpPattern.test(otp.trim()) && <p className="text-xs text-admin-40">Code must be 6 to 8 digits.</p>}
               </div>
 
               <button
                 type="submit"
-                disabled={isVerifying || otp.trim().length < 4}
+                disabled={isVerifying || !otpPattern.test(otp.trim())}
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-neon-pink py-2.5 font-semibold text-white transition-colors hover:bg-[#cc2272] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isVerifying ? 'Verifying...' : 'Verify Account'}

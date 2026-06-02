@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { useAuth } from '../lib/auth/AuthContext'
 import { apiForgotPassword, apiResetPassword } from '@glee/api'
 import { Input, Label } from '@glee/ui'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, KeyRound, LogIn, Mail, RotateCw, ShieldCheck } from 'lucide-react'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -15,9 +15,13 @@ const loginSchema = z.object({
 })
 type LoginValues = z.infer<typeof loginSchema>
 
+const otpPattern = /^\d{6,8}$/
+const otpMessage = 'Enter a 6 to 8 digit OTP'
+const cleanOtp = (value: string) => value.replace(/\D/g, '').slice(0, 8)
+
 const resetSchema = z.object({
   email: z.string().email('Enter a valid email'),
-  otp: z.string().min(4, 'Enter the OTP from your email'),
+  otp: z.string().regex(otpPattern, otpMessage),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string().min(8, 'Confirm your password'),
 }).refine(values => values.password === values.confirmPassword, {
@@ -30,6 +34,27 @@ const forgotSchema = z.object({
   email: z.string().email('Enter a valid email'),
 })
 type ForgotValues = z.infer<typeof forgotSchema>
+
+function OtpVisual({ value }: { value: string }) {
+  const digits = cleanOtp(value)
+  return (
+    <div className="grid grid-cols-8 gap-1.5" aria-hidden="true">
+      {Array.from({ length: 8 }).map((_, index) => {
+        const filled = Boolean(digits[index])
+        const required = index < 6
+        return (
+          <div
+            key={index}
+            className={[
+              'h-1.5 rounded-full transition-colors',
+              filled ? 'bg-neon-pink' : required ? 'bg-admin-40/50' : 'bg-admin-20/40',
+            ].join(' ')}
+          />
+        )
+      })}
+    </div>
+  )
+}
 
 interface LoginPageProps {
   mode?: 'dashboard' | 'user'
@@ -72,6 +97,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
     handleSubmit: handleResetSubmit,
     getValues: getResetValues,
     setValue: setResetValue,
+    watch: watchReset,
     formState: { errors: resetErrors, isSubmitting: isResetSubmitting },
   } = useForm<ResetValues>({
     resolver: zodResolver(resetSchema),
@@ -84,6 +110,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
   } = useForm<ForgotValues>({
     resolver: zodResolver(forgotSchema),
   })
+  const resetOtpValue = watchReset('otp')
 
   async function onForgotPassword(values: ForgotValues) {
     setServerError(null)
@@ -212,15 +239,39 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
               </button>
             </form>
           ) : authView === 'reset' ? (
-            <form onSubmit={handleResetSubmit(onResetPassword)} className="space-y-4">
+            <form onSubmit={handleResetSubmit(onResetPassword)} className="space-y-5">
+              <div className="rounded-xl border border-neon-pink/20 bg-neon-pink/10 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neon-pink text-white shadow-lg shadow-neon-pink/20">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Secure password reset</p>
+                    <p className="mt-1 text-xs leading-5 text-admin-50">Enter the 6-8 digit code from your inbox, then set a new password.</p>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="reset-code-email" className="text-xs text-admin-50">Email address</Label>
                 <Input id="reset-code-email" type="email" {...registerReset('email')} className="bg-admin-input border-admin focus-visible:ring-neon-pink/30" />
                 {resetErrors.email && <p className="text-xs text-red-400">{resetErrors.email.message}</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="reset-otp" className="text-xs text-admin-50">OTP code</Label>
-                <Input id="reset-otp" inputMode="numeric" {...registerReset('otp')} className="bg-admin-input border-admin text-center tracking-[0.3em] focus-visible:ring-neon-pink/30" placeholder="000000" />
+              <div className="space-y-2 rounded-xl border border-admin bg-admin-input/60 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="reset-otp" className="text-xs font-semibold uppercase text-admin-50">OTP code</Label>
+                  <span className="rounded-full border border-admin bg-admin-surface px-2 py-0.5 text-[10px] font-semibold text-admin-50">6-8 digits</span>
+                </div>
+                <Input
+                  id="reset-otp"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={8}
+                  placeholder="12345678"
+                  value={resetOtpValue}
+                  onChange={(event) => setResetValue('otp', cleanOtp(event.target.value), { shouldValidate: true })}
+                  className="h-14 border-admin bg-admin-surface text-center font-mono text-2xl font-semibold tracking-[0.35em] text-foreground placeholder:tracking-[0.25em] placeholder:text-admin-20 focus-visible:ring-neon-pink/30"
+                />
+                <OtpVisual value={resetOtpValue} />
                 {resetErrors.otp && <p className="text-xs text-red-400">{resetErrors.otp.message}</p>}
               </div>
               <div className="space-y-1.5">
@@ -236,28 +287,48 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
               <button type="submit" disabled={isResetSubmitting} className="w-full bg-neon-pink hover:bg-[#cc2272] disabled:opacity-60 text-white font-semibold py-2.5 rounded-full transition-colors">
                 {isResetSubmitting ? 'Resetting...' : 'Reset Password'}
               </button>
-              <button type="button" onClick={() => onForgotPassword({ email: getResetValues('email') })} className="w-full text-xs text-admin-40 hover:text-admin-70">
+              <button type="button" onClick={() => onForgotPassword({ email: getResetValues('email') })} className="flex w-full items-center justify-center gap-2 text-xs font-semibold text-admin-40 hover:text-admin-70">
+                <RotateCw className="h-3.5 w-3.5" />
                 Resend code
               </button>
             </form>
           ) : twoFactorEmail ? (
-            <form onSubmit={onVerifyTwoFactor} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="otp" className="text-xs text-admin-50">Verification code</Label>
+            <form onSubmit={onVerifyTwoFactor} className="space-y-5">
+              <div className="rounded-xl border border-neon-pink/20 bg-neon-pink/10 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-neon-pink text-white shadow-lg shadow-neon-pink/20">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Two-factor verification</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs leading-5 text-admin-50">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">Code sent to {twoFactorEmail}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2 rounded-xl border border-admin bg-admin-input/60 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="otp" className="text-xs font-semibold uppercase text-admin-50">Verification code</Label>
+                  <span className="rounded-full border border-admin bg-admin-surface px-2 py-0.5 text-[10px] font-semibold text-admin-50">6-8 digits</span>
+                </div>
                 <Input
                   id="otp"
                   inputMode="numeric"
                   autoComplete="one-time-code"
+                  maxLength={8}
                   value={otp}
-                  onChange={e => setOtp(e.target.value)}
-                  className="bg-admin-input border-admin focus-visible:ring-neon-pink/30 tracking-[0.35em] text-center"
-                  placeholder="000000"
+                  onChange={e => setOtp(cleanOtp(e.target.value))}
+                  className="h-14 border-admin bg-admin-surface text-center font-mono text-2xl font-semibold tracking-[0.35em] text-foreground placeholder:tracking-[0.25em] placeholder:text-admin-20 focus-visible:ring-neon-pink/30"
+                  placeholder="12345678"
                 />
-                <p className="text-xs text-admin-40">Code sent to {twoFactorEmail}</p>
+                <OtpVisual value={otp} />
+                {otp && !otpPattern.test(otp.trim()) && <p className="text-xs text-admin-40">Code must be 6 to 8 digits.</p>}
               </div>
               <button
                 type="submit"
-                disabled={isVerifying || otp.trim().length < 4}
+                disabled={isVerifying || !otpPattern.test(otp.trim())}
                 className="w-full flex items-center justify-center gap-2 bg-neon-pink hover:bg-[#cc2272] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-full transition-colors mt-1"
               >
                 {isVerifying ? 'Verifying…' : 'Verify Code'}
@@ -265,8 +336,9 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
               <button
                 type="button"
                 onClick={() => { setTwoFactorEmail(null); setOtp('') }}
-                className="w-full text-xs text-admin-40 hover:text-admin-70 transition-colors"
+                className="flex w-full items-center justify-center gap-2 text-xs font-semibold text-admin-40 transition-colors hover:text-admin-70"
               >
+                <ArrowLeft className="h-3.5 w-3.5" />
                 Back to password login
               </button>
             </form>
