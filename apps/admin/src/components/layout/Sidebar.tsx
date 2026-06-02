@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Ticket, FileText, Calendar, BarChart2, Image, MessageSquare, LogOut, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Ticket, FileText, Calendar, BarChart2, Image, MessageSquare, LogOut, X, ChevronLeft, ChevronRight, DollarSignIcon, Wallet2 } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { useAdminUser } from '../../app/providers'
 import { useAuth } from '../../lib/auth/AuthContext'
@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { label: 'Bookings', to: '/bookings', icon: Ticket, active: false },
   { label: 'Invoices', to: '/invoices', icon: FileText, active: false },
   { label: 'Calendar', to: '/calendar', icon: Calendar, active: true },
-  { label: 'Financials', to: '/financials', icon: BarChart2, active: false },
+  { label: 'Financials', to: '/financials', icon: Wallet2, active: true },
   { label: 'Gallery', to: '/gallery', icon: Image, active: false },
   { label: 'Feedback', to: '/feedback', icon: MessageSquare, active: false },
 ]

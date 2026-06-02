@@ -9,6 +9,7 @@ const EventsListPage     = lazy(() => import('../routes/events/index'))
 const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
 const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
 const CalendarPage       = lazy(() => import('../routes/calendar/index'))
+const FinancialsPage     = lazy(() => import('../routes/financials/index'))
 const SettingsPage       = lazy(() => import('../routes/settings/index'))
 const LocationDetailPage = lazy(() => import('../routes/locations/$locationId'))
 
@@ -41,6 +42,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/financials" element={<ProtectedRoute><FinancialsPage /></ProtectedRoute>} />
         <Route
           path="/settings"
           element={
