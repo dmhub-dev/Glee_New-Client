@@ -379,7 +379,7 @@ export default function EventFormPage() {
       startTime: '',
       endTime: '',
       locationId: '',
-      ticketTiers: [newTier()],
+      ticketTiers: [],
       ticketWaves: [newWave()],
       menuItems: [],
       schedules: [newSchedule()],
