@@ -102,7 +102,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </div>
           ) : (
             <>
-              <img src="/glee-logo-final.svg" alt="Glee" className="h-29 max-w-[160px] object-contain" />
+              <img src="/glee-logo-final.svg" alt="Glee" className="h-12 max-w-[150px] object-contain" />
               <button
                 onClick={onClose}
                 className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-admin-40 hover:text-admin-70 hover:bg-admin-overlay transition-colors"

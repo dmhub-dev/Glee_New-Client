@@ -59,11 +59,11 @@
     --admin-border:      rgba(120, 110, 220, 0.12);
     --admin-border-md:   rgba(120, 110, 220, 0.20);
     --admin-t20:         rgba(255, 255, 255, 0.20);
-    --admin-t30:         rgba(255, 255, 255, 0.32);
-    --admin-t40:         rgba(255, 255, 255, 0.44);
-    --admin-t50:         rgba(255, 255, 255, 0.56);
-    --admin-t60:         rgba(255, 255, 255, 0.64);
-    --admin-t70:         rgba(255, 255, 255, 0.72);
+    --admin-t30:         rgba(255, 255, 255, 0.40);
+    --admin-t40:         rgba(255, 255, 255, 0.52);
+    --admin-t50:         rgba(255, 255, 255, 0.64);
+    --admin-t60:         rgba(255, 255, 255, 0.72);
+    --admin-t70:         rgba(255, 255, 255, 0.80);
     --admin-t80:         rgba(255, 255, 255, 0.82);
     --admin-t90:         rgba(255, 255, 255, 0.92);
     --admin-overlay-sm:  rgba(255, 255, 255, 0.05);
@@ -110,11 +110,11 @@
     --admin-border:      rgba(70, 55, 160, 0.12);
     --admin-border-md:   rgba(70, 55, 160, 0.20);
     --admin-t20:         rgba(28, 26, 54, 0.22);
-    --admin-t30:         rgba(28, 26, 54, 0.34);
-    --admin-t40:         rgba(28, 26, 54, 0.46);
-    --admin-t50:         rgba(28, 26, 54, 0.54);
-    --admin-t60:         rgba(28, 26, 54, 0.62);
-    --admin-t70:         rgba(28, 26, 54, 0.72);
+    --admin-t30:         rgba(28, 26, 54, 0.42);
+    --admin-t40:         rgba(28, 26, 54, 0.54);
+    --admin-t50:         rgba(28, 26, 54, 0.64);
+    --admin-t60:         rgba(28, 26, 54, 0.72);
+    --admin-t70:         rgba(28, 26, 54, 0.80);
     --admin-t80:         rgba(28, 26, 54, 0.82);
     --admin-t90:         rgba(28, 26, 54, 0.92);
     --admin-overlay-sm:  rgba(60, 40, 140, 0.04);
@@ -179,6 +179,7 @@
 @layer utilities {
   /* ── Admin theme-aware utility classes ── */
   .bg-admin-surface   { background-color: var(--admin-surface); }
+  .bg-admin-surface-2 { background-color: var(--admin-surface-2); }
   .bg-admin-body      { background-color: var(--admin-body); }
   .bg-admin-dialog    { background-color: var(--admin-dialog-bg); }
   .border-admin-dialog { border-color: var(--admin-dialog-border); }
@@ -192,7 +193,10 @@
   .text-admin-70      { color: var(--admin-t70); }
   .text-admin-80      { color: var(--admin-t80); }
   .text-admin-90      { color: var(--admin-t90); }
-  .bg-admin-overlay   { background-color: var(--admin-overlay-sm); }
+  .bg-admin-overlay,
+  .bg-admin-overlay-sm { background-color: var(--admin-overlay-sm); }
+  .bg-admin-overlay-md { background-color: var(--admin-overlay-md); }
+  .bg-admin-overlay-lg { background-color: var(--admin-overlay-lg); }
   .bg-admin-input     { background-color: var(--admin-input-bg); }
   .shadow-admin       { box-shadow: var(--admin-shadow); }
   .shadow-admin-card  { box-shadow: var(--admin-card-shadow); }

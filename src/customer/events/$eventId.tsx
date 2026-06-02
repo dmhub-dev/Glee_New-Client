@@ -374,18 +374,18 @@ export default function CustomerEventDetailPage() {
       </div>
 
       <Dialog open={purchaseCompleteOpen} onOpenChange={setPurchaseCompleteOpen}>
-        <DialogContent className="max-w-md border-white/10 bg-[#101017] text-white">
+        <DialogContent className="max-w-md border-admin-dialog bg-admin-dialog text-foreground">
           <DialogHeader>
             <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 text-green-300">
               <CheckCircle2 className="h-7 w-7" />
             </div>
-            <DialogTitle className="text-center font-heading text-2xl font-black text-white">Ticket Confirmed</DialogTitle>
-            <DialogDescription className="text-center text-white/55">
+            <DialogTitle className="text-center font-heading text-2xl font-black text-foreground">Ticket Confirmed</DialogTitle>
+            <DialogDescription className="text-center text-admin-60">
               Your ticket is ready in My Tickets and we have sent the confirmation to your email.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <Button variant="outline" onClick={() => setPurchaseCompleteOpen(false)} className="rounded-full border-white/15 bg-transparent text-white hover:bg-white/10">
+            <Button variant="outline" onClick={() => setPurchaseCompleteOpen(false)} className="rounded-full border-admin bg-admin-input text-foreground hover:bg-admin-overlay-lg">
               Back to Event
             </Button>
             <Button onClick={() => navigate('/app/tickets')} className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
