@@ -1,4 +1,3 @@
-// apps/admin/src/routes/calendar/components/CalendarDetailPanel.tsx
 import { useNavigate } from 'react-router-dom'
 import type { Event } from '@glee/types'
 import { SlidePanel } from '../../../components/ui/SlidePanel'

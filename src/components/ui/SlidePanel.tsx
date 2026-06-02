@@ -1,4 +1,3 @@
-// apps/admin/src/components/ui/SlidePanel.tsx
 // Custom slide-in panel that does NOT use Radix UI portals.
 // Renders directly in the React tree with a fixed overlay + panel via CSS.
 import { useEffect } from 'react'

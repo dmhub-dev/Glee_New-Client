@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import type { MockActivity, MockBooking } from '../mock/stats'
-import { apiFetch } from '../api/client'
+import { apiFetch } from '../../api/client'
 
 export const adminStatsKeys = {
   dashboard: ['admin', 'stats', 'dashboard'] as const,

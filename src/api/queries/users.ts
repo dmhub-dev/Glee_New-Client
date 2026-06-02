@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { UserRole } from '@glee/types'
+export { ASSIGNABLE_ROLES } from '@glee/types'
 import { apiFetch } from '../client'
 
 export type UserStatus = 'active' | 'inactive'
@@ -55,17 +56,6 @@ interface BackendInvite {
   invitedBy?: { id: string; name: string; email: string } | null
   createdAt: string
 }
-
-export const ASSIGNABLE_ROLES: UserRole[] = [
-  'admin',
-  'operations_manager',
-  'commercial_manager',
-  'finance',
-  'vendor',
-  'vendor_staff',
-  'customer_support',
-  'content_manager',
-]
 
 export const userKeys = {
   all:     ['admin', 'users']          as const,

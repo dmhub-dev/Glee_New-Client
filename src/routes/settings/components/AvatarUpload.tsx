@@ -1,4 +1,3 @@
-// apps/admin/src/routes/settings/components/AvatarUpload.tsx
 import { useRef } from 'react'
 import { Camera, ImageUp } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback, Button, useToast } from '@glee/ui'

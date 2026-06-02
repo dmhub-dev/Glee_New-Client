@@ -1,4 +1,3 @@
-// apps/admin/src/routes/settings/LocationsTab.tsx
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'

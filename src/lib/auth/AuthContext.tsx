@@ -2,20 +2,10 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import type { ReactNode } from 'react'
 import type { AuthUser } from '@glee/api'
 import { apiLogin, apiLogout, apiMe, apiVerifyLoginTwoFactor } from '@glee/api'
+import { ALL_USER_ROLES } from '@glee/types'
 import { tokens } from '@glee/utils'
 
-const AUTH_ROLES = new Set([
-  'super_admin',
-  'admin',
-  'operations_manager',
-  'commercial_manager',
-  'finance',
-  'vendor',
-  'vendor_staff',
-  'customer_support',
-  'content_manager',
-  'user',
-])
+const AUTH_ROLES = new Set(ALL_USER_ROLES)
 
 interface AuthContextValue {
   user: AuthUser | null

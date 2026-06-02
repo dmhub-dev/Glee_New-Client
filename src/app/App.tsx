@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
+import { ADMIN_ROLES, CUSTOMER_ROLES, DASHBOARD_ROLES } from '@glee/types'
 import type { UserRole } from '@glee/types'
 import { Skeleton } from '@glee/ui'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
@@ -37,17 +38,13 @@ const CustomerTicketDetailPage = lazy(() => import('../customer/tickets/$eventId
 const CustomerWalletPage = lazy(() => import('../customer/wallet/index'))
 const CustomerProfilePage = lazy(() => import('../customer/profile/index'))
 
-const DASHBOARD_ROLES: UserRole[] = [
-  'super_admin',
-  'admin',
-  'operations_manager',
-  'commercial_manager',
-  'finance',
-  'vendor',
-  'vendor_staff',
-  'customer_support',
-  'content_manager',
-]
+const EVENT_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
+const BOOKINGS_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'customer_support']
+const BOOKING_EVENT_ROLES: UserRole[] = ['vendor', 'vendor_staff', 'admin', 'customer_support']
+const MENU_PRICING_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff']
+const SALES_REPORT_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'finance']
+const FINANCIALS_ROLES: UserRole[] = [...ADMIN_ROLES, 'finance']
+const CALENDAR_ROLES: UserRole[] = [...ADMIN_ROLES, 'operations_manager']
 
 function PageSkeleton() {
   return (
@@ -73,23 +70,23 @@ export default function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
         <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfilePage /></ProtectedRoute>} />
-        <Route path="/app" element={<ProtectedRoute roles={['user']}><CustomerDashboardPage /></ProtectedRoute>} />
-        <Route path="/app/events" element={<ProtectedRoute roles={['user']}><CustomerEventsPage /></ProtectedRoute>} />
-        <Route path="/app/events/:eventId" element={<ProtectedRoute roles={['user']}><CustomerEventPage /></ProtectedRoute>} />
-        <Route path="/app/tickets" element={<ProtectedRoute roles={['user']}><CustomerTicketsPage /></ProtectedRoute>} />
-        <Route path="/app/tickets/:eventId" element={<ProtectedRoute roles={['user']}><CustomerTicketDetailPage /></ProtectedRoute>} />
-        <Route path="/app/wallet" element={<ProtectedRoute roles={['user']}><CustomerWalletPage /></ProtectedRoute>} />
-        <Route path="/app/profile" element={<ProtectedRoute roles={['user']}><CustomerProfilePage /></ProtectedRoute>} />
+        <Route path="/app" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerDashboardPage /></ProtectedRoute>} />
+        <Route path="/app/events" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerEventsPage /></ProtectedRoute>} />
+        <Route path="/app/events/:eventId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerEventPage /></ProtectedRoute>} />
+        <Route path="/app/tickets" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerTicketsPage /></ProtectedRoute>} />
+        <Route path="/app/tickets/:eventId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerTicketDetailPage /></ProtectedRoute>} />
+        <Route path="/app/wallet" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerWalletPage /></ProtectedRoute>} />
+        <Route path="/app/profile" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerProfilePage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/events" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventsListPage /></ProtectedRoute>} />
-        <Route path="/dashboard/events/new" element={<ProtectedRoute roles={['super_admin', 'admin', 'vendor']}><EventFormPage /></ProtectedRoute>} />
+        <Route path="/dashboard/events/new" element={<ProtectedRoute roles={EVENT_CREATE_ROLES}><EventFormPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/:eventId/edit" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventFormPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/:eventId/attendees" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventAttendeesPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/:eventId" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventDetailPage /></ProtectedRoute>} />
         <Route
           path="/dashboard/bookings"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff', 'customer_support']}>
+            <ProtectedRoute roles={BOOKINGS_ROLES}>
               <BookingsPage />
             </ProtectedRoute>
           }
@@ -97,7 +94,7 @@ export default function App() {
         <Route
           path="/dashboard/bookings/:eventId"
           element={
-            <ProtectedRoute roles={['vendor', 'vendor_staff', 'admin', 'customer_support']}>
+            <ProtectedRoute roles={BOOKING_EVENT_ROLES}>
               <BookingEventPage />
             </ProtectedRoute>
           }
@@ -105,7 +102,7 @@ export default function App() {
         <Route
           path="/dashboard/menu-pricing"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff']}>
+            <ProtectedRoute roles={MENU_PRICING_ROLES}>
               <MenuPricingPage />
             </ProtectedRoute>
           }
@@ -113,7 +110,7 @@ export default function App() {
         <Route
           path="/dashboard/sales-reports"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin', 'vendor', 'vendor_staff', 'finance']}>
+            <ProtectedRoute roles={SALES_REPORT_ROLES}>
               <SalesReportsPage />
             </ProtectedRoute>
           }
@@ -121,7 +118,7 @@ export default function App() {
         <Route
           path="/dashboard/financials"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin', 'finance']}>
+            <ProtectedRoute roles={FINANCIALS_ROLES}>
               <FinancialsPage />
             </ProtectedRoute>
           }
@@ -129,7 +126,7 @@ export default function App() {
         <Route
           path="/dashboard/calendar"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin', 'operations_manager']}>
+            <ProtectedRoute roles={CALENDAR_ROLES}>
               <CalendarPage />
             </ProtectedRoute>
           }
@@ -137,7 +134,7 @@ export default function App() {
         <Route
           path="/dashboard/settings"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin']}>
+            <ProtectedRoute roles={ADMIN_ROLES}>
               <SettingsPage />
             </ProtectedRoute>
           }
@@ -145,7 +142,7 @@ export default function App() {
         <Route
           path="/dashboard/users"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin', 'vendor']}>
+            <ProtectedRoute roles={EVENT_CREATE_ROLES}>
               <UsersPage />
             </ProtectedRoute>
           }
@@ -177,7 +174,7 @@ export default function App() {
         <Route
           path="/dashboard/locations/:locationId"
           element={
-            <ProtectedRoute roles={['super_admin', 'admin']}>
+            <ProtectedRoute roles={ADMIN_ROLES}>
               <LocationDetailPage />
             </ProtectedRoute>
           }

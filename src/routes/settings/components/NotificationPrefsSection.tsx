@@ -1,4 +1,3 @@
-// apps/admin/src/routes/settings/components/NotificationPrefsSection.tsx
 import { Bell, Calendar, Users, BarChart2, Loader2 } from 'lucide-react'
 import { Switch, Skeleton, useToast } from '@glee/ui'
 import { useNotificationPreferences, useUpdateNotificationPreferences, type NotificationPreferences } from '@glee/api'

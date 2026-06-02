@@ -1,4 +1,3 @@
-// apps/admin/src/routes/settings/components/SecuritySection.tsx
 import { useState } from 'react'
 import { Shield, Monitor, Laptop, Smartphone, MapPin, Clock, LogOut, AlertTriangle } from 'lucide-react'
 import { Button, Switch, Skeleton, useToast } from '@glee/ui'
