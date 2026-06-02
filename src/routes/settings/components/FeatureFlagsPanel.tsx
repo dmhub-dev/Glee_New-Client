@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Lock, Save, ShieldCheck } from 'lucide-react'
+import { Check, Lock, Save, ShieldCheck, Smartphone } from 'lucide-react'
 import type { UserRole } from '@glee/types'
 import { Button, Skeleton, Switch, useToast, cn } from '@glee/ui'
 import {
@@ -9,7 +9,9 @@ import {
   type RolePermissions,
   ASSIGNABLE_ROLES,
   useRolePermissions,
+  useRoleSecurityPolicy,
   useSetRolePermissions,
+  useSetRoleTwoFactorPolicy,
 } from '@glee/api'
 import { ROLE_LABELS, roleBadgeClass } from './roleConstants'
 
@@ -53,7 +55,9 @@ export default function FeatureFlagsPanel() {
   const [localPerms, setLocalPerms] = useState<RolePermissions | null>(null)
 
   const { data: serverPermissions, isLoading } = useRolePermissions(selectedRole)
+  const { data: securityPolicy, isLoading: securityLoading } = useRoleSecurityPolicy(selectedRole)
   const saveMutation = useSetRolePermissions(selectedRole)
+  const twoFactorMutation = useSetRoleTwoFactorPolicy(selectedRole)
 
   const perms = localPerms ?? serverPermissions ?? buildDefaultPermissions()
   const isDirty = localPerms !== null
@@ -79,6 +83,18 @@ export default function FeatureFlagsPanel() {
       toast({ title: 'Permissions saved', description: `Updated ${ROLE_LABELS[selectedRole]}` })
     } catch {
       toast({ title: 'Failed to save permissions', variant: 'destructive' })
+    }
+  }
+
+  async function handleTwoFactorPolicy(required: boolean) {
+    try {
+      await twoFactorMutation.mutateAsync(required)
+      toast({
+        title: required ? '2FA required' : '2FA optional',
+        description: `Updated ${ROLE_LABELS[selectedRole]}`,
+      })
+    } catch {
+      toast({ title: 'Failed to update 2FA policy', variant: 'destructive' })
     }
   }
 
@@ -157,6 +173,31 @@ export default function FeatureFlagsPanel() {
           </div>
         ) : (
           <div className="grid gap-4 p-5 md:grid-cols-2">
+            <div className="rounded-lg border border-admin bg-admin-overlay md:col-span-2">
+              <div className="flex items-center justify-between gap-4 p-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neon-pink/10">
+                    <Smartphone className="h-4 w-4 text-neon-pink" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-admin-80">Require two-factor authentication</p>
+                    <p className="mt-0.5 text-xs text-admin-40">
+                      Users with this role must verify email OTP at every login.
+                    </p>
+                  </div>
+                </div>
+                {securityLoading ? (
+                  <Skeleton className="h-5 w-10 rounded-full" />
+                ) : (
+                  <Switch
+                    checked={securityPolicy?.twoFactorRequired ?? false}
+                    onCheckedChange={handleTwoFactorPolicy}
+                    disabled={twoFactorMutation.isPending}
+                    className="data-[state=checked]:bg-neon-pink"
+                  />
+                )}
+              </div>
+            </div>
             {PERMISSION_GROUPS.map(group => (
               <div key={group.label} className="rounded-lg border border-admin bg-admin-overlay">
                 <div className="border-b border-admin p-4">

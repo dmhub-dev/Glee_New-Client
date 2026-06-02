@@ -76,6 +76,10 @@ export interface AdminEventTicket {
   id: string
   eventId: string
   userId: string | null
+  purchaseGroupId?: string | null
+  ticketRef?: string | null
+  ticketNumber?: number | null
+  status?: 'ACTIVE' | 'USED' | 'EXPIRED' | 'CANCELLED' | string
   quantity: number
   totalPrice: string | number
   amountPaid?: string | number
@@ -83,6 +87,10 @@ export interface AdminEventTicket {
   paymentDueDate?: string | null
   paymentPlan?: unknown
   createdAt: string
+  checkedInAt?: string | null
+  guestName?: string | null
+  guestEmail?: string | null
+  guestPhone?: string | null
   user: {
     id?: string
     name?: string | null
@@ -103,7 +111,6 @@ export interface AdminEventTicket {
     name: string
     price: string | number
   } | null
-  checkedInAt?: string | null
   ticketCheckIns?: Array<{
     id: string
     ticketRef: string

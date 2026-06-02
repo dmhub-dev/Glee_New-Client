@@ -31,6 +31,23 @@ export default function ProtectedRoute({ children, roles }: Props) {
     return <Navigate to="/complete-profile" state={{ from: location }} replace />
   }
 
+  if (
+    user?.role !== 'user' &&
+    user?.passwordChangeRequired &&
+    location.pathname !== '/dashboard/profile'
+  ) {
+    return (
+      <Navigate
+        to="/dashboard/profile?changePassword=1"
+        state={{
+          from: location,
+          message: 'Your password has expired. Change it to continue.',
+        }}
+        replace
+      />
+    )
+  }
+
   if (roles && user && !roles.includes(user.role)) {
     return <Navigate to={user.role === 'user' ? '/app/events' : '/dashboard'} replace />
   }

@@ -59,6 +59,11 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
     return role === 'user' ? '/app/events' : '/dashboard'
   }
 
+  function destinationForAuthResult(role?: string | null, passwordChangeRequired?: boolean) {
+    if (role !== 'user' && passwordChangeRequired) return '/dashboard/profile?changePassword=1'
+    return from ?? defaultDestination(role)
+  }
+
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
   })
@@ -122,7 +127,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
         setServerError(isUserLogin ? 'Use the dashboard login for staff accounts.' : 'Use the user login for customer accounts.')
         return
       }
-      navigate(from ?? defaultDestination(result.role), { replace: true })
+      navigate(destinationForAuthResult(result.role, result.passwordChangeRequired), { replace: true })
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Login failed. Please try again.')
     }
@@ -140,7 +145,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
         setServerError(isUserLogin ? 'Use the dashboard login for staff accounts.' : 'Use the user login for customer accounts.')
         return
       }
-      navigate(from ?? defaultDestination(result.role), { replace: true })
+      navigate(destinationForAuthResult(result.role, result.passwordChangeRequired), { replace: true })
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Verification failed. Please try again.')
     } finally {

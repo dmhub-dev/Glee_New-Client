@@ -12,6 +12,10 @@ export interface ProfileData {
   avatarUrl: string | null
   address?: string
   profileStatus?: boolean
+  passwordChangeRequired?: boolean
+  passwordRotationDays?: number
+  passwordChangedAt?: string | null
+  passwordExpiresAt?: string | null
 }
 
 interface BackendMeUser {
@@ -25,6 +29,10 @@ interface BackendMeUser {
   lastLoginAt?: string | null
   address?: string | null
   profileStatus?: boolean
+  passwordChangeRequired?: boolean
+  passwordRotationDays?: number
+  passwordChangedAt?: string | null
+  passwordExpiresAt?: string | null
 }
 
 export interface UpdateProfileDto {
@@ -52,6 +60,10 @@ export interface SecurityInfo {
   lastLoginAt: string | null
   lastLoginIp: string | null
   activeSessions: ActiveSession[]
+  passwordChangeRequired: boolean
+  passwordRotationDays: number
+  passwordChangedAt: string | null
+  passwordExpiresAt: string | null
 }
 
 export interface NotificationPreferences {
@@ -81,6 +93,10 @@ export function getProfile(): Promise<ProfileData> {
       avatarUrl: r.data.profileImage ?? null,
       address: r.data.address ?? '',
       profileStatus: r.data.profileStatus ?? true,
+      passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+      passwordRotationDays: r.data.passwordRotationDays ?? 30,
+      passwordChangedAt: r.data.passwordChangedAt ?? null,
+      passwordExpiresAt: r.data.passwordExpiresAt ?? null,
     }
   })
 }
@@ -114,6 +130,10 @@ export function getSecurityInfo(): Promise<SecurityInfo> {
     lastLoginAt: r.data.lastLoginAt ?? null,
     lastLoginIp: null,
     activeSessions: [],
+    passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+    passwordRotationDays: r.data.passwordRotationDays ?? 30,
+    passwordChangedAt: r.data.passwordChangedAt ?? null,
+    passwordExpiresAt: r.data.passwordExpiresAt ?? null,
   }))
 }
 
@@ -129,6 +149,13 @@ export function disableTwoFactor(): Promise<void> {
     method: 'PATCH',
     body: JSON.stringify({ enabled: false }),
   })
+}
+
+export function updatePasswordRotationDays(days: number): Promise<SecurityInfo> {
+  return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me/password-rotation', {
+    method: 'PATCH',
+    body: JSON.stringify({ days }),
+  }).then(() => getSecurityInfo())
 }
 
 export function revokeSession(sessionId: string): Promise<void> {
@@ -187,6 +214,17 @@ export function useToggle2FA() {
   return useMutation({
     mutationFn: (enable: boolean) => enable ? enableTwoFactor() : disableTwoFactor(),
     onSuccess: () => qc.invalidateQueries({ queryKey: profileKeys.security }),
+  })
+}
+
+export function useUpdatePasswordRotationDays() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (days: number) => updatePasswordRotationDays(days),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: profileKeys.security })
+      qc.invalidateQueries({ queryKey: profileKeys.me })
+    },
   })
 }
 

@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Button,
   Input,
@@ -10,6 +11,7 @@ import {
   useToast,
 } from '@glee/ui'
 import { useChangePassword } from '@glee/api'
+import { useAuth } from '../../../lib/auth/AuthContext'
 
 const passwordSchema = z
   .object({
@@ -26,7 +28,10 @@ type PasswordFormValues = z.infer<typeof passwordSchema>
 
 export function PasswordForm() {
   const { toast }     = useToast()
-  const [open, setOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { refreshUser } = useAuth()
+  const [open, setOpen] = useState(() => new URLSearchParams(location.search).get('changePassword') === '1')
   const mutation      = useChangePassword()
 
   const form = useForm<PasswordFormValues>({
@@ -44,9 +49,13 @@ export function PasswordForm() {
         currentPassword: values.currentPassword,
         newPassword:     values.newPassword,
       })
+      await refreshUser().catch(() => null)
       toast({ title: 'Password changed successfully' })
       form.reset()
       setOpen(false)
+      if (new URLSearchParams(location.search).get('changePassword') === '1') {
+        navigate('/dashboard/profile', { replace: true })
+      }
     } catch {
       toast({ title: 'Failed to change password', variant: 'destructive' })
     }

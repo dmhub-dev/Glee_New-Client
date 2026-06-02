@@ -9,6 +9,10 @@ export interface AuthUser {
   avatarUrl: string | null
   profileStatus?: boolean
   twoFactorEnabled?: boolean
+  passwordChangeRequired?: boolean
+  passwordRotationDays?: number
+  passwordChangedAt?: string | null
+  passwordExpiresAt?: string | null
 }
 
 export interface LoginResponse {
@@ -50,6 +54,10 @@ interface BackendUser {
   profileImage?: string | null
   twoFactorEnabled?: boolean
   profileStatus?: boolean
+  passwordChangeRequired?: boolean
+  passwordRotationDays?: number
+  passwordChangedAt?: string | null
+  passwordExpiresAt?: string | null
 }
 
 interface BackendLoginResponse {
@@ -80,6 +88,10 @@ function toAuthUser(raw: BackendUser): AuthUser {
     avatarUrl: raw.profileImage ?? null,
     profileStatus: raw.profileStatus ?? true,
     twoFactorEnabled: raw.twoFactorEnabled ?? false,
+    passwordChangeRequired: raw.passwordChangeRequired ?? false,
+    passwordRotationDays: raw.passwordRotationDays,
+    passwordChangedAt: raw.passwordChangedAt ?? null,
+    passwordExpiresAt: raw.passwordExpiresAt ?? null,
   }
 }
 

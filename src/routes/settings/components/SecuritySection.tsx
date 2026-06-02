@@ -1,8 +1,33 @@
 import { useState } from 'react'
-import { Shield, Monitor, Laptop, Smartphone, MapPin, Clock, LogOut, AlertTriangle } from 'lucide-react'
-import { Button, Switch, Skeleton, useToast } from '@glee/ui'
-import { useSecurityInfo, useToggle2FA, useRevokeSession, useRevokeAllOtherSessions } from '@glee/api'
+import { Shield, Monitor, Laptop, Smartphone, MapPin, Clock, LogOut, AlertTriangle, KeyRound } from 'lucide-react'
+import {
+  Button,
+  Switch,
+  Skeleton,
+  useToast,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@glee/ui'
+import {
+  useSecurityInfo,
+  useToggle2FA,
+  useRevokeSession,
+  useRevokeAllOtherSessions,
+  useUpdatePasswordRotationDays,
+} from '@glee/api'
 import { formatDistanceToNow } from 'date-fns'
+import { useAuth } from '../../../lib/auth/AuthContext'
+
+const PASSWORD_ROTATION_OPTIONS = [
+  { days: 7, label: 'Every 1 week' },
+  { days: 14, label: 'Every 2 weeks' },
+  { days: 30, label: 'Every month' },
+  { days: 45, label: 'Every 45 days' },
+  { days: 60, label: 'Every 60 days' },
+]
 
 function DeviceIcon({ device }: { device: string }) {
   const lower = device.toLowerCase()
@@ -17,11 +42,14 @@ function DeviceIcon({ device }: { device: string }) {
 
 export function SecuritySection() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const { data: security, isLoading } = useSecurityInfo()
   const toggle2FA       = useToggle2FA()
   const revokeSession   = useRevokeSession()
   const revokeAll       = useRevokeAllOtherSessions()
+  const updateRotation  = useUpdatePasswordRotationDays()
   const [revokingId, setRevokingId] = useState<string | null>(null)
+  const isDashboardRole = user?.role !== 'user'
 
   async function handle2FAToggle(enabled: boolean) {
     try {
@@ -53,6 +81,15 @@ export function SecuritySection() {
     }
   }
 
+  async function handleRotationChange(value: string) {
+    try {
+      await updateRotation.mutateAsync(Number(value))
+      toast({ title: 'Password change frequency updated' })
+    } catch {
+      toast({ title: 'Failed to update password change frequency', variant: 'destructive' })
+    }
+  }
+
   return (
     <div className="bg-admin-surface border border-admin rounded-2xl shadow-admin overflow-hidden">
       <div className="px-6 py-4 border-b border-admin flex items-center gap-2">
@@ -61,6 +98,18 @@ export function SecuritySection() {
       </div>
 
       <div className="divide-y divide-admin">
+        {isDashboardRole && !isLoading && security?.passwordChangeRequired && (
+          <div className="px-6 py-4 flex items-start gap-3 bg-amber-500/10 border-b border-amber-500/20">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-200">Password change required</p>
+              <p className="text-xs text-amber-200/70">
+                Your password has reached its selected rotation period. Update it below to continue using dashboard pages.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Last login */}
         <div className="px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -82,6 +131,42 @@ export function SecuritySection() {
             </div>
           </div>
         </div>
+
+        {isDashboardRole && (
+          <div className="px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <KeyRound className="w-4 h-4 text-admin-40 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-admin-80">Password change frequency</p>
+                <p className="text-xs text-admin-50">
+                  {security?.passwordExpiresAt
+                    ? `Next required change ${formatDistanceToNow(new Date(security.passwordExpiresAt), { addSuffix: true })}`
+                    : 'Choose how often dashboard users must update their password'}
+                </p>
+              </div>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-10 w-44 rounded-md" />
+            ) : (
+              <Select
+                value={String(security?.passwordRotationDays ?? 30)}
+                onValueChange={handleRotationChange}
+                disabled={updateRotation.isPending}
+              >
+                <SelectTrigger className="w-44 bg-admin-input border-admin">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PASSWORD_ROTATION_OPTIONS.map(option => (
+                    <SelectItem key={option.days} value={String(option.days)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
 
         {/* 2FA */}
         <div className="px-6 py-4 flex items-center justify-between gap-4">
