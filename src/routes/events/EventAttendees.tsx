@@ -5,6 +5,7 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
 import { Badge, Button, Input, Skeleton } from '@glee/ui'
 import { ArrowLeft, ArrowUpDown, ChevronLeft, ChevronRight, Search, Users } from 'lucide-react'
+import EventDetailTabs from './EventDetailTabs'
 
 type SortKey = 'name' | 'email' | 'phone' | 'quantity' | 'paymentMethod' | 'paymentStatus' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
@@ -125,20 +126,11 @@ export default function EventAttendeesPage() {
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to event
           </button>
-
-          <div className="flex w-fit rounded-full border border-admin bg-admin-surface p-1">
-            <button
-              type="button"
-              onClick={() => navigate(`/dashboard/events/${eventId}`)}
-              className="rounded-full px-4 py-1.5 text-xs font-semibold text-admin-50 transition hover:text-neon-pink"
-            >
-              Details
-            </button>
-            <button type="button" className="rounded-full bg-neon-pink px-4 py-1.5 text-xs font-semibold text-white">
-              Attendees
-            </button>
-          </div>
         </div>
+
+        {eventId && (
+          <EventDetailTabs eventId={eventId} activeTab="attendees" userRole={user.role} />
+        )}
 
         <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, useIssueComplimentaryTicket, useReviewVendorEvent, type EventApiPayload } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
@@ -7,6 +7,7 @@ import { Button, Input, Label, Skeleton, Progress, Textarea, useToast } from '@g
 import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
+import EventDetailTabs from './EventDetailTabs'
 
 const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
@@ -106,6 +107,7 @@ function money(value: number) {
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useAdminUser()
   const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
   const canDeleteEvent = user.role !== 'vendor_staff'
@@ -116,7 +118,10 @@ export default function EventDetailPage() {
   const { toast } = useToast()
   const { data: ticketData } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<EventDetailTab>('details')
+  const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
+    const state = location.state as { tab?: EventDetailTab } | null
+    return state?.tab === 'complimentary' ? 'complimentary' : 'details'
+  })
 
   function handleStatusChange(newStatus: Event['status']) {
     if (!event) return
@@ -313,37 +318,7 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        <div className="flex w-fit flex-wrap rounded-full border border-admin bg-admin-surface p-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('details')}
-            className={cn(
-              'rounded-full px-4 py-1.5 text-xs font-semibold transition',
-              activeTab === 'details' ? 'bg-neon-pink text-white' : 'text-admin-50 hover:text-neon-pink',
-            )}
-          >
-            Details
-          </button>
-          {['super_admin', 'admin', 'vendor'].includes(user.role) && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('complimentary')}
-              className={cn(
-                'rounded-full px-4 py-1.5 text-xs font-semibold transition',
-                activeTab === 'complimentary' ? 'bg-neon-pink text-white' : 'text-admin-50 hover:text-neon-pink',
-              )}
-            >
-              Complimentary Tickets
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => navigate(`/dashboard/events/${event.id}/attendees`)}
-            className="rounded-full px-4 py-1.5 text-xs font-semibold text-admin-50 transition hover:text-neon-pink"
-          >
-            Attendees
-          </button>
-        </div>
+        <EventDetailTabs eventId={event.id} activeTab={activeTab} userRole={user.role} onSelectLocalTab={setActiveTab} />
 
         {/* Two-column layout */}
         {activeTab === 'complimentary' ? (
