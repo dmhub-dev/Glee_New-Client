@@ -37,6 +37,10 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
 
 export type RolePermissions = Record<FeatureKey, boolean>
 
+export interface RoleSecurityPolicy {
+  twoFactorRequired: boolean
+}
+
 interface BackendPermission {
   name: string
 }
@@ -44,6 +48,7 @@ interface BackendPermission {
 interface BackendRole {
   name: string
   permissions: BackendPermission[]
+  twoFactorRequired?: boolean
 }
 
 const FEATURE_TO_PERMISSION: Record<FeatureKey, string> = {
@@ -63,6 +68,7 @@ const FEATURE_TO_PERMISSION: Record<FeatureKey, string> = {
 
 export const roleKeys = {
   permissions: (role: UserRole) => ['admin', 'roles', role, 'permissions'] as const,
+  securityPolicy: (role: UserRole) => ['admin', 'roles', role, 'security-policy'] as const,
 }
 
 export function getRolePermissions(role: UserRole): Promise<RolePermissions> {
@@ -76,6 +82,13 @@ export function getRolePermissions(role: UserRole): Promise<RolePermissions> {
   })
 }
 
+export function getRoleSecurityPolicy(role: UserRole): Promise<RoleSecurityPolicy> {
+  return apiFetch<{ success: boolean; data: BackendRole[] }>('/api/v1/roles').then(r => {
+    const backendRole = (r.data ?? []).find(item => item.name.toLowerCase() === role)
+    return { twoFactorRequired: Boolean(backendRole?.twoFactorRequired) }
+  })
+}
+
 export function setRolePermissions(role: UserRole, permissions: RolePermissions): Promise<void> {
   const selected = FEATURE_KEYS
     .filter(key => permissions[key])
@@ -83,6 +96,13 @@ export function setRolePermissions(role: UserRole, permissions: RolePermissions)
   return apiFetch(`/api/v1/roles/${role.toUpperCase()}/permissions`, {
     method: 'PATCH',
     body: JSON.stringify({ permissions: selected }),
+  })
+}
+
+export function setRoleTwoFactorPolicy(role: UserRole, required: boolean): Promise<void> {
+  return apiFetch(`/api/v1/roles/${role.toUpperCase()}/2fa-policy`, {
+    method: 'PATCH',
+    body: JSON.stringify({ required }),
   })
 }
 
@@ -100,11 +120,26 @@ export function useRolePermissions(role: UserRole) {
   })
 }
 
+export function useRoleSecurityPolicy(role: UserRole) {
+  return useQuery({
+    queryKey: roleKeys.securityPolicy(role),
+    queryFn: () => getRoleSecurityPolicy(role),
+  })
+}
+
 export function useSetRolePermissions(role: UserRole) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (permissions: RolePermissions) => setRolePermissions(role, permissions),
     onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.permissions(role) }),
+  })
+}
+
+export function useSetRoleTwoFactorPolicy(role: UserRole) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (required: boolean) => setRoleTwoFactorPolicy(role, required),
+    onSuccess: () => qc.invalidateQueries({ queryKey: roleKeys.securityPolicy(role) }),
   })
 }
 
