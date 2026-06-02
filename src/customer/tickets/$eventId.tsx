@@ -20,8 +20,8 @@ function formatDateTime(value?: string | null) {
   return new Date(value).toLocaleString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function qrRef(ticketId: string, index: number) {
-  return `${ticketId}-${index + 1}`
+function qrRef(ticket: AdminEventTicket, index: number) {
+  return ticket.ticketRef ?? `${ticket.id}-${index + 1}`
 }
 
 function qrUrl(value: string) {
@@ -119,7 +119,7 @@ export default function CustomerTicketDetailPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   {type.tickets.flatMap(ticket =>
                     Array.from({ length: Math.max(1, ticket.quantity ?? 1) }, (_, index) => {
-                      const ref = qrRef(ticket.id, index)
+                      const ref = qrRef(ticket, index)
                       return (
                         <article key={ref} className="rounded-xl border border-admin bg-admin-input p-4">
                           <div className="rounded-lg border border-admin bg-white p-4 text-center">
@@ -129,10 +129,10 @@ export default function CustomerTicketDetailPage() {
                           <div className="mt-4 flex items-center justify-between gap-3">
                             <div>
                               <p className="font-semibold text-foreground">{type.label}</p>
-                              <p className="text-xs text-admin-50">Ticket {index + 1} of {ticket.quantity}</p>
+                              <p className="text-xs text-admin-50">Ticket {ticket.ticketNumber ?? index + 1}</p>
                             </div>
                             <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                              {ticket.checkedInAt ? 'Checked in' : 'Ready'}
+                              {ticket.status === 'USED' || ticket.checkedInAt ? 'Checked in' : ticket.status === 'EXPIRED' ? 'Expired' : 'Ready'}
                             </Badge>
                           </div>
                         </article>

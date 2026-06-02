@@ -19,7 +19,7 @@ function eventDate(startDate?: string, startTime?: string) {
 }
 
 function buyer(ticket: AdminEventTicket) {
-  return ticket.user?.name || ticket.user?.email || 'Guest customer'
+  return ticket.user?.name || ticket.guestName || ticket.user?.email || ticket.guestEmail || 'Guest customer'
 }
 
 function paymentStatus(ticket: AdminEventTicket) {
@@ -28,23 +28,15 @@ function paymentStatus(ticket: AdminEventTicket) {
 }
 
 function ticketUnits(tickets: AdminEventTicket[]) {
-  return tickets.flatMap(ticket => {
-    const checkedRefs = new Map((ticket.ticketCheckIns ?? []).map(checkIn => [checkIn.ticketRef, checkIn]))
-    return Array.from({ length: Math.max(1, ticket.quantity) }, (_, index) => {
-      const ticketNumber = index + 1
-      const ref = `${ticket.id}-${ticketNumber}`
-      const checkIn = checkedRefs.get(ref)
-      return {
-        id: ref,
-        ref,
-        ticket,
-        ticketNumber,
-        checkedIn: Boolean(checkIn),
-        checkedInAt: checkIn?.checkedInAt,
-        checkedInBy: checkIn?.checkedInBy,
-      }
-    })
-  })
+  return tickets.map(ticket => ({
+    id: ticket.ticketRef ?? ticket.id,
+    ref: ticket.ticketRef ?? ticket.id,
+    ticket,
+    ticketNumber: ticket.ticketNumber ?? 1,
+    checkedIn: ticket.status === 'USED' || Boolean(ticket.checkedInAt),
+    checkedInAt: ticket.checkedInAt,
+    checkedInBy: undefined,
+  }))
 }
 
 export default function BookingEventPage() {
@@ -70,7 +62,7 @@ export default function BookingEventPage() {
     return (
       unit.ref.toLowerCase().includes(query) ||
       buyer(unit.ticket).toLowerCase().includes(query) ||
-      (unit.ticket.user?.email ?? '').toLowerCase().includes(query) ||
+      (unit.ticket.user?.email ?? unit.ticket.guestEmail ?? '').toLowerCase().includes(query) ||
       (unit.ticket.ticketCategory?.name ?? '').toLowerCase().includes(query)
     )
   })
@@ -172,7 +164,7 @@ export default function BookingEventPage() {
             <Input
               value={ticketRef}
               onChange={changeEvent => setTicketRef(changeEvent.target.value)}
-              placeholder="Scan QR code, e.g. ticketId-1"
+              placeholder="Scan QR code"
               className="h-12 border-admin bg-admin-input font-mono"
               autoFocus
             />
@@ -224,7 +216,7 @@ export default function BookingEventPage() {
                             <td className="px-4 py-3 font-mono text-xs text-admin-70">{unit.ref}</td>
                             <td className="px-4 py-3">
                               <p className="font-medium text-admin-90">{buyer(unit.ticket)}</p>
-                              <p className="text-xs text-admin-40">{unit.ticket.user?.email ?? '-'}</p>
+                              <p className="text-xs text-admin-40">{unit.ticket.user?.email ?? unit.ticket.guestEmail ?? '-'}</p>
                             </td>
                             <td className="px-4 py-3 text-admin-60">{unit.ticket.ticketCategory?.name ?? 'Event ticket'} #{unit.ticketNumber}</td>
                             <td className="px-4 py-3">
@@ -234,7 +226,7 @@ export default function BookingEventPage() {
                             </td>
                             <td className="px-4 py-3">
                               <Badge className={unit.checkedIn ? 'border-green-500/25 bg-green-500/10 text-green-400' : 'border-admin bg-admin-input text-admin-50'}>
-                                {unit.checkedIn ? `Checked in ${unit.checkedInAt ? new Date(unit.checkedInAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }) : ''}` : 'Waiting'}
+                                {unit.checkedIn ? `Checked in ${unit.checkedInAt ? new Date(unit.checkedInAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }) : ''}` : unit.ticket.status === 'EXPIRED' ? 'Expired' : 'Waiting'}
                               </Badge>
                             </td>
                           </tr>
