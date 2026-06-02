@@ -1,5 +1,0 @@
-export * from './queries/bookings'
-export * from './queries/events'
-export * from './queries/menus'
-export * from './queries/venues'
-export * from './queries/users'

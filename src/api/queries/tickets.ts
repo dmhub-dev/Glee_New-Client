@@ -1,0 +1,269 @@
+import { apiFetch } from '../client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+export interface InitiateGuestPurchaseParams {
+  eventId: string
+  ticketCategoryId?: string
+  noOfTickets: number
+  guestName: string
+  guestEmail: string
+  guestPhone: string
+  menuItems?: { id: string; quantity: number }[]
+  callbackUrl?: string
+}
+
+export interface InitiateGuestPurchaseResult {
+  access_code: string
+  reference: string
+  authorization_url: string
+  verificationToken: string
+}
+
+export function initiateGuestPurchase(
+  params: InitiateGuestPurchaseParams,
+): Promise<InitiateGuestPurchaseResult> {
+  return apiFetch<{ success: boolean; data: InitiateGuestPurchaseResult }>(
+    '/api/v1/event/tickets/initiate-guest',
+    { method: 'POST', body: JSON.stringify(params), skipAuth: true },
+  ).then(r => r.data)
+}
+
+export function confirmTicketPurchase(input: string | { verificationToken?: string; reference?: string }): Promise<void> {
+  const payload = typeof input === 'string'
+    ? { verificationToken: input }
+    : input
+  return apiFetch<void>('/api/v1/event/tickets/confirm-purchase', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    skipAuth: true,
+  })
+}
+
+export interface PurchaseTicketParams {
+  eventId: string
+  ticketCategoryId?: string
+  noOfTickets: number
+  preOrderMenu?: { id: string; quantity: number }[]
+  useWallet?: boolean
+  walletPaymentType?: 'FULL' | 'INSTALLMENT'
+  installmentCount?: number
+  callbackUrl?: string
+}
+
+export interface PurchaseTicketResult {
+  reference?: string
+  authorization_url?: string
+  access_code?: string
+  verificationToken?: string
+}
+
+export function purchaseTicket(params: PurchaseTicketParams): Promise<PurchaseTicketResult> {
+  return apiFetch<{ success: boolean; data?: PurchaseTicketResult }>('/api/v1/event/tickets/purchase', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }).then(r => r.data ?? {})
+}
+
+export function ticketVerificationStorageKey(reference: string) {
+  return `glee:event-ticket-verification:${reference}`
+}
+
+export function ticketCheckoutContextStorageKey(reference: string) {
+  return `glee:event-ticket-context:${reference}`
+}
+
+export interface AdminEventTicket {
+  id: string
+  eventId: string
+  userId: string | null
+  quantity: number
+  totalPrice: string | number
+  amountPaid?: string | number
+  outstandingAmount?: string | number
+  paymentDueDate?: string | null
+  paymentPlan?: unknown
+  createdAt: string
+  user: {
+    id?: string
+    name?: string | null
+    email?: string | null
+    phone?: string | null
+  } | null
+  payment?: {
+    amount?: string | number | null
+    totalPrice?: string | number | null
+    noOfItems?: number | null
+    paymentMethod?: string | null
+    paymentStatus?: string | null
+    isPaid?: boolean | null
+    metadata?: unknown
+  } | null
+  ticketCategory?: {
+    id: string
+    name: string
+    price: string | number
+  } | null
+  checkedInAt?: string | null
+  ticketCheckIns?: Array<{
+    id: string
+    ticketRef: string
+    ticketNumber: number
+    checkedInAt: string
+    checkedInBy?: {
+      id?: string
+      name?: string | null
+      email?: string | null
+    } | null
+  }>
+}
+
+export interface AdminEventTicketsResult {
+  tickets: AdminEventTicket[]
+  totalPages: number
+  page: number
+}
+
+export function getAdminEventTickets(eventId: string, page = 1, limit = 100): Promise<AdminEventTicketsResult> {
+  const params = new URLSearchParams({ eventId, page: String(page), limit: String(limit) })
+  return apiFetch<{ success: boolean; data: AdminEventTicket[]; totalPages?: number; page?: number }>(
+    `/api/v1/admin/event-ticket?${params.toString()}`,
+  ).then(r => ({
+    tickets: r.success === false ? [] : (r.data ?? []),
+    totalPages: r.totalPages ?? 1,
+    page: r.page ?? 1,
+  }))
+}
+
+export function useAdminEventTickets(eventId: string | undefined, page = 1, limit = 100) {
+  return useQuery({
+    queryKey: ['admin', 'event-tickets', eventId, page, limit],
+    queryFn: () => getAdminEventTickets(eventId as string, page, limit),
+    enabled: Boolean(eventId),
+  })
+}
+
+export function checkInTicket(ticketId: string): Promise<void> {
+  return apiFetch(`/api/v1/admin/event-ticket/${ticketId}/check-in`, { method: 'PATCH' })
+}
+
+export interface CheckInTicketByQrParams {
+  eventId: string
+  ticketRef: string
+}
+
+export interface CheckInTicketByQrResult {
+  ticket: AdminEventTicket
+  checkIn: {
+    id: string
+    ticketRef: string
+    ticketNumber: number
+    checkedInAt: string
+  }
+  ticketRef: string
+  ticketNumber: number
+  checkedInCount: number
+  remainingCount: number
+}
+
+export function checkInTicketByQr(params: CheckInTicketByQrParams): Promise<CheckInTicketByQrResult> {
+  return apiFetch<{ success: boolean; data: CheckInTicketByQrResult }>('/api/v1/admin/event-ticket/check-in/qr', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }).then(r => r.data)
+}
+
+export function revertTicketCheckIn(ticketId: string): Promise<void> {
+  return apiFetch(`/api/v1/admin/event-ticket/${ticketId}/check-in/revert`, { method: 'PATCH' })
+}
+
+export function useCheckInTicket(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ticketId: string) => checkInTicket(ticketId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
+  })
+}
+
+export function useCheckInTicketByQr(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (params: CheckInTicketByQrParams) => checkInTicketByQr(params),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
+  })
+}
+
+export function useRevertTicketCheckIn(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ticketId: string) => revertTicketCheckIn(ticketId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] }),
+  })
+}
+
+export interface IssueComplimentaryTicketParams {
+  eventId: string
+  ticketCategoryId: string
+  quantity: number
+  recipientName: string
+  recipientEmail: string
+  recipientPhone?: string
+  note?: string
+  checkInNow?: boolean
+}
+
+export function issueComplimentaryTicket(params: IssueComplimentaryTicketParams): Promise<AdminEventTicket> {
+  return apiFetch<{ success: boolean; data: AdminEventTicket }>('/api/v1/admin/event-ticket/complimentary', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }).then(r => r.data)
+}
+
+export function useIssueComplimentaryTicket(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: issueComplimentaryTicket,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'event-tickets', eventId] })
+      qc.invalidateQueries({ queryKey: ['admin', 'events'] })
+    },
+  })
+}
+
+export interface MyTicketGroup {
+  event: {
+    id: string
+    name: string
+    description?: string | null
+    photos?: string[]
+    startDate?: string | null
+    endDate?: string | null
+    status?: string
+    category?: { id: string; name: string } | null
+    location?: { id?: string; name?: string | null; address?: string | null } | null
+  }
+  tickets: AdminEventTicket[]
+  noOfTicketsPurchased: number
+  totalPrice: number
+  count: number
+  lastTicketPurchasedOn?: string
+}
+
+export function getMyTickets(): Promise<MyTicketGroup[]> {
+  return apiFetch<{ success: boolean; data: MyTicketGroup[] }>('/api/v1/event/tickets/my?page=1&limit=100')
+    .then(r => r.data ?? [])
+}
+
+export function useMyTickets() {
+  return useQuery({ queryKey: ['me', 'tickets'], queryFn: getMyTickets })
+}
+
+export function usePurchaseTicket() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (params: PurchaseTicketParams) => purchaseTicket(params),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me', 'tickets'] })
+      qc.invalidateQueries({ queryKey: ['wallet'] })
+    },
+  })
+}
