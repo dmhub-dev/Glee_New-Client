@@ -11,8 +11,8 @@ interface AuthContextValue {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; email?: string; message?: string; role?: string | null }>
-  verifyTwoFactor: (email: string, otp: string) => Promise<{ role: string | null }>
+  login: (email: string, password: string) => Promise<{ requiresTwoFactor: boolean; email?: string; message?: string; role?: string | null; passwordChangeRequired?: boolean }>
+  verifyTwoFactor: (email: string, otp: string) => Promise<{ role: string | null; passwordChangeRequired?: boolean }>
   refreshUser: () => Promise<AuthUser | null>
   logout: () => Promise<void>
 }
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokens.setAccess(result.accessToken)
     tokens.setRefresh(result.refreshToken)
     setUser(result.user)
-    return { requiresTwoFactor: false, role: result.user.role }
+    return { requiresTwoFactor: false, role: result.user.role, passwordChangeRequired: result.user.passwordChangeRequired }
   }, [])
 
   const verifyTwoFactor = useCallback(async (email: string, otp: string) => {
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokens.setAccess(accessToken)
     tokens.setRefresh(refreshToken)
     setUser(me)
-    return { role: me.role }
+    return { role: me.role, passwordChangeRequired: me.passwordChangeRequired }
   }, [])
 
   const refreshUser = useCallback(async () => {
