@@ -74,6 +74,8 @@ const BACKEND_TO_STATUS: Record<string, Event['status']> = {
   DRAFT:            'draft',
   PENDING_APPROVAL: 'pending_approval',
   ACTIVE:           'active',
+  LIVE:             'live',
+  ENDED:            'ended',
   POSTPONED:        'postponed',
   CANCELLED:        'cancelled',
   REJECTED:         'rejected',
@@ -84,6 +86,8 @@ const STATUS_TO_BACKEND: Record<string, string> = {
   draft:            'DRAFT',
   pending_approval: 'PENDING_APPROVAL',
   active:           'ACTIVE',
+  live:             'LIVE',
+  ended:            'ENDED',
   postponed:        'POSTPONED',
   cancelled:        'CANCELLED',
   rejected:         'REJECTED',
@@ -338,7 +342,7 @@ export async function fetchEvents(): Promise<Event[]> {
   )
   return (res.data ?? [])
     .map(mapBackendToEvent)
-    .filter(e => e.status === 'active' || e.status === 'postponed' || e.status === 'sold_out')
+    .filter(e => e.status === 'active' || e.status === 'live' || e.status === 'postponed' || e.status === 'sold_out')
 }
 
 export async function fetchEvent(id: string): Promise<Event | undefined> {
@@ -389,6 +393,20 @@ export async function reviewVendorEvent(id: string, decision: 'approve' | 'rejec
   const res = await apiFetch<{ success: boolean; data: BackendEvent }>(`/api/v1/admin/event/${id}/review`, {
     method: 'PATCH',
     body: JSON.stringify({ decision, reason }),
+  })
+  return mapBackendToEvent(res.data)
+}
+
+export async function startAdminEvent(id: string): Promise<Event> {
+  const res = await apiFetch<{ success: boolean; data: BackendEvent }>(`/api/v1/admin/event/${id}/start`, {
+    method: 'PATCH',
+  })
+  return mapBackendToEvent(res.data)
+}
+
+export async function endAdminEvent(id: string): Promise<Event> {
+  const res = await apiFetch<{ success: boolean; data: BackendEvent }>(`/api/v1/admin/event/${id}/end`, {
+    method: 'PATCH',
   })
   return mapBackendToEvent(res.data)
 }
@@ -467,6 +485,30 @@ export function useReviewVendorEvent() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: eventKeys.admin.all('admin') })
       qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id, 'admin') })
+    },
+  })
+}
+
+export function useStartEvent(options?: { vendorScoped?: boolean }) {
+  const qc = useQueryClient()
+  const scope = options?.vendorScoped ? 'vendor' : 'admin'
+  return useMutation({
+    mutationFn: (id: string) => startAdminEvent(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) })
+      qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id, scope) })
+    },
+  })
+}
+
+export function useEndEvent(options?: { vendorScoped?: boolean }) {
+  const qc = useQueryClient()
+  const scope = options?.vendorScoped ? 'vendor' : 'admin'
+  return useMutation({
+    mutationFn: (id: string) => endAdminEvent(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) })
+      qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id, scope) })
     },
   })
 }

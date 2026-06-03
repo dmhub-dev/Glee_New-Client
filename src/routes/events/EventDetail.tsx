@@ -1,10 +1,26 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useAdminEvent, useAdminEventTickets, useUpdateEvent, useDeleteEvent, useIssueComplimentaryTicket, useReviewVendorEvent, type EventApiPayload } from '@glee/api'
+import {
+  useAdminEvent,
+  useAdminEventTickets,
+  useUpdateEvent,
+  useDeleteEvent,
+  useIssueComplimentaryTicket,
+  useReviewVendorEvent,
+  useStartEvent,
+  useEndEvent,
+  useTicketAttendants,
+  useTicketAttendantStats,
+  useCreateTicketAttendant,
+  useResetTicketAttendantSession,
+  useRevokeTicketAttendant,
+  type EventApiPayload,
+  type TicketAttendant,
+} from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
 import { Button, Input, Label, Skeleton, Progress, Textarea, useToast } from '@glee/ui'
-import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck, CheckCircle2, XCircle } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck, CheckCircle2, XCircle, ShieldCheck, UserPlus, Copy, RotateCcw, Ban, Play, Square } from 'lucide-react'
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 import EventDetailTabs from './EventDetailTabs'
@@ -13,6 +29,8 @@ const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
 const STATUS_CONFIG: Record<Event['status'], { label: string; dot: string; badge: string }> = {
   active:           { label: 'Active',           dot: 'bg-green-400',   badge: 'bg-green-500/15 text-green-400 border-green-500/20'   },
+  live:             { label: 'Live',             dot: 'bg-neon-pink',   badge: 'bg-neon-pink/15 text-neon-pink border-neon-pink/20'   },
+  ended:            { label: 'Ended',            dot: 'bg-admin-40',    badge: 'bg-admin-overlay text-admin-50 border-admin'          },
   pending_approval: { label: 'Pending Approval', dot: 'bg-sky-400',     badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20'         },
   draft:            { label: 'Draft',            dot: 'bg-amber-400',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20'   },
   cancelled:        { label: 'Cancelled',        dot: 'bg-red-500',     badge: 'bg-red-500/15 text-red-400 border-red-500/20'         },
@@ -32,7 +50,7 @@ const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
 ]
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
-type EventDetailTab = 'details' | 'complimentary'
+type EventDetailTab = 'details' | 'complimentary' | 'attendants'
 
 function formatEventDate(startDate: string, endDate: string): string {
   if (endDate === startDate) {
@@ -115,12 +133,14 @@ export default function EventDetailPage() {
   const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
   const deleteMutation = useDeleteEvent({ vendorScoped: isVendorRole })
   const reviewMutation = useReviewVendorEvent()
+  const startEventMutation = useStartEvent({ vendorScoped: isVendorRole })
+  const endEventMutation = useEndEvent({ vendorScoped: isVendorRole })
   const { toast } = useToast()
   const { data: ticketData } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
     const state = location.state as { tab?: EventDetailTab } | null
-    return state?.tab === 'complimentary' ? 'complimentary' : 'details'
+    return state?.tab === 'complimentary' || state?.tab === 'attendants' ? state.tab : 'details'
   })
 
   function handleStatusChange(newStatus: Event['status']) {
@@ -173,6 +193,25 @@ export default function EventDetailPage() {
     } catch (error) {
       toast({
         title: 'Could not review event',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function handleLifecycle(action: 'start' | 'end') {
+    if (!event) return
+    try {
+      if (action === 'start') {
+        await startEventMutation.mutateAsync(event.id)
+        toast({ title: 'Event marked live' })
+      } else {
+        await endEventMutation.mutateAsync(event.id)
+        toast({ title: 'Event marked ended' })
+      }
+    } catch (error) {
+      toast({
+        title: action === 'start' ? 'Could not start event' : 'Could not end event',
         description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive',
       })
@@ -277,6 +316,22 @@ export default function EventDetailPage() {
               )}
             </div>
 
+            {(event.status === 'active' || event.status === 'live') && (
+              <button
+                onClick={() => handleLifecycle(event.status === 'active' ? 'start' : 'end')}
+                disabled={startEventMutation.isPending || endEventMutation.isPending}
+                className={cn(
+                  'flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full border transition-colors disabled:opacity-50',
+                  event.status === 'active'
+                    ? 'bg-neon-pink/10 border-neon-pink/30 text-neon-pink hover:bg-neon-pink/15'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/15',
+                )}
+              >
+                {event.status === 'active' ? <Play className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                {event.status === 'active' ? 'Start Live' : 'End Event'}
+              </button>
+            )}
+
             <button
               onClick={() => navigate(`/dashboard/events/${event.id}/edit`)}
               className="flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full bg-admin-overlay border border-admin text-admin-70 hover:bg-neon-pink/10 hover:border-neon-pink/30 hover:text-neon-pink transition-colors"
@@ -323,6 +378,8 @@ export default function EventDetailPage() {
         {/* Two-column layout */}
         {activeTab === 'complimentary' ? (
           <ComplimentaryTicketPanel event={event} />
+        ) : activeTab === 'attendants' ? (
+          <TicketAttendantsPanel event={event} />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -622,6 +679,235 @@ function RevenueCard({ icon: Icon, label, value }: { icon: typeof Ticket; label:
         <p className="text-xs text-admin-40">{label}</p>
         <p className="font-heading text-lg font-black text-foreground">{value}</p>
       </div>
+    </div>
+  )
+}
+
+function TicketAttendantsPanel({ event }: { event: Event }) {
+  const { toast } = useToast()
+  const { data: attendants = [], isLoading } = useTicketAttendants(event.id)
+  const { data: stats = [] } = useTicketAttendantStats(event.id)
+  const createAttendant = useCreateTicketAttendant(event.id)
+  const resetSession = useResetTicketAttendantSession(event.id)
+  const revokeAttendant = useRevokeTicketAttendant(event.id)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [latestInvite, setLatestInvite] = useState<TicketAttendant | null>(null)
+
+  const checkedInTotal = stats.reduce((sum, row) => sum + row.success, 0)
+  const duplicateTotal = stats.reduce((sum, row) => sum + row.duplicate, 0)
+  const invalidTotal = stats.reduce((sum, row) => sum + row.invalid, 0)
+
+  async function copyValue(value: string, label: string) {
+    await navigator.clipboard?.writeText(value)
+    toast({ title: `${label} copied` })
+  }
+
+  async function handleCreate(submitEvent: FormEvent<HTMLFormElement>) {
+    submitEvent.preventDefault()
+    if (!name.trim() || !email.trim()) {
+      toast({ title: 'Missing attendant details', variant: 'destructive' })
+      return
+    }
+    try {
+      const attendant = await createAttendant.mutateAsync({ eventId: event.id, name, email })
+      setLatestInvite(attendant)
+      setName('')
+      setEmail('')
+      toast({ title: 'Ticket attendant invited' })
+    } catch (error) {
+      toast({
+        title: 'Could not invite attendant',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function handleReset(attendant: TicketAttendant) {
+    try {
+      await resetSession.mutateAsync({ eventId: event.id, id: attendant.id })
+      toast({ title: 'Session reset' })
+    } catch (error) {
+      toast({
+        title: 'Could not reset session',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function handleRevoke(attendant: TicketAttendant) {
+    if (!window.confirm(`Revoke access for ${attendant.name}?`)) return
+    try {
+      await revokeAttendant.mutateAsync({ eventId: event.id, id: attendant.id })
+      toast({ title: 'Attendant access revoked' })
+    } catch (error) {
+      toast({
+        title: 'Could not revoke attendant',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <section className="space-y-5">
+        <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-neon-pink/10 text-neon-pink">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-heading text-base font-bold text-foreground">Check-in Team</h2>
+                <p className="text-xs text-admin-40">Event-only access opens before start time and expires when the event ends.</p>
+              </div>
+            </div>
+            <span className="w-fit rounded-full border border-admin bg-admin-overlay px-3 py-1 text-xs font-medium text-admin-50">
+              {event.status === 'live' ? 'Live check-in enabled' : `${event.status.replace('_', ' ')} event`}
+            </span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <AttendantMetric label="Successful check-ins" value={checkedInTotal} tone="pink" />
+            <AttendantMetric label="Duplicate scans" value={duplicateTotal} />
+            <AttendantMetric label="Invalid scans" value={invalidTotal} />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-heading text-sm font-bold text-foreground">Invited Attendants</h3>
+            <span className="rounded-full border border-admin bg-admin-overlay px-2.5 py-1 text-xs text-admin-40">
+              {attendants.length} total
+            </span>
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-20 rounded-xl" />
+              <Skeleton className="h-20 rounded-xl" />
+            </div>
+          ) : attendants.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-admin bg-admin-overlay p-8 text-center">
+              <UserCheck className="mx-auto h-8 w-8 text-admin-30" />
+              <p className="mt-3 text-sm font-semibold text-foreground">No attendants yet</p>
+              <p className="mt-1 text-sm text-admin-40">Invite gate staff once the event is ready for check-in operations.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {attendants.map(attendant => {
+                const rowStats = stats.find(row => row.id === attendant.id)
+                return (
+                  <div key={attendant.id} className="rounded-xl border border-admin bg-admin-overlay p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-foreground">{attendant.name}</p>
+                          <span className={cn(
+                            'rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                            attendant.status === 'ACTIVE'
+                              ? 'border-green-500/25 bg-green-500/10 text-green-400'
+                              : attendant.status === 'REVOKED' || attendant.status === 'EXPIRED'
+                                ? 'border-red-500/25 bg-red-500/10 text-red-300'
+                                : 'border-admin bg-admin-surface text-admin-50',
+                          )}>
+                            {attendant.status}
+                          </span>
+                          {attendant.sessionActive && (
+                            <span className="rounded-full border border-neon-pink/25 bg-neon-pink/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neon-pink">
+                              active session
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-admin-40">{attendant.email}</p>
+                        <p className="mt-2 text-xs text-admin-40">
+                          {rowStats?.success ?? attendant.checkedInCount ?? 0} check-ins · {rowStats?.attempts ?? attendant.attemptCount ?? 0} attempts
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" className="border-admin bg-admin-surface" onClick={() => handleReset(attendant)}>
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Reset
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" className="border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15" onClick={() => handleRevoke(attendant)}>
+                          <Ban className="h-3.5 w-3.5" />
+                          Revoke
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <aside className="space-y-5">
+        <form onSubmit={handleCreate} className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <div className="mb-4 flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-neon-pink" />
+            <h3 className="font-heading text-sm font-bold text-foreground">Invite Attendant</h3>
+          </div>
+          <div className="space-y-3">
+            <label className="space-y-1.5">
+              <Label className="text-xs text-admin-50">Full name</Label>
+              <Input value={name} onChange={event => setName(event.target.value)} placeholder="Gate attendant name" className="border-admin bg-admin-input" />
+            </label>
+            <label className="space-y-1.5">
+              <Label className="text-xs text-admin-50">Email</Label>
+              <Input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="attendant@example.com" className="border-admin bg-admin-input" />
+            </label>
+            <Button type="submit" disabled={createAttendant.isPending} className="w-full bg-neon-pink text-white hover:bg-neon-pink/90">
+              {createAttendant.isPending ? 'Sending...' : 'Send Invite'}
+            </Button>
+          </div>
+        </form>
+
+        {latestInvite && (
+          <div className="rounded-2xl border border-neon-pink/25 bg-neon-pink/10 p-5 shadow-admin">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neon-pink">Share manually</p>
+            <h3 className="mt-2 font-heading text-base font-bold text-foreground">{latestInvite.name}</h3>
+            <p className="mt-1 text-sm text-admin-50">PIN and link are shown once. Send the PIN separately from the email link.</p>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl border border-admin bg-admin-surface p-3">
+                <p className="text-xs text-admin-40">PIN</p>
+                <div className="mt-1 flex items-center justify-between gap-3">
+                  <p className="font-mono text-xl font-black tracking-[0.2em] text-foreground">{latestInvite.pin}</p>
+                  {latestInvite.pin && (
+                    <button type="button" onClick={() => copyValue(latestInvite.pin as string, 'PIN')} className="text-admin-40 hover:text-neon-pink">
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {latestInvite.inviteUrl && (
+                <div className="rounded-xl border border-admin bg-admin-surface p-3">
+                  <p className="text-xs text-admin-40">Access link</p>
+                  <button type="button" onClick={() => copyValue(latestInvite.inviteUrl as string, 'Invite link')} className="mt-2 flex w-full items-center justify-between gap-3 rounded-lg border border-admin bg-admin-overlay px-3 py-2 text-left text-xs text-admin-60 hover:text-neon-pink">
+                    <span className="truncate">{latestInvite.inviteUrl}</span>
+                    <Copy className="h-3.5 w-3.5 shrink-0" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </aside>
+    </div>
+  )
+}
+
+function AttendantMetric({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'pink' | 'default' }) {
+  return (
+    <div className="rounded-xl border border-admin bg-admin-overlay p-4">
+      <p className="text-xs text-admin-40">{label}</p>
+      <p className={cn('mt-2 font-heading text-2xl font-black', tone === 'pink' ? 'text-neon-pink' : 'text-foreground')}>
+        {value.toLocaleString()}
+      </p>
     </div>
   )
 }

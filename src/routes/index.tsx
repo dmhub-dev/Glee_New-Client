@@ -52,6 +52,8 @@ const TOOLTIP_STYLE = {
 
 const EVENT_STATUS_LABELS: Record<Event['status'], string> = {
   active: 'Active',
+  live: 'Live',
+  ended: 'Ended',
   pending_approval: 'Pending Approval',
   draft: 'Draft',
   postponed: 'Postponed',
