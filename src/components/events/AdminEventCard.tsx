@@ -8,6 +8,8 @@ const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
 
 const STATUS_CONFIG = {
   active:           { label: 'Active',           dot: 'bg-green-400',  text: 'text-green-400'  },
+  live:             { label: 'Live',             dot: 'bg-neon-pink',  text: 'text-neon-pink'  },
+  ended:            { label: 'Ended',            dot: 'bg-admin-40',   text: 'text-admin-40'   },
   pending_approval: { label: 'Pending Approval', dot: 'bg-sky-400',    text: 'text-sky-400'    },
   draft:            { label: 'Draft',            dot: 'bg-amber-400',  text: 'text-amber-400'  },
   cancelled:        { label: 'Cancelled',        dot: 'bg-red-500',    text: 'text-red-400'    },

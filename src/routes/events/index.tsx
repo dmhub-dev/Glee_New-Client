@@ -24,6 +24,8 @@ const EVENT_SECTIONS: { key: EventSection; label: string; icon: typeof Calendar 
 const STATUS_TABS: { key: StatusTab; label: string }[] = [
   { key: 'pending_approval', label: 'Pending Approval' },
   { key: 'active',           label: 'Active'           },
+  { key: 'live',             label: 'Live'             },
+  { key: 'ended',            label: 'Ended'            },
   { key: 'draft',            label: 'Draft'            },
   { key: 'postponed',        label: 'Postponed'        },
   { key: 'cancelled',        label: 'Cancelled'        },
@@ -33,6 +35,8 @@ const STATUS_TABS: { key: StatusTab; label: string }[] = [
 
 const STATUS_DOT: Record<StatusTab, string> = {
   active:           'bg-green-400',
+  live:             'bg-neon-pink',
+  ended:            'bg-admin-40',
   pending_approval: 'bg-sky-400',
   draft:            'bg-amber-400',
   postponed:        'bg-orange-400',

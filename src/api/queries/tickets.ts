@@ -236,6 +236,199 @@ export function useIssueComplimentaryTicket(eventId?: string) {
   })
 }
 
+export interface TicketAttendant {
+  id: string
+  eventId: string
+  name: string
+  email: string
+  status: 'INVITED' | 'ACTIVE' | 'REVOKED' | 'EXPIRED' | string
+  sessionActive: boolean
+  lastLoginAt?: string | null
+  revokedAt?: string | null
+  createdAt?: string
+  checkedInCount?: number
+  attemptCount?: number
+  pin?: string
+  inviteUrl?: string
+}
+
+export interface TicketAttendantStats {
+  id: string
+  name: string
+  email: string
+  status: string
+  success: number
+  duplicate: number
+  invalid: number
+  attempts: number
+}
+
+export interface AttendantDeskEvent {
+  id: string
+  name: string
+  status: string
+  startDate?: string | null
+  endDate?: string | null
+}
+
+export interface AttendantDeskTicket {
+  id: string
+  ticketRef?: string
+  ticketRefDisplay?: string | null
+  ticketNumber?: number | null
+  status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'CANCELLED' | string
+  checkedInAt?: string | null
+  attendee: {
+    name: string
+    email?: string | null
+    phone?: string | null
+  }
+  ticketTier?: string | null
+  menu?: unknown
+  checkedInBy?: { id: string; name: string } | null
+}
+
+export interface TicketAttendantAccessResult {
+  token: string
+  expiresAt: string
+  attendant: Pick<TicketAttendant, 'id' | 'name' | 'email' | 'status'>
+  event: AttendantDeskEvent
+}
+
+export interface TicketAttendantDeskResult {
+  attendant: Pick<TicketAttendant, 'id' | 'name' | 'email' | 'status'>
+  event: AttendantDeskEvent
+  canCheckIn: boolean
+}
+
+export function getTicketAttendants(eventId: string): Promise<TicketAttendant[]> {
+  return apiFetch<{ success: boolean; data: TicketAttendant[] }>(
+    `/api/v1/admin/events/${eventId}/ticket-attendants`,
+  ).then(r => r.data ?? [])
+}
+
+export function getTicketAttendantStats(eventId: string): Promise<TicketAttendantStats[]> {
+  return apiFetch<{ success: boolean; data: TicketAttendantStats[] }>(
+    `/api/v1/admin/events/${eventId}/ticket-attendants/stats`,
+  ).then(r => r.data ?? [])
+}
+
+export function createTicketAttendant(params: { eventId: string; name: string; email: string }): Promise<TicketAttendant> {
+  return apiFetch<{ success: boolean; data: TicketAttendant }>(
+    `/api/v1/admin/events/${params.eventId}/ticket-attendants`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ name: params.name, email: params.email }),
+    },
+  ).then(r => r.data)
+}
+
+export function resetTicketAttendantSession(params: { eventId: string; id: string }): Promise<void> {
+  return apiFetch(`/api/v1/admin/events/${params.eventId}/ticket-attendants/${params.id}/reset-session`, {
+    method: 'PATCH',
+  })
+}
+
+export function revokeTicketAttendant(params: { eventId: string; id: string }): Promise<void> {
+  return apiFetch(`/api/v1/admin/events/${params.eventId}/ticket-attendants/${params.id}/revoke`, {
+    method: 'PATCH',
+  })
+}
+
+export function useTicketAttendants(eventId?: string) {
+  return useQuery({
+    queryKey: ['admin', 'ticket-attendants', eventId],
+    queryFn: () => getTicketAttendants(eventId as string),
+    enabled: Boolean(eventId),
+  })
+}
+
+export function useTicketAttendantStats(eventId?: string) {
+  return useQuery({
+    queryKey: ['admin', 'ticket-attendant-stats', eventId],
+    queryFn: () => getTicketAttendantStats(eventId as string),
+    enabled: Boolean(eventId),
+  })
+}
+
+export function useCreateTicketAttendant(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: createTicketAttendant,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'ticket-attendants', eventId] })
+      qc.invalidateQueries({ queryKey: ['admin', 'ticket-attendant-stats', eventId] })
+    },
+  })
+}
+
+export function useResetTicketAttendantSession(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: resetTicketAttendantSession,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'ticket-attendants', eventId] }),
+  })
+}
+
+export function useRevokeTicketAttendant(eventId?: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: revokeTicketAttendant,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'ticket-attendants', eventId] })
+      qc.invalidateQueries({ queryKey: ['admin', 'ticket-attendant-stats', eventId] })
+    },
+  })
+}
+
+export function accessTicketAttendantDesk(params: {
+  token: string
+  name: string
+  email: string
+  pin: string
+}): Promise<TicketAttendantAccessResult> {
+  return apiFetch<{ success: boolean; data: TicketAttendantAccessResult }>('/api/v1/ticket-attendants/access', {
+    method: 'POST',
+    body: JSON.stringify(params),
+    skipAuth: true,
+  }).then(r => r.data)
+}
+
+export function getTicketAttendantDesk(sessionToken: string): Promise<TicketAttendantDeskResult> {
+  return apiFetch<{ success: boolean; data: TicketAttendantDeskResult }>('/api/v1/ticket-attendants/me', {
+    skipAuth: true,
+    headers: { 'x-attendant-token': sessionToken },
+  }).then(r => r.data)
+}
+
+export function getTicketAttendantAttendees(sessionToken: string): Promise<AttendantDeskTicket[]> {
+  return apiFetch<{ success: boolean; data: AttendantDeskTicket[] }>('/api/v1/ticket-attendants/attendees', {
+    skipAuth: true,
+    headers: { 'x-attendant-token': sessionToken },
+  }).then(r => r.data ?? [])
+}
+
+export function attendantCheckIn(params: {
+  sessionToken: string
+  ticketRef: string
+  source?: 'QR' | 'MANUAL'
+}): Promise<AttendantDeskTicket> {
+  return apiFetch<{ success: boolean; data: AttendantDeskTicket }>('/api/v1/ticket-attendants/check-in', {
+    method: 'POST',
+    body: JSON.stringify({ ticketRef: params.ticketRef, source: params.source ?? 'QR' }),
+    skipAuth: true,
+    headers: { 'x-attendant-token': params.sessionToken },
+  }).then(r => r.data)
+}
+
+export function attendantLogout(sessionToken: string): Promise<void> {
+  return apiFetch('/api/v1/ticket-attendants/logout', {
+    method: 'POST',
+    skipAuth: true,
+    headers: { 'x-attendant-token': sessionToken },
+  })
+}
+
 export interface MyTicketGroup {
   event: {
     id: string

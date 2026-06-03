@@ -120,7 +120,7 @@ export function apiLogin(email: string, password: string): Promise<LoginResult> 
 export function apiVerifyLoginTwoFactor(email: string, otp: string): Promise<LoginResponse> {
   return apiFetch<BackendLoginResponse>('/api/v1/login/verify-2fa', {
     method: 'POST',
-    body: JSON.stringify({ email, otp }),
+    body: JSON.stringify({ email, otp: Number(otp) }),
     skipAuth: true,
   }).then(raw => ({
     accessToken: raw.accessToken,
