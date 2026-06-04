@@ -178,7 +178,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     activeTicketWave,
     location:         locationStr,
     locationId:       raw.location?.id ?? undefined,
-    categoryId:       raw.categoryId ?? undefined,
+    categoryId:       raw.categoryId ?? raw.category?.id ?? undefined,
     categoryName:     raw.category?.name ?? undefined,
     createdAt:        raw.createdAt,
     updatedAt:        raw.updatedAt,
@@ -352,7 +352,7 @@ function publicEventQuery(filters: PublicEventFilters = {}) {
   params.set('page', String(filters.page ?? 1))
   params.set('limit', String(filters.limit ?? 100))
   if (filters.search?.trim()) params.set('search', filters.search.trim())
-  if (filters.category) params.set('category', filters.category)
+  if (filters.category) params.set('categoryId', filters.category)
   if (filters.date) params.set('date', filters.date)
   if (filters.venueId) params.set('venueId', filters.venueId)
   if (filters.status) params.set('status', STATUS_TO_BACKEND[filters.status] ?? filters.status)

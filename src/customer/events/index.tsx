@@ -39,10 +39,6 @@ function categoryLabel(event: Event) {
   return event.categoryName ?? 'Event'
 }
 
-function eventMatchesStatus(event: Event, status: StatusFilter) {
-  return event.status === status
-}
-
 export default function CustomerEventsPage() {
   return <EventsScreen mode="explore" />
 }
@@ -54,13 +50,23 @@ export function CustomerHomePage() {
 function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { data: events = [], isLoading } = useEvents()
-  const [activeCategory, setActiveCategory] = useState('All')
+  const [activeCategory, setActiveCategory] = useState<string>('All')
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('active')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const statusFilterRef = useRef<HTMLDivElement>(null)
   const isExplore = mode === 'explore'
+  const selectedCategoryId = activeCategory === 'All' ? undefined : activeCategory
+  const query = searchQuery.trim()
+  const { data: carouselSourceEvents = [], isLoading: isCarouselLoading } = useEvents({ page: 1, limit: 5, status: 'active' })
+  const { data: categorySourceEvents = [] } = useEvents({ page: 1, limit: 100, status: activeStatus })
+  const { data: events = [], isLoading } = useEvents({
+    page: 1,
+    limit: isExplore ? 100 : 12,
+    search: query || undefined,
+    category: selectedCategoryId,
+    status: activeStatus,
+  })
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -72,24 +78,35 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   }, [])
 
   const categoryFilters = useMemo(() => {
-    const names = Array.from(new Set(events.map(event => categoryLabel(event)).filter(Boolean))).sort()
-    return ['All', ...names]
-  }, [events])
+    const categories = new Map<string, string>()
+    categorySourceEvents.forEach(event => {
+      if (event.categoryId && event.categoryName) {
+        categories.set(event.categoryId, event.categoryName)
+      }
+    })
+
+    return [
+      { value: 'All', label: 'All' },
+      ...Array.from(categories, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label)),
+    ]
+  }, [categorySourceEvents])
 
   const filteredEvents = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
     return events
-      .filter(event => event.status === 'active' || event.status === 'live' || event.status === 'sold_out' || event.status === 'cancelled')
-      .filter(event => eventMatchesStatus(event, activeStatus))
-      .filter(event => activeCategory === 'All' || categoryLabel(event) === activeCategory)
-      .filter(event => !query || event.title.toLowerCase().includes(query) || (event.location ?? '').toLowerCase().includes(query) || categoryLabel(event).toLowerCase().includes(query))
       .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime())
-  }, [events, activeCategory, activeStatus, searchQuery])
+  }, [events])
+
+  const carouselEvents = useMemo(() => {
+    return carouselSourceEvents
+      .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime())
+  }, [carouselSourceEvents])
+
+  const activeCategoryLabel = categoryFilters.find(category => category.value === activeCategory)?.label ?? 'Filtered Events'
 
   const sectionTitle = searchQuery.trim()
     ? `Results for "${searchQuery.trim()}"`
     : activeCategory !== 'All'
-      ? activeCategory
+      ? activeCategoryLabel
       : isExplore ? 'All Events' : 'Trending This Weekend'
 
   const initials = (user?.name ?? 'User')
@@ -163,7 +180,10 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
                 <button
                   key={filter.value}
                   type="button"
-                  onClick={() => setActiveStatus(filter.value)}
+                  onClick={() => {
+                    setActiveCategory('All')
+                    setActiveStatus(filter.value)
+                  }}
                   className={cn(
                     'h-10 rounded-md px-3 text-xs font-semibold transition-all active:scale-95',
                     activeStatus === filter.value
@@ -184,6 +204,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
                   key={filter.value}
                   type="button"
                   onClick={() => {
+                    setActiveCategory('All')
                     setActiveStatus(filter.value)
                     setStatusMenuOpen(false)
                   }}
@@ -200,19 +221,19 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           )}
         </div>
 
-        <FilterRow values={categoryFilters.map(value => ({ value, label: value }))} active={activeCategory} onChange={setActiveCategory} />
+        <FilterRow values={categoryFilters} active={activeCategory} onChange={setActiveCategory} />
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">{sectionTitle}</h2>
+            <h2 className="text-lg font-semibold text-white">{isExplore ? sectionTitle : 'Trending This Weekend'}</h2>
             {!isExplore && <button type="button" onClick={() => navigate('/app/events')} className="text-xs text-neon-pink hover:underline">See All</button>}
           </div>
 
-          {isLoading ? (
+          {isExplore && isLoading ? (
             <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
               <p className="text-white/55">Loading events...</p>
             </div>
-          ) : filteredEvents.length === 0 ? (
+          ) : isExplore && filteredEvents.length === 0 ? (
             <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
               <p className="text-white/55">No events found matching your criteria.</p>
               <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
@@ -221,15 +242,36 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
             </div>
           ) : isExplore ? (
             <EventList events={filteredEvents} showCategory={false} />
+          ) : isCarouselLoading ? (
+            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+              <p className="text-white/55">Loading events...</p>
+            </div>
+          ) : carouselEvents.length === 0 ? (
+            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+              <p className="text-white/55">No featured events right now.</p>
+            </div>
           ) : (
-            <AutoCarousel events={filteredEvents.slice(0, 5)} />
+            <AutoCarousel events={carouselEvents.slice(0, 5)} />
           )}
         </div>
 
-        {!isExplore && !isLoading && filteredEvents.length > 1 && (
+        {!isExplore && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-white">More Events</h2>
-            <EventList events={filteredEvents.slice(1, 5)} showCategory={false} />
+            <h2 className="text-lg font-semibold text-white">{sectionTitle === 'Trending This Weekend' ? 'More Events' : sectionTitle}</h2>
+            {isLoading ? (
+              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+                <p className="text-white/55">Loading events...</p>
+              </div>
+            ) : filteredEvents.length === 0 ? (
+              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+                <p className="text-white/55">No events found matching your criteria.</p>
+                <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              </div>
+            ) : (
+              <EventList events={filteredEvents.slice(0, 5)} showCategory={false} />
+            )}
           </div>
         )}
       </div>
