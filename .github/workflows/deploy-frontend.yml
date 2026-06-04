@@ -95,7 +95,9 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -T 30 -p "${VPS_PORT:-22}" -H "$VPS_HOST" >> ~/.ssh/known_hosts || true
+          SSH_HOST="$(printf '%s' "$VPS_HOST" | tr -d '[:space:]')"
+          SSH_PORT="$(printf '%s' "${VPS_PORT:-22}" | tr -d '[:space:]')"
+          ssh-keyscan -T 30 -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts || true
 
       - name: Rebuild frontend container
         if: steps.deploy_config.outputs.ready == 'true'
@@ -105,7 +107,10 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_APP_PATH: ${{ steps.deploy_config.outputs.app_path }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "cd '$VPS_APP_PATH' && git pull --ff-only && docker compose --env-file .env up -d --build"
+          SSH_HOST="$(printf '%s' "$VPS_HOST" | tr -d '[:space:]')"
+          SSH_PORT="$(printf '%s' "${VPS_PORT:-22}" | tr -d '[:space:]')"
+          timeout 20 bash -c "</dev/tcp/$SSH_HOST/$SSH_PORT"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -p "$SSH_PORT" "$VPS_USER@$SSH_HOST" "cd '$VPS_APP_PATH' && git pull --ff-only && docker compose --env-file .env up -d --build"
 
       - name: Run post-deploy command
         if: steps.deploy_config.outputs.ready == 'true' && env.VPS_POST_DEPLOY_COMMAND != ''
@@ -113,4 +118,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_USER: ${{ secrets.VPS_USER }}
-        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "$VPS_POST_DEPLOY_COMMAND"
+        run: |
+          SSH_HOST="$(printf '%s' "$VPS_HOST" | tr -d '[:space:]')"
+          SSH_PORT="$(printf '%s' "${VPS_PORT:-22}" | tr -d '[:space:]')"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -p "$SSH_PORT" "$VPS_USER@$SSH_HOST" "$VPS_POST_DEPLOY_COMMAND"
