@@ -42,7 +42,7 @@ export default function CustomerLayout({
 
       {!hideNav && (
         <nav className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-50 px-3">
-          <div className="mx-auto flex h-[68px] max-w-[22rem] items-center justify-around rounded-full border border-white/12 bg-[#110A23]/72 px-2 shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-2xl md:max-w-[30rem]">
+          <div className="mx-auto flex h-[68px] max-w-[22rem] items-center justify-around rounded-full bg-[#110A23]/72 px-2 shadow-[0_18px_55px_rgba(0,0,0,0.42)] backdrop-blur-2xl md:max-w-[30rem]">
             {navItems.map(item => (
               <NavLink
                 key={item.to}

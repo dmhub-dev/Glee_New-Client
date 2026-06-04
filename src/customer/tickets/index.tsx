@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMyTickets } from '@glee/api'
 import { Badge, Button, Input, Skeleton } from '@glee/ui'
-import { Calendar, MapPin, QrCode, Search, Ticket, Utensils } from 'lucide-react'
+import { Calendar, MapPin, QrCode, Search, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 
 const PLACEHOLDER = 'https://placehold.co/900x600/141419/FF2D8F?text=Glee'
@@ -21,7 +21,6 @@ export default function CustomerTicketsPage() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const totalTickets = (groups ?? []).reduce((sum, group) => sum + group.noOfTicketsPurchased, 0)
-  const upcoming = (groups ?? []).filter(group => group.event.startDate && new Date(group.event.startDate) >= new Date()).length
   const filteredGroups = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     if (!query) return groups ?? []
@@ -45,7 +44,7 @@ export default function CustomerTicketsPage() {
             <p className="mt-2 text-sm leading-6 text-white/58">Your tickets and table bookings in one place.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 lg:max-w-2xl">
+          <div className="grid gap-3 sm:max-w-sm">
             <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4 shadow-[0_14px_40px_rgba(0,0,0,0.18)]">
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-neon-pink/15 text-neon-pink">
                 <Ticket className="h-5 w-5" />
@@ -53,18 +52,6 @@ export default function CustomerTicketsPage() {
               <p className="font-heading text-3xl font-black text-white">{totalTickets}</p>
               <p className="text-xs text-white/45">Total Tickets</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4 shadow-[0_14px_40px_rgba(0,0,0,0.18)]">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300">
-                <Utensils className="h-5 w-5" />
-              </div>
-              <p className="font-heading text-3xl font-black text-white">{upcoming}</p>
-              <p className="text-xs text-white/45">Upcoming</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 rounded-full border border-white/10 bg-white/5 p-1 lg:max-w-2xl">
-            <button type="button" className="rounded-full bg-neon-pink py-2 text-sm font-semibold text-white shadow-[0_0_18px_rgba(255,0,122,0.35)]">Tickets</button>
-            <button type="button" className="rounded-full py-2 text-sm font-semibold text-white/55">Tables</button>
           </div>
 
           <div className="group relative lg:max-w-3xl">
@@ -96,7 +83,7 @@ export default function CustomerTicketsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-white">Upcoming</h2>
+          <h2 className="text-lg font-semibold text-white">Your Tickets</h2>
           <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {filteredGroups.map(group => {
               const event = group.event

@@ -9,13 +9,22 @@ import {
   useSecurityInfo,
   useToggle2FA,
   useUpdateNotificationPreferences,
+  useUpdatePasswordRotationDays,
   useUpdateProfile,
   useUploadAvatar,
 } from '@glee/api'
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Skeleton, Switch, useToast } from '@glee/ui'
-import { Bell, Camera, Check, ChevronRight, CreditCard, Lock, LogOut, Pencil, Shield, Smartphone, User, Wallet, X, type LucideIcon } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Switch, useToast } from '@glee/ui'
+import { Bell, Camera, Check, ChevronRight, Clock, KeyRound, Lock, LogOut, Pencil, Shield, User, Wallet, type LucideIcon } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
+
+const PASSWORD_ROTATION_OPTIONS = [
+  { days: 7, label: 'Every 1 week' },
+  { days: 14, label: 'Every 2 weeks' },
+  { days: 30, label: 'Every month' },
+  { days: 45, label: 'Every 45 days' },
+  { days: 60, label: 'Every 60 days' },
+]
 
 export default function CustomerProfilePage() {
   const navigate = useNavigate()
@@ -29,9 +38,9 @@ export default function CustomerProfilePage() {
   const updatePrefs = useUpdateNotificationPreferences()
   const toggle2fa = useToggle2FA()
   const changePassword = useChangePassword()
+  const updateRotation = useUpdatePasswordRotationDays()
   const { toast } = useToast()
   const [editProfileOpen, setEditProfileOpen] = useState(false)
-  const [paymentMethodsOpen, setPaymentMethodsOpen] = useState(false)
   const [securityOpen, setSecurityOpen] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -62,7 +71,11 @@ export default function CustomerProfilePage() {
     .slice(0, 2)
     .toUpperCase()
   const totalTickets = ticketGroups.reduce((sum, group) => sum + group.noOfTicketsPurchased, 0)
-  const upcomingEvents = ticketGroups.filter(group => group.event.startDate && new Date(group.event.startDate) >= new Date()).length
+  const passwordRotationDays = security?.passwordRotationDays ?? profile?.passwordRotationDays ?? 30
+  const passwordExpiresAt = security?.passwordExpiresAt ?? profile?.passwordExpiresAt
+  const lastLogin = security?.lastLoginAt
+    ? new Date(security.lastLoginAt).toLocaleString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'Not available'
 
   async function handleSaveProfile() {
     const [firstName = '', ...rest] = name.trim().split(' ')
@@ -101,6 +114,15 @@ export default function CustomerProfilePage() {
     }
   }
 
+  async function handleRotationChange(value: string) {
+    try {
+      await updateRotation.mutateAsync(Number(value))
+      toast({ title: 'Password rotation updated' })
+    } catch (error) {
+      toast({ title: 'Password rotation update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
+    }
+  }
+
   async function handleLogout() {
     await logout()
     navigate('/', { replace: true })
@@ -135,13 +157,23 @@ export default function CustomerProfilePage() {
 
               <div className="mt-4 flex gap-2">
                 <Badge variant="secondary" className="border-neon-pink/20 bg-white/5 px-3 py-1 text-neon-pink hover:bg-white/10">VIP Member</Badge>
-                <Badge variant="outline" className="border-white/10 text-white/55">Level 3</Badge>
               </div>
 
-              <div className="mt-8 grid w-full grid-cols-3 gap-4">
+              <div className="mt-6 w-full rounded-3xl bg-white/[0.07] p-4 shadow-[0_14px_40px_rgba(0,0,0,0.18)]">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-neon-pink/15 text-neon-pink">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/42">Last login</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-white">{lastLogin}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid w-full grid-cols-2 gap-4">
                 <Stat value={String(totalTickets)} label="Tickets" />
-                <Stat value={String(upcomingEvents)} label="Bookings" />
-                <Stat value="4.9" label="Rating" />
+                <Stat value={security?.twoFactorEnabled ? 'On' : 'Off'} label="2FA" />
               </div>
             </div>
 
@@ -149,7 +181,6 @@ export default function CustomerProfilePage() {
               <MenuGroup title="Account">
                 <MenuItem icon={User} label="Edit Profile" onClick={() => setEditProfileOpen(true)} />
                 <MenuItem icon={Wallet} label="Glee Wallet" onClick={() => navigate('/app/wallet')} />
-                <MenuItem icon={CreditCard} label="Payment Methods" onClick={() => setPaymentMethodsOpen(true)} />
                 <MenuItem
                   icon={Bell}
                   label="Notifications"
@@ -207,46 +238,85 @@ export default function CustomerProfilePage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={paymentMethodsOpen} onOpenChange={setPaymentMethodsOpen}>
-        <DialogContent className="mx-auto max-h-[85vh] max-w-sm overflow-y-auto rounded-3xl border-white/10 bg-[#050017] text-white">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-neon-pink" />
-              Payment Methods
-            </DialogTitle>
-            <DialogDescription className="text-white/55">Manage wallet, cards, and M-Pesa</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <PaymentRow icon={Wallet} title="Glee Wallet" subtitle="Use wallet balance for tickets and deposits" action="Open" onClick={() => navigate('/app/wallet')} />
-            <PaymentRow icon={CreditCard} title="Visa •••• 4242" subtitle="Expires 12/25" action={<X className="h-4 w-4" />} />
-            <PaymentRow icon={Smartphone} title="My M-Pesa" subtitle="+254 712 345 678" action={<X className="h-4 w-4" />} />
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={securityOpen} onOpenChange={setSecurityOpen}>
-        <DialogContent className="mx-auto max-h-[85vh] max-w-sm overflow-y-auto rounded-3xl border-white/10 bg-[#050017] text-white">
+        <DialogContent className="mx-auto max-h-[88vh] max-w-[92vw] overflow-y-auto rounded-[1.75rem] border-white/10 bg-[#07021d] p-0 text-white shadow-[0_24px_90px_rgba(0,0,0,0.45)] sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-neon-pink" />
-              Privacy & Security
-            </DialogTitle>
-            <DialogDescription className="text-white/55">Manage login protection</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
-              <div>
-                <p className="font-medium text-white">Two-factor authentication</p>
-                <p className="text-xs text-white/55">{security?.twoFactorEnabled ? 'Enabled' : 'Disabled'}</p>
+            <div className="relative overflow-hidden rounded-t-[1.75rem] border-b border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(255,45,143,0.24),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.03))] p-5">
+              <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-neon-pink/60 to-transparent" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-pink/15 text-neon-pink ring-1 ring-neon-pink/25">
+                  <Shield className="h-6 w-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-black">Privacy & Security</DialogTitle>
+                  <DialogDescription className="mt-1 text-white/58">Manage login protection and password rules.</DialogDescription>
+                </div>
               </div>
-              <Switch checked={Boolean(security?.twoFactorEnabled)} onCheckedChange={value => toggle2fa.mutate(value)} />
             </div>
-            <Field label="Current Password" value={currentPassword} onChange={setCurrentPassword} type="password" />
-            <Field label="New Password" value={newPassword} onChange={setNewPassword} type="password" />
-            <Field label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} type="password" />
-            <Button onClick={handlePasswordChange} disabled={changePassword.isPending} className="w-full bg-neon-pink text-white hover:bg-neon-pink/90">
-              {changePassword.isPending ? 'Updating...' : 'Update Password'}
-            </Button>
+          </DialogHeader>
+          <div className="space-y-4 p-5">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.07] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-400/12 text-emerald-300">
+                    <Lock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white">Two-factor authentication</p>
+                    <p className="mt-1 text-sm leading-5 text-white/55">
+                      {security?.twoFactorEnabled ? 'Enabled. Your account asks for an extra step at sign in.' : 'Disabled. Turn it on for stronger account protection.'}
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={Boolean(security?.twoFactorEnabled)} onCheckedChange={value => toggle2fa.mutate(value)} />
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.07] p-4">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neon-pink/15 text-neon-pink">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-white">Password rotation</p>
+                  <p className="mt-1 text-sm leading-5 text-white/55">
+                    {passwordExpiresAt ? `Next change required ${new Date(passwordExpiresAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}.` : 'Choose how often password changes should be requested.'}
+                  </p>
+                </div>
+              </div>
+              <Select value={String(passwordRotationDays)} onValueChange={handleRotationChange} disabled={updateRotation.isPending}>
+                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-[#120a2b] text-white focus:ring-neon-pink/50">
+                  <SelectValue placeholder="Select rotation" />
+                </SelectTrigger>
+                <SelectContent className="border-white/10 bg-[#120a2b] text-white">
+                  {PASSWORD_ROTATION_OPTIONS.map(option => (
+                    <SelectItem key={option.days} value={String(option.days)} className="focus:bg-neon-pink/15 focus:text-white">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.07] p-4">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-white">Update password</p>
+                  <p className="mt-1 text-sm leading-5 text-white/55">Use a new password that is different from previous sign-in details.</p>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                <Field label="Current Password" value={currentPassword} onChange={setCurrentPassword} type="password" />
+                <Field label="New Password" value={newPassword} onChange={setNewPassword} type="password" />
+                <Field label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} type="password" />
+              </div>
+              <Button onClick={handlePasswordChange} disabled={changePassword.isPending} className="mt-4 h-12 w-full rounded-2xl bg-neon-pink font-bold text-white hover:bg-neon-pink/90">
+                {changePassword.isPending ? 'Updating...' : 'Update Password'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -291,25 +361,6 @@ function Field({ label, value, onChange, type = 'text', disabled = false }: { la
     <div className="space-y-2">
       <Label className="text-white">{label}</Label>
       <Input value={value} type={type} disabled={disabled} onChange={event => onChange(event.target.value)} className="border-white/10 bg-white/5 text-white disabled:opacity-60" />
-    </div>
-  )
-}
-
-function PaymentRow({ icon: Icon, title, subtitle, action, onClick }: { icon: LucideIcon; title: string; subtitle: string; action: ReactNode; onClick?: () => void }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neon-pink/20 text-neon-pink">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="font-medium text-white">{title}</p>
-          <p className="text-xs text-white/55">{subtitle}</p>
-        </div>
-      </div>
-      <Button size="sm" variant="ghost" className="text-neon-pink hover:text-neon-pink" onClick={onClick}>
-        {action}
-      </Button>
     </div>
   )
 }
