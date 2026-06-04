@@ -1,6 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
-import type { MockActivity, MockBooking } from '../mock/stats'
 import { apiFetch } from '../../api/client'
+
+type MockBooking = {
+  id: string
+  date: string
+  customerName: string
+  event: string
+  qty: number
+  amount: number
+  status: 'confirmed' | 'pending' | 'cancelled'
+}
+
+type MockActivity = {
+  id: string
+  type: 'confirmed_booking' | 'approved_event' | 'updated_tickets'
+  description: string
+  timestamp: string
+}
 
 export const adminStatsKeys = {
   dashboard: ['admin', 'stats', 'dashboard'] as const,

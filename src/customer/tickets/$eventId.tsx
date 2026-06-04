@@ -52,18 +52,18 @@ export default function CustomerTicketDetailPage() {
 
   if (isLoading) {
     return (
-      <CustomerLayout title="Ticket Details">
-        <Skeleton className="h-[520px] rounded-xl" />
+      <CustomerLayout title="Ticket Details" hidePageHeader>
+        <Skeleton className="h-[520px] rounded-2xl bg-white/10" />
       </CustomerLayout>
     )
   }
 
   if (!ticketGroup) {
     return (
-      <CustomerLayout title="Ticket Not Found">
-        <div className="rounded-xl border border-admin bg-admin-surface p-10 text-center">
-          <Ticket className="mx-auto h-9 w-9 text-admin-40" />
-          <p className="mt-3 text-sm font-semibold text-foreground">We could not find this ticket purchase.</p>
+      <CustomerLayout title="Ticket Not Found" hidePageHeader>
+        <div className="rounded-2xl border border-white/12 bg-white/[0.08] p-10 text-center">
+          <Ticket className="mx-auto h-9 w-9 text-white/40" />
+          <p className="mt-3 text-sm font-semibold text-white">We could not find this ticket purchase.</p>
           <Button onClick={() => navigate('/app/tickets')} className="mt-5 rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
             Back to My Tickets
           </Button>
@@ -77,38 +77,39 @@ export default function CustomerTicketDetailPage() {
   const category = event.category?.name ?? 'Event'
 
   return (
-    <CustomerLayout title={event.name} subtitle="Toggle ticket types and show QR codes for check-in.">
-      <button
-        type="button"
-        onClick={() => navigate('/app/tickets')}
-        className="mb-4 inline-flex items-center gap-2 rounded-full border border-admin bg-admin-surface px-4 py-2 text-sm font-semibold text-admin-70 hover:bg-admin-overlay-lg"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to My Tickets
-      </button>
+    <CustomerLayout title={event.name} subtitle="Toggle ticket types and show QR codes for check-in." hidePageHeader>
+      <div className="px-4 pb-24 pt-6">
+        <button
+          type="button"
+          onClick={() => navigate('/app/tickets')}
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-4 py-2 text-sm font-semibold text-white/75 hover:bg-white/[0.14] hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to My Tickets
+        </button>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
-        <section className="rounded-xl border border-admin bg-admin-surface p-5 shadow-admin">
-          <div className="flex flex-col gap-4 border-b border-admin pb-5 sm:flex-row sm:items-start sm:justify-between">
+      <div className="grid gap-5">
+        <section className="rounded-[28px] border border-white/12 bg-white/[0.08] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+          <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <Badge className="border-neon-pink/30 bg-neon-pink/10 text-neon-pink">{category}</Badge>
-              <h2 className="mt-3 font-heading text-2xl font-black text-foreground">{event.name}</h2>
-              <div className="mt-3 grid gap-2 text-sm text-admin-70">
+              <h1 className="mt-3 font-heading text-3xl font-black leading-none text-white sm:text-4xl">{event.name}</h1>
+              <div className="mt-3 grid gap-2 text-sm text-white/65">
                 <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-neon-pink" />{formatDate(event.startDate)}</p>
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-neon-pink" />{location}</p>
               </div>
             </div>
-            <div className="rounded-xl border border-admin bg-admin-input p-4 text-sm">
-              <p className="text-admin-50">Purchased</p>
-              <p className="mt-1 font-semibold text-foreground">{ticketGroup.noOfTicketsPurchased} tickets</p>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm">
+              <p className="text-white/45">Purchased</p>
+              <p className="mt-1 font-semibold text-white">{ticketGroup.noOfTicketsPurchased} tickets</p>
               <p className="mt-2 font-mono font-bold text-neon-pink">{money(Number(ticketGroup.totalPrice ?? 0))}</p>
             </div>
           </div>
 
           <Tabs value={activeKey} onValueChange={setActiveType} className="mt-5">
-            <TabsList className="h-auto flex-wrap justify-start bg-admin-input p-1">
+            <TabsList className="h-auto flex-wrap justify-start rounded-full bg-black/25 p-1">
               {ticketTypes.map(type => (
-                <TabsTrigger key={type.key} value={type.key} className="data-[state=active]:bg-admin-surface data-[state=active]:text-neon-pink">
+                <TabsTrigger key={type.key} value={type.key} className="rounded-full text-white/65 data-[state=active]:bg-neon-pink data-[state=active]:text-white">
                   {type.label}
                 </TabsTrigger>
               ))}
@@ -121,15 +122,20 @@ export default function CustomerTicketDetailPage() {
                     Array.from({ length: Math.max(1, ticket.quantity ?? 1) }, (_, index) => {
                       const ref = qrRef(ticket, index)
                       return (
-                        <article key={ref} className="rounded-xl border border-admin bg-admin-input p-4">
-                          <div className="rounded-lg border border-admin bg-white p-4 text-center">
+                        <article key={ref} className="overflow-hidden rounded-2xl bg-white text-black shadow-[0_18px_60px_rgba(0,0,0,0.24)]">
+                          <div className="bg-white p-4 text-center">
                             <img src={qrUrl(ref)} alt={`QR code for ${ref}`} className="mx-auto h-52 w-52" />
                             <p className="mt-3 font-mono text-xs font-bold text-slate-900">{ref}</p>
                           </div>
-                          <div className="mt-4 flex items-center justify-between gap-3">
+                          <div className="relative flex h-6 items-center bg-white px-3">
+                            <div className="absolute -left-2 h-4 w-4 rounded-full bg-[#151523]" />
+                            <div className="w-full border-t-2 border-dashed border-slate-200" />
+                            <div className="absolute -right-2 h-4 w-4 rounded-full bg-[#151523]" />
+                          </div>
+                          <div className="flex items-center justify-between gap-3 bg-white px-4 pb-4">
                             <div>
-                              <p className="font-semibold text-foreground">{type.label}</p>
-                              <p className="text-xs text-admin-50">Ticket {ticket.ticketNumber ?? index + 1}</p>
+                              <p className="font-semibold text-slate-950">{type.label}</p>
+                              <p className="text-xs text-slate-500">Ticket {ticket.ticketNumber ?? index + 1}</p>
                             </div>
                             <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
                               {ticket.status === 'USED' || ticket.checkedInAt ? 'Checked in' : ticket.status === 'EXPIRED' ? 'Expired' : 'Ready'}
@@ -146,24 +152,25 @@ export default function CustomerTicketDetailPage() {
         </section>
 
         <aside className="space-y-4">
-          <section className="rounded-xl border border-admin bg-admin-surface p-5 shadow-admin">
-            <h3 className="font-heading text-lg font-black text-foreground">Event Details</h3>
-            <p className="mt-3 text-sm leading-6 text-admin-70">{event.description ?? 'No event description provided.'}</p>
+          <section className="rounded-2xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_16px_50px_rgba(0,0,0,0.18)]">
+            <h3 className="font-heading text-lg font-black text-white">Event Details</h3>
+            <p className="mt-3 text-sm leading-6 text-white/62">{event.description ?? 'No event description provided.'}</p>
           </section>
 
-          <section className="rounded-xl border border-admin bg-admin-surface p-5 shadow-admin">
-            <h3 className="font-heading text-lg font-black text-foreground">Orders</h3>
+          <section className="rounded-2xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_16px_50px_rgba(0,0,0,0.18)]">
+            <h3 className="font-heading text-lg font-black text-white">Orders</h3>
             <div className="mt-3 space-y-3">
               {(active?.tickets ?? []).map(ticket => (
-                <div key={ticket.id} className="rounded-lg border border-admin bg-admin-input p-3">
-                  <p className="text-sm font-semibold text-foreground">{ticket.ticketCategory?.name ?? 'Event ticket'}</p>
-                  <p className="mt-1 text-xs text-admin-50">Bought {formatDateTime(ticket.createdAt)}</p>
-                  <p className="mt-2 text-sm text-admin-70">{ticket.quantity} ticket{ticket.quantity === 1 ? '' : 's'} · {ticket.payment?.paymentMethod ?? 'Payment'} · {ticket.payment?.isPaid === false ? 'Partial' : 'Paid'}</p>
+                <div key={ticket.id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-sm font-semibold text-white">{ticket.ticketCategory?.name ?? 'Event ticket'}</p>
+                  <p className="mt-1 text-xs text-white/45">Bought {formatDateTime(ticket.createdAt)}</p>
+                  <p className="mt-2 text-sm text-white/62">{ticket.quantity} ticket{ticket.quantity === 1 ? '' : 's'} - {ticket.payment?.paymentMethod ?? 'Payment'} - {ticket.payment?.isPaid === false ? 'Partial' : 'Paid'}</p>
                 </div>
               ))}
             </div>
           </section>
         </aside>
+      </div>
       </div>
     </CustomerLayout>
   )

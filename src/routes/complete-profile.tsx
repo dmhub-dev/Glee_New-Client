@@ -64,35 +64,36 @@ export default function CompleteProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-admin-body px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#10101d] px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl items-center">
-        <div className="grid w-full overflow-hidden rounded-2xl border border-admin bg-admin-surface shadow-admin-card lg:grid-cols-[0.9fr_1.1fr]">
-          <aside className="bg-admin-input p-6 sm:p-8">
-            <img src="/glee-logo-final.svg" alt="Glee" className="h-14" />
+        <div className="grid w-full overflow-hidden rounded-[28px] border border-white/12 bg-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.3)] lg:grid-cols-[0.9fr_1.1fr]">
+          <aside className="border-b border-white/10 bg-black/20 p-6 sm:p-8 lg:border-b-0 lg:border-r">
+            <img src="/glee-logo-final.svg" alt="Glee" className="h-16" />
             <div className="mt-10 space-y-4">
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-neon-pink/20 bg-neon-pink/10 text-neon-pink">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-neon-pink/25 bg-neon-pink/12 text-neon-pink">
                 <ShieldCheck className="h-7 w-7" />
               </div>
               <div>
-                <h1 className="font-heading text-3xl font-black text-foreground">Complete your profile</h1>
-                <p className="mt-3 max-w-sm text-sm leading-6 text-admin-50">
-                  Add the required personal details before continuing. This keeps account activity, bookings, and audit trails attached to the correct person.
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neon-pink">Account setup</p>
+                <h1 className="mt-3 font-heading text-4xl font-black leading-none text-white">Complete your profile</h1>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-white/58">
+                  Add required details before continuing. This keeps bookings, tickets, and account activity attached to correct person.
                 </p>
               </div>
             </div>
             <div className="mt-10 space-y-3">
-              <div className="flex items-center gap-3 rounded-xl border border-admin bg-admin-surface p-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-3">
                 <Mail className="h-4 w-4 text-neon-pink" />
                 <div className="min-w-0">
-                  <p className="text-xs text-admin-40">Signed in as</p>
-                  <p className="truncate text-sm font-semibold text-foreground">{profile?.email ?? user?.email}</p>
+                  <p className="text-xs text-white/40">Signed in as</p>
+                  <p className="truncate text-sm font-semibold text-white">{profile?.email ?? user?.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-admin bg-admin-surface p-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-3">
                 <UserRound className="h-4 w-4 text-neon-pink" />
                 <div>
-                  <p className="text-xs text-admin-40">Role</p>
-                  <p className="text-sm font-semibold capitalize text-foreground">{profile?.role ?? user?.role}</p>
+                  <p className="text-xs text-white/40">Role</p>
+                  <p className="text-sm font-semibold capitalize text-white">{profile?.role ?? user?.role}</p>
                 </div>
               </div>
             </div>
@@ -101,41 +102,41 @@ export default function CompleteProfilePage() {
           <main className="p-6 sm:p-8">
             {isLoading ? (
               <div className="space-y-4">
-                <Skeleton className="h-10 w-48" />
-                <Skeleton className="h-72 w-full" />
+                <Skeleton className="h-10 w-48 bg-white/10" />
+                <Skeleton className="h-72 w-full rounded-2xl bg-white/10" />
               </div>
             ) : (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                   <div>
-                    <h2 className="font-heading text-2xl font-black text-foreground">Personal details</h2>
-                    <p className="mt-1 text-sm text-admin-50">You can update these later from your profile page.</p>
+                    <h2 className="font-heading text-2xl font-black text-white">Personal details</h2>
+                    <p className="mt-1 text-sm text-white/55">You can update these later from your profile page.</p>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FormField control={form.control} name="firstName" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First name</FormLabel>
-                        <FormControl><Input className="border-admin bg-admin-input" autoComplete="given-name" {...field} /></FormControl>
+                        <FormLabel className="text-white/70">First name</FormLabel>
+                        <FormControl><Input className="rounded-full border-white/15 bg-black/20 text-white" autoComplete="given-name" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="lastName" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last name</FormLabel>
-                        <FormControl><Input className="border-admin bg-admin-input" autoComplete="family-name" {...field} /></FormControl>
+                        <FormLabel className="text-white/70">Last name</FormLabel>
+                        <FormControl><Input className="rounded-full border-white/15 bg-black/20 text-white" autoComplete="family-name" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                   </div>
 
                   <FormField control={form.control} name="phone" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone number</FormLabel>
+                      <FormItem>
+                      <FormLabel className="text-white/70">Phone number</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-30" />
-                          <Input className="border-admin bg-admin-input pl-10" autoComplete="tel" placeholder="+254 700 000 000" {...field} />
+                          <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                          <Input className="rounded-full border-white/15 bg-black/20 pl-10 text-white placeholder:text-white/35" autoComplete="tel" placeholder="+254 700 000 000" {...field} />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -144,8 +145,8 @@ export default function CompleteProfilePage() {
 
                   <FormField control={form.control} name="address" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl><Textarea className="min-h-24 border-admin bg-admin-input" placeholder="Optional" {...field} /></FormControl>
+                      <FormLabel className="text-white/70">Address</FormLabel>
+                      <FormControl><Textarea className="min-h-24 rounded-2xl border-white/15 bg-black/20 text-white placeholder:text-white/35" placeholder="Optional" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
