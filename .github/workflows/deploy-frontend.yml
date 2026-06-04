@@ -1,22 +1,30 @@
-name: Verify and Deploy Frontend
+name: Deploy Frontend
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
   workflow_dispatch:
 
 concurrency:
-  group: frontend-${{ github.ref }}
+  group: frontend-deploy-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Type-check and build
+  lint:
+    name: Lint frontend
+    uses: ./.github/workflows/lint.yml
+
+  test:
+    name: Test frontend
+    uses: ./.github/workflows/test.yml
+
+  build:
+    name: Build frontend
     runs-on: ubuntu-latest
+    needs:
+      - lint
+      - test
 
     env:
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
@@ -42,69 +50,65 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run type-check
-        run: pnpm type-check
-
       - name: Build frontend
         run: pnpm build
 
       - name: Verify build output
         run: test -f dist/index.html
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: dist
-          if-no-files-found: error
-          retention-days: 7
-
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    needs: verify
-    if: github.event_name != 'pull_request'
+    needs: build
     environment: production
 
     env:
       VPS_POST_DEPLOY_COMMAND: ${{ secrets.VPS_POST_DEPLOY_COMMAND }}
 
     steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: dist
+      - name: Check deployment secrets
+        id: deploy_config
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_APP_PATH: ${{ secrets.VPS_APP_PATH }}
+          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+        run: |
+          APP_PATH="${VPS_APP_PATH:-$VPS_DEPLOY_PATH}"
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_USER" ] || [ -z "$VPS_SSH_KEY" ] || [ -z "$APP_PATH" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Missing VPS deployment secrets. Skipping deploy."
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Configure SSH
+        if: steps.deploy_config.outputs.ready == 'true'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
-          VPS_USER: ${{ secrets.VPS_USER }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         run: |
-          test -n "$VPS_HOST"
-          test -n "$VPS_USER"
-          test -n "$VPS_SSH_KEY"
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "${VPS_PORT:-22}" -H "$VPS_HOST" >> ~/.ssh/known_hosts
 
-      - name: Deploy dist to VPS
+      - name: Rebuild frontend container
+        if: steps.deploy_config.outputs.ready == 'true'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+          VPS_APP_PATH: ${{ steps.deploy_config.outputs.app_path }}
         run: |
-          test -n "$VPS_DEPLOY_PATH"
-          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "mkdir -p '$VPS_DEPLOY_PATH'"
-          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key -p ${VPS_PORT:-22}" dist/ "$VPS_USER@$VPS_HOST:$VPS_DEPLOY_PATH/"
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT:-22}" "$VPS_USER@$VPS_HOST" "cd '$VPS_APP_PATH' && git pull --ff-only && docker compose --env-file .env up -d --build"
 
       - name: Run post-deploy command
-        if: env.VPS_POST_DEPLOY_COMMAND != ''
+        if: steps.deploy_config.outputs.ready == 'true' && env.VPS_POST_DEPLOY_COMMAND != ''
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
