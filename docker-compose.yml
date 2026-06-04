@@ -1,0 +1,19 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_CDN_BASE_URL: ${VITE_CDN_BASE_URL:-}
+        VITE_PAYSTACK_PUBLIC_KEY: ${VITE_PAYSTACK_PUBLIC_KEY:-}
+        VITE_ANALYTICS_ID: ${VITE_ANALYTICS_ID:-}
+    image: ${CLIENT_IMAGE:-glee-client:latest}
+    container_name: glee-client
+    restart: unless-stopped
+    networks:
+      - glee_client_network
+
+networks:
+  glee_client_network:
+    driver: bridge
