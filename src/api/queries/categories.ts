@@ -21,7 +21,7 @@ export const categoryKeys = {
 }
 
 export function getCategories(): Promise<Category[]> {
-  return apiFetch<{ success: boolean; data: Category[] }>('/api/v1/categories').then(r => r.data ?? [])
+  return apiFetch<{ success: boolean; data: Category[] }>('/api/v1/categories', { skipAuth: true }).then(r => r.data ?? [])
 }
 
 export function createCategory(dto: CreateCategoryDto): Promise<Category> {
