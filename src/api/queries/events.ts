@@ -324,7 +324,7 @@ function buildFormData(payload: EventApiPayload): FormData {
 export const eventKeys = {
   all:   ['events'] as const,
   lists: () => ['events', 'list'] as const,
-  list:  (filters: { date?: string; venueId?: string; status?: Event['status']; minPrice?: number; maxPrice?: number }) =>
+  list:  (filters: PublicEventFilters) =>
     ['events', 'list', filters] as const,
   byId:  (id: string) => ['events', id] as const,
   admin: {
@@ -335,14 +335,40 @@ export const eventKeys = {
 
 // ── Fetch functions (public — no auth) ────────────────────────────────────────
 
-export async function fetchEvents(): Promise<Event[]> {
+export interface PublicEventFilters {
+  page?: number
+  limit?: number
+  search?: string
+  category?: string
+  date?: string
+  venueId?: string
+  status?: Event['status']
+  minPrice?: number
+  maxPrice?: number
+}
+
+function publicEventQuery(filters: PublicEventFilters = {}) {
+  const params = new URLSearchParams()
+  params.set('page', String(filters.page ?? 1))
+  params.set('limit', String(filters.limit ?? 100))
+  if (filters.search?.trim()) params.set('search', filters.search.trim())
+  if (filters.category) params.set('category', filters.category)
+  if (filters.date) params.set('date', filters.date)
+  if (filters.venueId) params.set('venueId', filters.venueId)
+  if (filters.status) params.set('status', STATUS_TO_BACKEND[filters.status] ?? filters.status)
+  if (typeof filters.minPrice === 'number') params.set('minPrice', String(filters.minPrice))
+  if (typeof filters.maxPrice === 'number') params.set('maxPrice', String(filters.maxPrice))
+  return params.toString()
+}
+
+export async function fetchEvents(filters?: PublicEventFilters): Promise<Event[]> {
   const res = await apiFetch<{ success: boolean; data: BackendEvent[] }>(
-    '/api/v1/event?page=1&limit=100',
+    `/api/v1/event?${publicEventQuery(filters)}`,
     { skipAuth: true },
   )
   return (res.data ?? [])
     .map(mapBackendToEvent)
-    .filter(e => e.status === 'active' || e.status === 'live' || e.status === 'postponed' || e.status === 'sold_out')
+    .filter(e => e.status === 'active' || e.status === 'live' || e.status === 'cancelled' || e.status === 'sold_out')
 }
 
 export async function fetchEvent(id: string): Promise<Event | undefined> {
@@ -413,12 +439,10 @@ export async function endAdminEvent(id: string): Promise<Event> {
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 
-type EventFilters = Parameters<typeof eventKeys.list>[0]
-
-export function useEvents(filters?: EventFilters) {
+export function useEvents(filters?: PublicEventFilters) {
   return useQuery({
     queryKey: filters ? eventKeys.list(filters) : eventKeys.lists(),
-    queryFn:  () => fetchEvents(),
+    queryFn:  () => fetchEvents(filters),
   })
 }
 

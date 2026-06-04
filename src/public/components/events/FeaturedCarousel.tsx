@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
+import { MapPin } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Event } from '@glee/types'
 import { Button, Skeleton } from '@glee/ui'
 
-const PLACEHOLDER = 'https://placehold.co/1200x700/0B0B10/FF2D8F?text=Glee'
+const PLACEHOLDER = 'https://placehold.co/900x1200/0B0B10/FF2D8F?text=Glee'
 
 function formatCarouselDate(startDate: string, endDate: string, startTime: string): string {
   const d = new Date(`${startDate}T${startTime}`)
@@ -35,74 +36,86 @@ export default function FeaturedCarousel({ events, isLoading }: FeaturedCarousel
   }, [next, events.length])
 
   if (isLoading) {
-    return <Skeleton className="w-full h-[88vh]" />
+    return <Skeleton className="h-[350px] w-full rounded-2xl" />
   }
 
   if (events.length === 0) return null
 
-  const event = events[current]
-
   return (
-    <div className="relative w-full h-[88vh] overflow-hidden">
-      {events.map((e, i) => (
+    <div className="relative">
+      <div className="overflow-hidden rounded-2xl">
         <div
-          key={e.id}
-          className={`absolute inset-0 transition-opacity duration-700 ${i === current ? 'opacity-100' : 'opacity-0'}`}
+          className="flex transition-transform duration-500 ease-out"
+          style={{ transform: `translateX(-${current * 100}%)` }}
         >
-          <img
-            src={e.flyerPortraitUrl ?? e.flyerSquareUrl ?? PLACEHOLDER}
-            alt={e.title}
-            className="w-full h-full object-cover"
-            onError={ev => { (ev.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
+          {events.map((e, i) => {
+            const active = i === current
+            const lowestPrice = Math.min(...e.ticketTiers.map(tier => tier.price))
+            return (
+              <div
+                key={e.id}
+                onClick={() => {
+                  setCurrent(i)
+                  navigate(`/events/${e.id}`)
+                }}
+                className={[
+                  'group relative h-[350px] w-full shrink-0 overflow-hidden rounded-2xl border border-white/10 text-left shadow-[0_18px_48px_rgba(0,0,0,0.42)] transition-transform duration-500',
+                  active ? 'opacity-100' : 'opacity-0',
+                ].join(' ')}
+              >
+                <img
+                  src={e.flyerPortraitUrl ?? e.flyerSquareUrl ?? PLACEHOLDER}
+                  alt={e.title}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  onError={ev => { (ev.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                <div className="absolute left-3 top-3 rounded-full bg-white/20 px-3 py-1 text-xs font-black uppercase tracking-wide text-white backdrop-blur-md">
+                  {e.categoryName ?? 'Event'}
+                </div>
+                <div className="absolute inset-x-0 bottom-0 p-4">
+                  <p className="font-mono text-xs font-bold uppercase tracking-wider text-neon-pink">
+                    {formatCarouselDate(e.startDate, e.endDate, e.startTime)}
+                  </p>
+                  <h3 className="mt-1 max-w-xs font-heading text-xl font-black leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]">
+                    {e.title}
+                  </h3>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-white/90 drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)]">
+                    <MapPin className="h-3 w-3" />
+                    {e.location ?? e.venueId ?? 'Location TBA'}
+                  </p>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <span className="font-heading text-lg font-black text-white">
+                      From KSh {lowestPrice.toLocaleString()}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-9 rounded-full border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white backdrop-blur-md hover:bg-white/20"
+                      onClick={clickEvent => { clickEvent.stopPropagation(); navigate(`/events/${e.id}`) }}
+                    >
+                      Details
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-center gap-2">
+        {events.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setCurrent(i)}
+            className={`h-2 rounded-full transition-all ${i === current ? 'w-6 bg-neon-pink' : 'w-2 bg-white/30 hover:bg-white/50'}`}
           />
-        </div>
-      ))}
-
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" />
-
-      {/* Floating logo with dark backdrop */}
-      <div className="absolute top-7 left-8 z-10 bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2">
-        <Link to="/">
-          <img src="/glee-logo-final.svg" alt="Glee" className="h-10" />
-        </Link>
+        ))}
       </div>
 
-      {/* Event info */}
-      <div
-        className="absolute bottom-0 left-0 right-0 px-8 pb-14 md:px-14 cursor-pointer max-w-3xl"
-        onClick={() => navigate(`/events/${event.id}`)}
-      >
-        <h2 className="font-heading font-black text-5xl md:text-7xl text-white mb-3 leading-tight drop-shadow-lg">
-          {event.title}
-        </h2>
-        <p className="text-white/60 font-mono text-sm mb-3 tracking-wide">
-          {formatCarouselDate(event.startDate, event.endDate, event.startTime)}
-        </p>
-        <p className="text-white/80 text-sm md:text-base leading-relaxed mb-8 line-clamp-2">
-          {event.description}
-        </p>
-        <Button
-          variant="outline"
-          className="rounded-full border-white/70 text-white bg-transparent hover:bg-neon-pink hover:border-neon-pink hover:text-white px-8 py-2 text-sm font-semibold shadow-none transition-colors duration-200"
-          onClick={e => { e.stopPropagation(); navigate(`/events/${event.id}`) }}
-        >
-          View Event
-        </Button>
-      </div>
-
-      {events.length > 1 && (
-        <div className="absolute bottom-10 right-8 flex items-center gap-2">
-          {events.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`rounded-full transition-all duration-300 ${
-                i === current ? 'bg-neon-pink w-6 h-2' : 'bg-white/35 w-2 h-2'
-              }`}
-            />
-          ))}
-        </div>
-      )}
+      <Link to="/" className="sr-only">Glee home</Link>
     </div>
   )
 }

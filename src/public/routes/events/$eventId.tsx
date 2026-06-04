@@ -11,6 +11,7 @@ import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/check
 import { initiateGuestPurchase, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
+const PUBLIC_DETAIL_STATUSES = ['active', 'live', 'cancelled', 'sold_out']
 
 export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>()
@@ -22,6 +23,7 @@ export default function EventDetailPage() {
   const [menuQtys, setMenuQtys] = useState<Record<string, number>>({})
   const [includeAddOns, setIncludeAddOns] = useState(false)
   const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set())
+  const [aboutExpanded, setAboutExpanded] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
@@ -64,7 +66,7 @@ export default function EventDetailPage() {
     )
   }
 
-  if (!event || event.status !== 'active') {
+  if (!event || !PUBLIC_DETAIL_STATUSES.includes(event.status)) {
     navigate('/', { replace: true })
     return null
   }
@@ -128,112 +130,210 @@ export default function EventDetailPage() {
   const endDt = event.endTime ? new Date(`${event.endDate}T${event.endTime}`) : null
   const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
   const posterSrc = event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
+  const lowestPrice = event.ticketTiers.length ? Math.min(...event.ticketTiers.map(tier => tier.price)) : 0
+  const categoryLabel = event.categoryName ?? 'Event'
+  const isPurchasable = event.status === 'active' || event.status === 'live'
+  const eventStatusLabel = event.status.replace('_', ' ')
 
   return (
-    <div className="min-h-screen bg-glee-bg text-foreground overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[#10101d] pb-32 text-foreground">
 
-      {/* Ambient blurred backdrop — unique per event */}
-      <div className="absolute top-0 left-0 right-0 h-[420px] overflow-hidden pointer-events-none">
-        <img
-          src={posterSrc}
-          alt=""
-          aria-hidden
-          className="w-full h-full object-cover scale-110 blur-3xl opacity-25"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-glee-bg/50 via-transparent to-glee-bg" />
-      </div>
-
-      {/* Top bar */}
-      <div className="relative z-10 flex items-center gap-4 px-8 py-5">
+      {/* Floating controls */}
+      <div className="fixed left-0 right-0 top-0 z-40 flex items-center gap-4 bg-gradient-to-b from-black/70 to-transparent px-4 py-4">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-white font-semibold text-sm bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/40 rounded-full px-4 py-2 transition-all backdrop-blur-sm"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/10 text-sm font-semibold text-white backdrop-blur-md transition-all hover:bg-white/20 sm:w-auto sm:px-4"
         >
-          <span className="text-base leading-none">←</span> Back to events
+          <span className="text-base leading-none">←</span>
+          <span className="hidden sm:inline">Back to events</span>
         </button>
         <Link to="/" className="ml-auto">
-          <img src="/glee-logo-final.svg" alt="Glee" className="h-8" />
+          <img src="/glee-logo-final.svg" alt="Glee" className="h-14" />
         </Link>
       </div>
 
-      {/* Main content */}
-      <div className="relative z-10 max-w-6xl mx-auto px-8 pb-16 grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-
-        {/* Left: Poster — bigger, with glow + hover zoom */}
-        <div className="lg:sticky lg:top-8">
-          <div className="relative">
-            <div className="absolute -inset-3 rounded-2xl bg-neon-pink/25 blur-2xl opacity-70" />
-            <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-              <img
-                src={posterSrc}
-                alt={event.title}
-                className="w-full object-cover transition-transform duration-700 ease-out hover:scale-105"
-                style={{ maxHeight: '780px' }}
-                onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Details */}
-        <div className="flex flex-col gap-7 pt-4">
-
-          {/* Title */}
-          <div>
-            <h1 className="font-heading font-black text-4xl md:text-5xl text-white leading-tight mb-2">
+      {/* Hero */}
+      <section className="relative h-[45vh] min-h-[360px] w-full overflow-hidden sm:h-[52vh] sm:min-h-[430px]">
+        <img
+          src={posterSrc}
+          alt={event.title}
+          className="h-full w-full object-cover"
+          onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#10101d] via-black/28 to-black/5" />
+        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-md px-5 pb-6 md:max-w-3xl lg:max-w-5xl">
+          <div className="max-w-xl">
+            <span className="inline-flex rounded-full bg-neon-pink px-3 py-1 text-xs font-black uppercase tracking-wide text-white shadow-neon">
+              {categoryLabel}
+            </span>
+            <h1 className="mt-3 font-heading text-3xl font-black leading-tight text-white drop-shadow-2xl sm:text-4xl lg:text-5xl">
               {event.title}
             </h1>
-            <p className="text-neon-pink/80 font-mono text-sm">{locationLabel}</p>
           </div>
+        </div>
+      </section>
 
-          {/* Info chips */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden border border-neon-pink/40 text-center flex flex-col">
-                <div className="bg-neon-pink text-white text-[8px] font-bold py-0.5 uppercase tracking-wide">
+      <div className="relative z-10 mx-auto -mt-5 flex max-w-md flex-col gap-6 px-5 md:max-w-3xl lg:max-w-5xl">
+
+        {/* Info grid */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/15 bg-white/[0.10] p-4 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 flex-col overflow-hidden rounded-xl border border-neon-pink/40 text-center">
+                <div className="bg-neon-pink py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
                   {eventDate.toLocaleDateString('en-KE', { month: 'short' })}
                 </div>
-                <div className="flex-1 flex items-center justify-center text-foreground font-black text-base">
+                <div className="flex flex-1 items-center justify-center text-base font-black text-white">
                   {eventDate.getDate()}
                 </div>
               </div>
               <div>
-                <p className="text-white text-sm font-semibold leading-tight">
+                <p className="font-heading text-sm font-black leading-tight text-white">
                   {startDt.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
-                <p className="text-white/50 text-xs font-mono mt-0.5">
+                <p className="mt-1 font-mono text-xs text-white/75">
                   {startDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}
                   {endDt && ` – ${endDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}`}
                 </p>
               </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-              <div className="w-10 h-10 rounded-xl bg-neon-pink/15 border border-neon-pink/30 flex items-center justify-center text-lg flex-shrink-0">
+          <div className="rounded-2xl border border-white/15 bg-white/[0.10] p-4 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neon-pink/30 bg-neon-pink/15 text-lg">
                 📍
               </div>
               <div>
-                <p className="text-white/80 text-sm">{locationLabel}</p>
+                <p className="font-heading text-sm font-black leading-tight text-white">{locationLabel}</p>
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationLabel)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={e => e.stopPropagation()}
-                  className="text-neon-pink text-xs hover:underline mt-0.5 inline-block"
+                  className="mt-1 inline-block text-xs font-semibold text-neon-pink hover:text-neon-hover"
                 >
-                  Click to view location ↗
+                  Get Directions ↗
                 </a>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Description */}
-          <div>
-            <h3 className="text-xs font-mono font-bold text-neon-pink uppercase tracking-widest mb-2">About</h3>
-            <p className="text-white/65 text-sm leading-relaxed">{event.description}</p>
+        {/* About */}
+        <section className="space-y-3 rounded-2xl border border-white/15 bg-white/[0.10] p-4">
+          <h2 className="font-heading text-lg font-black text-white">About Event</h2>
+          <p className={`max-w-3xl text-sm leading-7 text-white/92 ${aboutExpanded ? '' : 'line-clamp-3'}`}>
+            {event.description}
+          </p>
+          {event.description.length > 180 && (
+            <button
+              type="button"
+              onClick={() => setAboutExpanded(value => !value)}
+              className="text-xs font-semibold text-neon-pink hover:text-neon-hover"
+            >
+              {aboutExpanded ? 'Show less' : 'Read more'}
+            </button>
+          )}
+          {event.dresscode && (
+            <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
+              Dress code: <span className="ml-1 font-semibold text-white">{event.dresscode}</span>
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-neon-pink">Tickets</span>
+            <div className="h-px flex-1 bg-white/10" />
           </div>
 
-          {/* Add-ons toggle — appears only once tickets are selected */}
+          {!isPurchasable && (
+            <div className="rounded-2xl border border-white/15 bg-white/[0.10] p-4 text-sm font-semibold text-white/80">
+              Ticket purchase unavailable for {eventStatusLabel} events.
+            </div>
+          )}
+
+          {/* Ticket cards */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {event.ticketTiers.map(tier => {
+              const isSoldOut = tier.quantityRemaining === 0
+              const qty = quantities[tier.id] ?? 0
+              const isExpanded = expandedDescs.has(tier.id)
+              const maxQty = Math.min(tier.quantityRemaining, 10)
+              const isSelected = qty > 0
+
+              return (
+                <div
+                  key={tier.id}
+                  className={`flex flex-col gap-3 rounded-2xl border p-4 transition-all duration-200 ${
+                    isSoldOut
+                      ? 'border-white/10 bg-white/[0.03] opacity-50'
+                      : isSelected
+                        ? 'border-neon-pink bg-neon-pink/14 shadow-[0_0_28px_rgba(255,45,143,0.20)]'
+                        : 'border-white/15 bg-white/[0.10] hover:border-neon-pink/40 hover:bg-white/[0.14]'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-heading text-sm font-black text-white">{tier.name}</span>
+                    {isSoldOut ? (
+                      <span className="rounded-full bg-red-400/10 px-2 py-0.5 font-mono text-xs text-red-400">
+                        Sold out
+                      </span>
+                    ) : tier.quantityRemaining <= 10 ? (
+                      <span className="rounded-full bg-amber-400/10 px-2 py-0.5 font-mono text-xs text-amber-400">
+                        {tier.quantityRemaining} left
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {tier.description && (
+                    <div>
+                      <p className={`text-xs leading-5 text-white/72 ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                        {tier.description}
+                      </p>
+                      {tier.description.length > 80 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleDesc(tier.id)}
+                          className="mt-1 text-xs text-neon-pink hover:underline"
+                        >
+                          {isExpanded ? 'See less' : 'See more'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="font-mono text-sm font-bold text-white">
+                    KES {tier.price.toLocaleString()}.00
+                  </p>
+
+                  <div className="mt-auto flex items-center justify-end gap-3 border-t border-white/10 pt-3">
+                    <button
+                      type="button"
+                      disabled={!isPurchasable || isSoldOut || qty <= 0}
+                      onClick={() => handleQtyChange(tier.id, Math.max(0, qty - 1))}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-sm text-white/70 transition-colors hover:border-neon-pink hover:text-neon-pink disabled:cursor-not-allowed disabled:opacity-25"
+                    >
+                      −
+                    </button>
+                    <span className="w-5 text-center font-mono text-sm font-bold text-white">{qty}</span>
+                    <button
+                      type="button"
+                      disabled={!isPurchasable || isSoldOut || qty >= maxQty}
+                      onClick={() => handleQtyChange(tier.id, Math.min(maxQty, qty + 1))}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-sm text-white/70 transition-colors hover:border-neon-pink hover:text-neon-pink disabled:cursor-not-allowed disabled:opacity-25"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Add-ons toggle appears only once tickets are selected */}
           {(event.menuItems?.length ?? 0) > 0 && selectedItems.length > 0 && (
             <button
               type="button"
@@ -241,10 +341,10 @@ export default function EventDetailPage() {
                 setIncludeAddOns(v => !v)
                 if (includeAddOns) setMenuQtys({})
               }}
-              className={`flex items-center gap-3 w-full rounded-2xl border px-4 py-3 transition-all duration-200 text-left ${
+              className={`flex w-full items-center gap-3 rounded-2xl border px-5 py-4 text-left transition-all duration-200 ${
                 includeAddOns
                   ? 'border-neon-pink bg-neon-pink/10'
-                  : 'border-white/10 bg-white/5 hover:border-white/20'
+                  : 'border-white/15 bg-white/[0.10] hover:border-white/25'
               }`}
             >
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
@@ -260,8 +360,8 @@ export default function EventDetailPage() {
                 <p className="text-sm font-semibold text-white leading-tight">
                   Want to add drinks or food to your order?
                 </p>
-                <p className="text-xs text-white/45 mt-0.5">
-                  Skip the bar queue — pre-order and pay in one go
+                <p className="mt-0.5 text-xs text-white/45">
+                  Skip the bar queue - pre-order and pay in one go
                 </p>
               </div>
             </button>
@@ -269,7 +369,7 @@ export default function EventDetailPage() {
 
           {/* Add-on items — only visible when toggle is on */}
           {(event.menuItems?.length ?? 0) > 0 && includeAddOns && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {event.menuItems!.map(item => {
                 const qty = menuQtys[item.id] ?? 0
                 const categoryEmoji = item.category === 'food' ? '🍽️' : item.category === 'drink' ? '🍾' : '✨'
@@ -320,117 +420,32 @@ export default function EventDetailPage() {
               })}
             </div>
           )}
+        </section>
+      </div>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs font-mono font-bold text-neon-pink uppercase tracking-widest">Tickets</span>
-            <div className="h-px flex-1 bg-white/10" />
+      {/* Sticky bottom action bar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-glee-bg/90 px-4 py-3 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-md items-center gap-3 md:max-w-3xl lg:max-w-5xl">
+          <div className="min-w-0 pr-2">
+            <p className="text-xs text-white/45">{selectedItems.length > 0 ? 'Order total' : 'Starting from'}</p>
+            <p className="font-heading text-xl font-black text-white">
+              KSh {(selectedItems.length > 0 ? totalPrice : lowestPrice).toLocaleString()}
+            </p>
           </div>
-
-          {/* Ticket cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {event.ticketTiers.map(tier => {
-              const isSoldOut = tier.quantityRemaining === 0
-              const qty = quantities[tier.id] ?? 0
-              const isExpanded = expandedDescs.has(tier.id)
-              const maxQty = Math.min(tier.quantityRemaining, 10)
-              const isSelected = qty > 0
-
-              return (
-                <div
-                  key={tier.id}
-                  className={`rounded-2xl border p-4 flex flex-col gap-3 transition-all duration-200 ${
-                    isSoldOut
-                      ? 'opacity-50 border-white/10 bg-white/3'
-                      : isSelected
-                        ? 'border-neon-pink bg-neon-pink/10 shadow-[0_0_20px_rgba(255,45,143,0.15)]'
-                        : 'border-white/10 bg-white/5 hover:border-neon-pink/40 hover:bg-white/8'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-heading font-bold text-white text-sm">{tier.name}</span>
-                    {isSoldOut ? (
-                      <span className="text-xs font-mono text-red-400 bg-red-400/10 rounded-full px-2 py-0.5">
-                        Sold out
-                      </span>
-                    ) : tier.quantityRemaining <= 10 ? (
-                      <span className="text-xs font-mono text-amber-400 bg-amber-400/10 rounded-full px-2 py-0.5">
-                        {tier.quantityRemaining} left
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {tier.description && (
-                    <div>
-                      <p className={`text-xs text-white/50 leading-relaxed ${!isExpanded ? 'line-clamp-2' : ''}`}>
-                        {tier.description}
-                      </p>
-                      {tier.description.length > 80 && (
-                        <button
-                          onClick={() => toggleDesc(tier.id)}
-                          className="text-xs text-neon-pink hover:underline mt-1"
-                        >
-                          {isExpanded ? 'See less' : 'See more'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  <p className="font-mono font-bold text-white text-sm">
-                    KES {tier.price.toLocaleString()}.00
-                  </p>
-
-                  <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/10">
-                    <button
-                      type="button"
-                      disabled={isSoldOut || qty <= 0}
-                      onClick={() => handleQtyChange(tier.id, Math.max(0, qty - 1))}
-                      className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-                    >
-                      −
-                    </button>
-                    <span className="font-mono font-bold text-white w-4 text-center text-sm">{qty}</span>
-                    <button
-                      type="button"
-                      disabled={isSoldOut || qty >= maxQty}
-                      onClick={() => handleQtyChange(tier.id, Math.min(maxQty, qty + 1))}
-                      className="w-7 h-7 rounded-full border border-white/20 flex items-center justify-center text-sm text-white/70 hover:border-neon-pink hover:text-neon-pink disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* CTA row */}
-          <div className="flex items-center justify-between pt-1">
-            <div>
-              {selectedItems.length > 0 && (
-                <p className="text-sm font-mono text-white/50">
-                  Total: <span className="text-neon-pink font-bold">KSh {totalPrice.toLocaleString()}</span>
-                </p>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => navigate(-1)}
-                className="rounded-full border-white/20 text-white/60 bg-transparent hover:bg-white/10 hover:text-white hover:border-white/40 transition-all"
-              >
-                Continue shopping
-              </Button>
-              <Button
-                disabled={selectedItems.length === 0}
-                onClick={() => setCheckoutOpen(true)}
-                className="rounded-full bg-neon-pink hover:bg-neon-hover text-white font-semibold shadow-neon disabled:opacity-40 transition-all hover:scale-[1.03] active:scale-95"
-              >
-                Continue to checkout
-              </Button>
-            </div>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            className="ml-auto hidden rounded-full border-white/15 bg-transparent text-white/70 hover:bg-white/10 hover:text-white sm:inline-flex"
+          >
+            Continue shopping
+          </Button>
+          <Button
+            disabled={!isPurchasable || selectedItems.length === 0}
+            onClick={() => setCheckoutOpen(true)}
+            className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:opacity-40 sm:ml-0 sm:px-7"
+          >
+            {isPurchasable ? 'Buy Tickets' : 'Unavailable'}
+          </Button>
         </div>
       </div>
 
