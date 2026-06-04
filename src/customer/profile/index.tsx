@@ -1,304 +1,315 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
+import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   useChangePassword,
+  useMyTickets,
   useNotificationPreferences,
   useProfile,
   useSecurityInfo,
   useToggle2FA,
   useUpdateNotificationPreferences,
   useUpdateProfile,
-  type NotificationPreferences,
+  useUploadAvatar,
 } from '@glee/api'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  Input,
-  Skeleton,
-  Switch,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  useToast,
-} from '@glee/ui'
-import { Bell, Lock, Mail, Phone, Save, ShieldCheck, UserCircle } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Input, Label, Skeleton, Switch, useToast } from '@glee/ui'
+import { Bell, Camera, Check, ChevronRight, CreditCard, Lock, LogOut, Pencil, Shield, Smartphone, User, Wallet, X, type LucideIcon } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
-
-const profileSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  phone: z.string().optional(),
-})
-
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string().min(1, 'Confirm your new password'),
-}).refine(values => values.newPassword === values.confirmPassword, {
-  path: ['confirmPassword'],
-  message: 'Passwords do not match',
-})
-
-type ProfileValues = z.infer<typeof profileSchema>
-type PasswordValues = z.infer<typeof passwordSchema>
-type PrefKey = keyof NotificationPreferences
-
-const prefRows: Array<{ key: PrefKey; label: string; description: string }> = [
-  { key: 'bookingAlerts', label: 'Ticket and booking alerts', description: 'Purchases, ticket updates, check-in, and booking changes.' },
-  { key: 'eventAlerts', label: 'Event reminders', description: 'Upcoming event reminders and event changes.' },
-  { key: 'systemAlerts', label: 'Account alerts', description: 'Security, login, and account notifications.' },
-  { key: 'weeklyReport', label: 'Weekly digest', description: 'A weekly summary of events and recommendations.' },
-]
+import { useAuth } from '../../lib/auth/AuthContext'
 
 export default function CustomerProfilePage() {
+  const navigate = useNavigate()
+  const { logout } = useAuth()
   const { data: profile, isLoading } = useProfile()
   const { data: security } = useSecurityInfo()
-  const { data: prefs, isLoading: prefsLoading } = useNotificationPreferences()
+  const { data: prefs } = useNotificationPreferences()
+  const { data: ticketGroups = [] } = useMyTickets()
   const updateProfile = useUpdateProfile()
-  const changePassword = useChangePassword()
+  const uploadAvatar = useUploadAvatar()
   const updatePrefs = useUpdateNotificationPreferences()
   const toggle2fa = useToggle2FA()
+  const changePassword = useChangePassword()
   const { toast } = useToast()
-  const [editing, setEditing] = useState(false)
-
-  const profileForm = useForm<ProfileValues>({
-    resolver: zodResolver(profileSchema),
-    values: {
-      firstName: profile?.firstName ?? '',
-      lastName: profile?.lastName ?? '',
-      phone: profile?.phone ?? '',
-    },
-  })
-
-  const passwordForm = useForm<PasswordValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
-  })
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
+  const [paymentMethodsOpen, setPaymentMethodsOpen] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   useEffect(() => {
     if (!profile) return
-    profileForm.reset({
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      phone: profile.phone ?? '',
-    })
+    setName(`${profile.firstName} ${profile.lastName}`.trim())
+    setEmail(profile.email)
+    setPhone(profile.phone ?? '')
   }, [profile])
 
-  async function handleProfileSubmit(values: ProfileValues) {
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview)
+    }
+  }, [avatarPreview])
+
+  const initials = (name || profile?.email || 'User')
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  const totalTickets = ticketGroups.reduce((sum, group) => sum + group.noOfTicketsPurchased, 0)
+  const upcomingEvents = ticketGroups.filter(group => group.event.startDate && new Date(group.event.startDate) >= new Date()).length
+
+  async function handleSaveProfile() {
+    const [firstName = '', ...rest] = name.trim().split(' ')
     try {
-      await updateProfile.mutateAsync(values)
-      setEditing(false)
+      if (avatarFile) await uploadAvatar.mutateAsync(avatarFile)
+      await updateProfile.mutateAsync({ firstName, lastName: rest.join(' '), phone })
+      setEditProfileOpen(false)
+      setAvatarFile(null)
+      setAvatarPreview(null)
       toast({ title: 'Profile updated' })
     } catch (error) {
       toast({ title: 'Profile update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
     }
   }
 
-  async function handlePasswordSubmit(values: PasswordValues) {
+  function handleAvatarChange(file?: File) {
+    if (!file) return
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview)
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+  }
+
+  async function handlePasswordChange() {
+    if (newPassword !== confirmPassword) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' })
+      return
+    }
     try {
-      await changePassword.mutateAsync({ currentPassword: values.currentPassword, newPassword: values.newPassword })
-      passwordForm.reset()
+      await changePassword.mutateAsync({ currentPassword, newPassword })
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
       toast({ title: 'Password changed' })
     } catch (error) {
       toast({ title: 'Password change failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
     }
   }
 
-  async function handlePrefToggle(key: PrefKey, value: boolean) {
-    try {
-      await updatePrefs.mutateAsync({ [key]: value })
-    } catch {
-      toast({ title: 'Could not update notification preference', variant: 'destructive' })
-    }
-  }
-
-  async function handleTwoFactorToggle(enabled: boolean) {
-    try {
-      await toggle2fa.mutateAsync(enabled)
-      toast({ title: enabled ? '2FA enabled' : '2FA disabled' })
-    } catch (error) {
-      toast({ title: 'Could not update 2FA', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
-    }
+  async function handleLogout() {
+    await logout()
+    navigate('/', { replace: true })
   }
 
   return (
-    <CustomerLayout title="Profile" subtitle="Manage your profile, security, password, and notification preferences.">
+    <CustomerLayout title="Profile" hidePageHeader>
       {isLoading ? (
-        <Skeleton className="h-96 rounded-xl" />
+        <div className="mx-auto max-w-7xl px-4 pt-6 lg:px-8">
+          <Skeleton className="h-[620px] rounded-3xl bg-white/10" />
+        </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-          <aside className="rounded-xl border border-admin bg-admin-surface p-6 text-center shadow-admin">
-            <Avatar className="mx-auto h-28 w-28 border border-admin shadow-admin">
-              <AvatarImage src={profile?.avatarUrl ?? undefined} />
-              <AvatarFallback className="bg-neon-pink/10 text-2xl font-black text-neon-pink">
-                {(profile?.firstName?.[0] ?? 'U')}{(profile?.lastName?.[0] ?? '')}
-              </AvatarFallback>
-            </Avatar>
-            <h2 className="mt-4 font-heading text-2xl font-black text-foreground">{profile?.firstName} {profile?.lastName}</h2>
-            <p className="mt-1 text-sm capitalize text-admin-50">{profile?.role}</p>
-            <div className="mt-6 space-y-3 text-left">
-              <div className="flex items-center gap-3 rounded-lg border border-admin bg-admin-input p-3">
-                <Mail className="h-4 w-4 text-neon-pink" />
-                <div className="min-w-0">
-                  <p className="text-xs text-admin-40">Email</p>
-                  <p className="truncate text-sm text-foreground">{profile?.email}</p>
-                </div>
+        <div className="relative min-h-screen pb-32">
+          <div className="relative h-28 w-full bg-gradient-to-b from-[#9B51E0]/20 to-[#050017]">
+            <div className="absolute inset-0 opacity-20 [background-image:url('https://www.transparenttextures.com/patterns/cubes.png')]" />
+          </div>
+
+          <div className="relative z-10 mx-auto -mt-12 grid w-full max-w-7xl gap-8 px-4 lg:grid-cols-[360px_1fr] lg:px-8">
+            <div className="flex flex-col items-center lg:items-start">
+              <div className="relative">
+                <Avatar className="h-28 w-28 border-4 border-[#050017] shadow-2xl">
+                  <AvatarImage src={profile?.avatarUrl ?? undefined} className="object-cover" />
+                  <AvatarFallback className="bg-neon-pink/15 text-2xl font-black text-neon-pink">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="absolute bottom-2 right-2 h-4 w-4 rounded-full border-2 border-[#050017] bg-green-500" />
               </div>
-              <div className="flex items-center gap-3 rounded-lg border border-admin bg-admin-input p-3">
-                <Phone className="h-4 w-4 text-neon-pink" />
-                <div>
-                  <p className="text-xs text-admin-40">Phone</p>
-                  <p className="text-sm text-foreground">{profile?.phone || 'Not added'}</p>
-                </div>
+
+              <div className="mt-4 space-y-1 text-center lg:text-left">
+                <h1 className="text-2xl font-bold text-white">{name || 'Glee User'}</h1>
+                <p className="text-sm text-white/55">{profile?.email ?? email}</p>
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <Badge variant="secondary" className="border-neon-pink/20 bg-white/5 px-3 py-1 text-neon-pink hover:bg-white/10">VIP Member</Badge>
+                <Badge variant="outline" className="border-white/10 text-white/55">Level 3</Badge>
+              </div>
+
+              <div className="mt-8 grid w-full grid-cols-3 gap-4">
+                <Stat value={String(totalTickets)} label="Tickets" />
+                <Stat value={String(upcomingEvents)} label="Bookings" />
+                <Stat value="4.9" label="Rating" />
               </div>
             </div>
-          </aside>
 
-          <Tabs defaultValue="details" className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin sm:p-5">
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-admin-input sm:grid-cols-4">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
-              <TabsTrigger value="notifications">Notifications</TabsTrigger>
-              <TabsTrigger value="password">Password</TabsTrigger>
-            </TabsList>
+            <div className="space-y-6 lg:pt-12">
+              <MenuGroup title="Account">
+                <MenuItem icon={User} label="Edit Profile" onClick={() => setEditProfileOpen(true)} />
+                <MenuItem icon={Wallet} label="Glee Wallet" onClick={() => navigate('/app/wallet')} />
+                <MenuItem icon={CreditCard} label="Payment Methods" onClick={() => setPaymentMethodsOpen(true)} />
+                <MenuItem
+                  icon={Bell}
+                  label="Notifications"
+                  rightElement={<Switch checked={prefs?.bookingAlerts ?? true} onCheckedChange={value => updatePrefs.mutate({ bookingAlerts: value, eventAlerts: value })} />}
+                />
+              </MenuGroup>
 
-            <TabsContent value="details" className="mt-6">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-heading text-xl font-black text-foreground">Personal Details</h3>
-                  <p className="mt-1 text-sm text-admin-50">Update the profile information attached to your tickets.</p>
-                </div>
-                <Button type="button" onClick={() => setEditing(value => !value)} variant="outline" className="border-admin bg-admin-input">
-                  {editing ? 'Cancel' : 'Edit'}
-                </Button>
-              </div>
+              <MenuGroup title="Preferences">
+                <MenuItem icon={Shield} label="Privacy & Security" onClick={() => setSecurityOpen(true)} />
+                <MenuItem icon={Lock} label="Password & 2FA" onClick={() => setSecurityOpen(true)} />
+              </MenuGroup>
 
-              <Form {...profileForm}>
-                <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="grid gap-4 md:grid-cols-2">
-                  <FormField control={profileForm.control} name="firstName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First name</FormLabel>
-                      <FormControl><Input disabled={!editing} className="border-admin bg-admin-input" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={profileForm.control} name="lastName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last name</FormLabel>
-                      <FormControl><Input disabled={!editing} className="border-admin bg-admin-input" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <div className="md:col-span-2">
-                    <FormField control={profileForm.control} name="phone" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone</FormLabel>
-                        <FormControl><Input disabled={!editing} placeholder="+254 700 000 000" className="border-admin bg-admin-input" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                  {editing && (
-                    <div className="md:col-span-2 flex justify-end">
-                      <Button type="submit" disabled={updateProfile.isPending} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
-                        <Save className="h-4 w-4" />
-                        {updateProfile.isPending ? 'Saving...' : 'Save changes'}
-                      </Button>
-                    </div>
-                  )}
-                </form>
-              </Form>
-            </TabsContent>
-
-            <TabsContent value="security" className="mt-6">
-              <div className="rounded-xl border border-admin bg-admin-input p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-neon-pink" />
-                    <div>
-                      <p className="font-semibold text-foreground">Two-factor authentication</p>
-                      <p className="text-sm text-admin-50">{security?.twoFactorEnabled ? 'Enabled' : 'Disabled'}</p>
-                    </div>
-                  </div>
-                  <Switch checked={Boolean(security?.twoFactorEnabled)} onCheckedChange={handleTwoFactorToggle} className="data-[state=checked]:bg-neon-pink" />
-                </div>
-              </div>
-              <div className="mt-4 rounded-xl border border-admin bg-admin-input p-4">
-                <div className="flex items-center gap-3">
-                  <UserCircle className="h-5 w-5 text-neon-pink" />
-                  <div>
-                    <p className="font-semibold text-foreground">Last login</p>
-                    <p className="text-sm text-admin-50">{security?.lastLoginAt ? new Date(security.lastLoginAt).toLocaleString('en-KE') : 'No recent login recorded'}</p>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="notifications" className="mt-6">
-              <div className="space-y-3">
-                {prefRows.map(row => (
-                  <div key={row.key} className="flex items-center justify-between gap-4 rounded-xl border border-admin bg-admin-input p-4">
-                    <div className="flex items-start gap-3">
-                      <Bell className="mt-0.5 h-4 w-4 text-neon-pink" />
-                      <div>
-                        <p className="font-semibold text-foreground">{row.label}</p>
-                        <p className="text-sm text-admin-50">{row.description}</p>
-                      </div>
-                    </div>
-                    {prefsLoading ? <Skeleton className="h-5 w-10 rounded-full" /> : <Switch checked={prefs?.[row.key] ?? false} onCheckedChange={value => handlePrefToggle(row.key, value)} className="data-[state=checked]:bg-neon-pink" />}
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="password" className="mt-6">
-              <Form {...passwordForm}>
-                <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Lock className="h-5 w-5 text-neon-pink" />
-                    <h3 className="font-heading text-xl font-black text-foreground">Reset Password</h3>
-                  </div>
-                  <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current password</FormLabel>
-                      <FormControl><Input type="password" className="border-admin bg-admin-input" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>New password</FormLabel>
-                      <FormControl><Input type="password" className="border-admin bg-admin-input" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm new password</FormLabel>
-                      <FormControl><Input type="password" className="border-admin bg-admin-input" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <Button type="submit" disabled={changePassword.isPending} className="bg-neon-pink text-white hover:bg-neon-pink/90">
-                    {changePassword.isPending ? 'Updating...' : 'Update password'}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
-          </Tabs>
+              <Button variant="destructive" className="w-full border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Log Out
+              </Button>
+            </div>
+          </div>
         </div>
       )}
+
+      <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+        <DialogContent className="mx-auto max-w-sm rounded-3xl border-white/10 bg-[#050017] text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-neon-pink" />
+              Edit Profile
+            </DialogTitle>
+            <DialogDescription className="text-white/55">Update your personal information</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <Avatar className="h-16 w-16 border-2 border-white/10">
+                <AvatarImage src={avatarPreview ?? profile?.avatarUrl ?? undefined} className="object-cover" />
+                <AvatarFallback className="bg-neon-pink/15 text-lg font-black text-neon-pink">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <Label htmlFor="profile-picture" className="mb-2 block text-white">Profile Picture</Label>
+                <label htmlFor="profile-picture" className="flex h-10 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10">
+                  <Camera className="mr-2 h-4 w-4 text-neon-pink" />
+                  Upload Image
+                </label>
+                <input id="profile-picture" type="file" accept="image/*" className="sr-only" onChange={event => handleAvatarChange(event.target.files?.[0])} />
+                {avatarFile && <p className="mt-2 truncate text-xs text-white/45">{avatarFile.name}</p>}
+              </div>
+            </div>
+            <Field label="Full Name" value={name} onChange={setName} />
+            <Field label="Email" value={email} onChange={setEmail} type="email" disabled />
+            <Field label="Phone" value={phone} onChange={setPhone} />
+            <Button onClick={handleSaveProfile} disabled={updateProfile.isPending || uploadAvatar.isPending} className="mt-4 w-full bg-neon-pink text-white hover:bg-neon-pink/90">
+              <Check className="mr-2 h-4 w-4" />
+              {updateProfile.isPending || uploadAvatar.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={paymentMethodsOpen} onOpenChange={setPaymentMethodsOpen}>
+        <DialogContent className="mx-auto max-h-[85vh] max-w-sm overflow-y-auto rounded-3xl border-white/10 bg-[#050017] text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-neon-pink" />
+              Payment Methods
+            </DialogTitle>
+            <DialogDescription className="text-white/55">Manage wallet, cards, and M-Pesa</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <PaymentRow icon={Wallet} title="Glee Wallet" subtitle="Use wallet balance for tickets and deposits" action="Open" onClick={() => navigate('/app/wallet')} />
+            <PaymentRow icon={CreditCard} title="Visa •••• 4242" subtitle="Expires 12/25" action={<X className="h-4 w-4" />} />
+            <PaymentRow icon={Smartphone} title="My M-Pesa" subtitle="+254 712 345 678" action={<X className="h-4 w-4" />} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={securityOpen} onOpenChange={setSecurityOpen}>
+        <DialogContent className="mx-auto max-h-[85vh] max-w-sm overflow-y-auto rounded-3xl border-white/10 bg-[#050017] text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-neon-pink" />
+              Privacy & Security
+            </DialogTitle>
+            <DialogDescription className="text-white/55">Manage login protection</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
+              <div>
+                <p className="font-medium text-white">Two-factor authentication</p>
+                <p className="text-xs text-white/55">{security?.twoFactorEnabled ? 'Enabled' : 'Disabled'}</p>
+              </div>
+              <Switch checked={Boolean(security?.twoFactorEnabled)} onCheckedChange={value => toggle2fa.mutate(value)} />
+            </div>
+            <Field label="Current Password" value={currentPassword} onChange={setCurrentPassword} type="password" />
+            <Field label="New Password" value={newPassword} onChange={setNewPassword} type="password" />
+            <Field label="Confirm Password" value={confirmPassword} onChange={setConfirmPassword} type="password" />
+            <Button onClick={handlePasswordChange} disabled={changePassword.isPending} className="w-full bg-neon-pink text-white hover:bg-neon-pink/90">
+              {changePassword.isPending ? 'Updating...' : 'Update Password'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </CustomerLayout>
+  )
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-2xl border border-white/5 bg-white/5 p-3 text-center">
+      <span className="block text-xl font-bold text-white">{value}</span>
+      <span className="text-xs text-white/55">{label}</span>
+    </div>
+  )
+}
+
+function MenuGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="ml-1 text-sm font-medium uppercase tracking-wider text-white/55">{title}</h3>
+      <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/5">{children}</div>
+    </div>
+  )
+}
+
+function MenuItem({ icon: Icon, label, onClick, rightElement }: { icon: LucideIcon; label: string; onClick?: () => void; rightElement?: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-white/5">
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl bg-white/5 p-2 text-neon-pink">
+          <Icon className="h-5 w-5" />
+        </div>
+        <span className="font-medium text-white">{label}</span>
+      </div>
+      {rightElement ?? <ChevronRight className="h-5 w-5 text-white/35" />}
+    </button>
+  )
+}
+
+function Field({ label, value, onChange, type = 'text', disabled = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; disabled?: boolean }) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-white">{label}</Label>
+      <Input value={value} type={type} disabled={disabled} onChange={event => onChange(event.target.value)} className="border-white/10 bg-white/5 text-white disabled:opacity-60" />
+    </div>
+  )
+}
+
+function PaymentRow({ icon: Icon, title, subtitle, action, onClick }: { icon: LucideIcon; title: string; subtitle: string; action: ReactNode; onClick?: () => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neon-pink/20 text-neon-pink">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-medium text-white">{title}</p>
+          <p className="text-xs text-white/55">{subtitle}</p>
+        </div>
+      </div>
+      <Button size="sm" variant="ghost" className="text-neon-pink hover:text-neon-pink" onClick={onClick}>
+        {action}
+      </Button>
+    </div>
   )
 }
