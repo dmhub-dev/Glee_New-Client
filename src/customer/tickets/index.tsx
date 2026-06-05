@@ -44,24 +44,24 @@ export default function CustomerTicketsPage() {
             <p className="mt-2 text-sm leading-6 text-white/58">Your tickets and table bookings in one place.</p>
           </div>
 
-          <div className="grid gap-3 sm:max-w-sm">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.08] p-4 shadow-[0_14px_40px_rgba(0,0,0,0.18)]">
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-neon-pink/15 text-neon-pink">
-                <Ticket className="h-5 w-5" />
-              </div>
-              <p className="font-heading text-3xl font-black text-white">{totalTickets}</p>
-              <p className="text-xs text-white/45">Total Tickets</p>
+          <div className="space-y-2 lg:max-w-3xl">
+            <div className="group relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-white/55 transition-colors group-focus-within:text-neon-pink" />
+              <Input
+                placeholder="Search bought tickets..."
+                value={searchQuery}
+                onChange={event => setSearchQuery(event.target.value)}
+                className="h-12 rounded-xl border-white/10 bg-white/5 pl-9 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50"
+              />
             </div>
-          </div>
-
-          <div className="group relative lg:max-w-3xl">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-white/55 transition-colors group-focus-within:text-neon-pink" />
-            <Input
-              placeholder="Search bought tickets..."
-              value={searchQuery}
-              onChange={event => setSearchQuery(event.target.value)}
-              className="h-12 rounded-xl border-white/10 bg-white/5 pl-9 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50"
-            />
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.16)] backdrop-blur">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neon-pink/15 text-neon-pink">
+                <Ticket className="h-3.5 w-3.5" />
+              </span>
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-white/72">
+                {totalTickets.toLocaleString()} total ticket{totalTickets === 1 ? '' : 's'}
+              </span>
+            </div>
           </div>
         </section>
 

@@ -193,7 +193,7 @@ export default function CustomerProfilePage() {
                 <MenuItem icon={Lock} label="Password & 2FA" onClick={() => setSecurityOpen(true)} />
               </MenuGroup>
 
-              <Button variant="destructive" className="w-full border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20" onClick={handleLogout}>
+              <Button variant="destructive" className="h-12 w-full rounded-full border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Log Out
               </Button>
@@ -230,7 +230,7 @@ export default function CustomerProfilePage() {
             <Field label="Full Name" value={name} onChange={setName} />
             <Field label="Email" value={email} onChange={setEmail} type="email" disabled />
             <Field label="Phone" value={phone} onChange={setPhone} />
-            <Button onClick={handleSaveProfile} disabled={updateProfile.isPending || uploadAvatar.isPending} className="mt-4 w-full bg-neon-pink text-white hover:bg-neon-pink/90">
+            <Button onClick={handleSaveProfile} disabled={updateProfile.isPending || uploadAvatar.isPending} className="mt-4 h-12 w-full rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
               <Check className="mr-2 h-4 w-4" />
               {updateProfile.isPending || uploadAvatar.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
@@ -360,7 +360,7 @@ function Field({ label, value, onChange, type = 'text', disabled = false }: { la
   return (
     <div className="space-y-2">
       <Label className="text-white">{label}</Label>
-      <Input value={value} type={type} disabled={disabled} onChange={event => onChange(event.target.value)} className="border-white/10 bg-white/5 text-white disabled:opacity-60" />
+      <Input value={value} type={type} disabled={disabled} onChange={event => onChange(event.target.value)} className="h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-white disabled:opacity-60" />
     </div>
   )
 }
