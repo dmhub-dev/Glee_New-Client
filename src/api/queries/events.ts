@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Event, EventMenuItem, EventSchedule } from '@glee/types'
+import type { Event, EventMenuItem, EventSchedule } from '../../types'
 import { apiFetch } from '../client'
 
 // ── Backend shapes ─────────────────────────────────────────────────────────────

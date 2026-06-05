@@ -1,4 +1,4 @@
-import { tokens } from '@glee/utils'
+import { tokens } from '../utils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const BASE: string = (import.meta as any).env?.VITE_API_BASE_URL ?? ''

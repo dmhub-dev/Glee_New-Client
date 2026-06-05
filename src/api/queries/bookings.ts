@@ -1,4 +1,4 @@
-import type { BookingStatus } from '@glee/types'
+import type { BookingStatus } from '../../types'
 
 export const bookingKeys = {
   all: ['bookings'] as const,

@@ -1,4 +1,4 @@
-import type { UserRole } from '@glee/types'
+import type { UserRole } from '../../types'
 
 export type Permission =
   | 'events:read'

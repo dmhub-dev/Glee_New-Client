@@ -1,4 +1,4 @@
-import type { UserRole } from '@glee/types'
+import type { UserRole } from '../../types'
 import { apiFetch } from '../client'
 
 export interface AuthUser {

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { UserRole } from '@glee/types'
-export { ASSIGNABLE_ROLES } from '@glee/types'
+import type { UserRole } from '../../types'
+export { ASSIGNABLE_ROLES } from '../../types'
 import { apiFetch } from '../client'
 
 export type UserStatus = 'active' | 'inactive'

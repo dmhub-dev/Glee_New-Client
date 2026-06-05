@@ -1,8 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
-import { ADMIN_ROLES, CUSTOMER_ROLES, DASHBOARD_ROLES } from '@glee/types'
-import type { UserRole } from '@glee/types'
-import { Skeleton } from '@glee/ui'
+import { ADMIN_ROLES, CUSTOMER_ROLES, DASHBOARD_ROLES } from '../types'
+import type { UserRole } from '../types'
+import { Skeleton } from '../ui'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 
 const LoginPage          = lazy(() => import('../routes/login'))
