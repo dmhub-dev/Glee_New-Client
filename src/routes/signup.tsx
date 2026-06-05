@@ -89,10 +89,11 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-[#10101d] px-4 py-6 text-white sm:py-10">
-      <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-6 lg:grid-cols-2">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center">
+        <div className="grid w-full overflow-hidden rounded-[2rem] border border-white/12 bg-[#07021d] shadow-[0_24px_80px_rgba(0,0,0,0.42)] lg:grid-cols-2">
         <BenefitsPanel />
 
-        <div className="relative order-1 w-full space-y-6 rounded-[2rem] border border-white/12 bg-[#07021d] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.42)] sm:p-6 lg:order-2">
+        <div className="relative order-1 w-full space-y-6 p-5 sm:p-6 lg:order-2 lg:p-8">
           <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-neon-pink/80 to-transparent" />
           <div className="flex flex-col items-center gap-4">
             <Link to="/">
@@ -242,6 +243,7 @@ export default function SignupPage() {
           </p>
         </div>
 
+        </div>
       </div>
     </div>
   )
@@ -249,7 +251,7 @@ export default function SignupPage() {
 
 function BenefitsPanel() {
   return (
-    <section className="relative order-2 w-full overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.1),rgba(255,255,255,0.035)_48%,rgba(255,0,122,0.12))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:p-6 lg:order-1 lg:p-7">
+    <section className="relative order-2 w-full border-t border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025)_48%,rgba(255,0,122,0.1))] p-5 sm:p-6 lg:order-1 lg:border-r lg:border-t-0 lg:p-8">
       <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-neon-pink/80 to-transparent" />
       <div className="absolute bottom-0 right-0 h-32 w-32 bg-neon-pink/10 blur-3xl" />
 
