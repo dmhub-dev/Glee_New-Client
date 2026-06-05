@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { apiCheckUserExists, apiRegisterUser, apiVerifySignupOtp } from '@glee/api'
 import { Input, Label } from '@glee/ui'
-import { CheckCircle2, Eye, EyeOff, Loader2, MailCheck, UserPlus, XCircle } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, Loader2, MailCheck, ShieldCheck, Sparkles, Ticket, UserPlus, Wallet, XCircle, type LucideIcon } from 'lucide-react'
 
 const signupSchema = z.object({
   name: z.string().min(3, 'Full name must be at least 3 characters'),
@@ -88,19 +88,23 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-admin-body p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="flex flex-col items-center gap-4">
-          <Link to="/">
-            <img src="/glee-logo-final.svg" alt="Glee" className="h-16" />
-          </Link>
-          <div className="text-center">
-            <h1 className="font-heading text-2xl font-black text-foreground">Create your Glee account</h1>
-            <p className="mt-1 text-sm text-admin-40">Sign up, confirm your email, then start booking events.</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#10101d] px-4 py-6 text-white sm:py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-6 lg:grid-cols-2">
+        <BenefitsPanel />
 
-        <div className="space-y-5 rounded-2xl border border-admin bg-admin-surface p-6 shadow-admin-card">
+        <div className="relative order-1 w-full space-y-6 rounded-[2rem] border border-white/12 bg-[#07021d] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.42)] sm:p-6 lg:order-2">
+          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-neon-pink/80 to-transparent" />
+          <div className="flex flex-col items-center gap-4">
+            <Link to="/">
+              <img src="/glee-logo-final.svg" alt="Glee" className="h-16" />
+            </Link>
+            <div className="text-center">
+              <h1 className="font-heading text-2xl font-black text-white">Create your Glee account</h1>
+              <p className="mt-1 text-sm text-white/55">Sign up, confirm your email, then start booking events.</p>
+            </div>
+          </div>
+
+          <div className="space-y-5">
           {serverError && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
               {serverError}
@@ -120,7 +124,7 @@ export default function SignupPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="otp" className="text-xs text-admin-50">Verification code</Label>
+                <Label htmlFor="otp" className="text-xs text-white/55">Verification code</Label>
                 <Input
                   id="otp"
                   inputMode="numeric"
@@ -128,10 +132,10 @@ export default function SignupPage() {
                   maxLength={8}
                   value={otp}
                   onChange={event => setOtp(cleanOtp(event.target.value))}
-                  className="border-admin bg-admin-input text-center tracking-[0.35em] focus-visible:ring-neon-pink/30"
+                  className="border-white/10 bg-white/5 text-center text-white tracking-[0.35em] focus-visible:ring-neon-pink/30"
                   placeholder="12345678"
                 />
-                {otp && !otpPattern.test(otp.trim()) && <p className="text-xs text-admin-40">Code must be 6 to 8 digits.</p>}
+                {otp && !otpPattern.test(otp.trim()) && <p className="text-xs text-white/45">Code must be 6 to 8 digits.</p>}
               </div>
 
               <button
@@ -145,7 +149,7 @@ export default function SignupPage() {
               <button
                 type="button"
                 onClick={() => { setRegisteredEmail(null); setOtp('') }}
-                className="w-full text-xs text-admin-40 transition-colors hover:text-admin-70"
+                className="w-full text-xs text-white/45 transition-colors hover:text-white/75"
               >
                 Edit signup details
               </button>
@@ -153,19 +157,19 @@ export default function SignupPage() {
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="name" className="text-xs text-admin-50">Full name</Label>
+                <Label htmlFor="name" className="text-xs text-white/55">Full name</Label>
                 <Input
                   id="name"
                   autoComplete="name"
                   placeholder="Jane Wanjiku"
                   {...register('name')}
-                  className="border-admin bg-admin-input placeholder:text-admin-20 focus-visible:ring-neon-pink/30"
+                  className="border-white/10 bg-white/5 text-white placeholder:text-white/30 focus-visible:ring-neon-pink/30"
                 />
                 {errors.name && <p className="text-xs text-red-400">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs text-admin-50">Email address</Label>
+                <Label htmlFor="email" className="text-xs text-white/55">Email address</Label>
                 <Input
                   id="email"
                   type="email"
@@ -175,13 +179,13 @@ export default function SignupPage() {
                     onChange: () => setEmailCheck({ status: 'idle' }),
                     onBlur: event => { void checkEmailAvailability(event.target.value) },
                   })}
-                  className="border-admin bg-admin-input placeholder:text-admin-20 focus-visible:ring-neon-pink/30"
+                  className="border-white/10 bg-white/5 text-white placeholder:text-white/30 focus-visible:ring-neon-pink/30"
                 />
                 {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
                 {!errors.email && emailCheck.status !== 'idle' && (
                   <p className={[
                     'flex items-center gap-1.5 text-xs',
-                    emailCheck.status === 'available' ? 'text-green-400' : emailCheck.status === 'checking' ? 'text-admin-40' : 'text-red-400',
+                    emailCheck.status === 'available' ? 'text-green-400' : emailCheck.status === 'checking' ? 'text-white/45' : 'text-red-400',
                   ].join(' ')}>
                     {emailCheck.status === 'checking' && <Loader2 className="h-3 w-3 animate-spin" />}
                     {emailCheck.status === 'available' && <CheckCircle2 className="h-3 w-3" />}
@@ -192,7 +196,7 @@ export default function SignupPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs text-admin-50">Password</Label>
+                <Label htmlFor="password" className="text-xs text-white/55">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -200,20 +204,20 @@ export default function SignupPage() {
                     autoComplete="new-password"
                     placeholder="At least 8 characters"
                     {...register('password')}
-                    className="border-admin bg-admin-input pr-10 placeholder:text-admin-20 focus-visible:ring-neon-pink/30"
+                    className="border-white/10 bg-white/5 pr-10 text-white placeholder:text-white/30 focus-visible:ring-neon-pink/30"
                   />
                   <button
                     type="button"
                     tabIndex={-1}
                     onClick={() => setShowPassword(value => !value)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-admin-30 transition-colors hover:text-admin-60"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors hover:text-white/70"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
                 {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
                 {!errors.password && (
-                  <p className="text-xs text-admin-40">Use 8-20 characters with uppercase, lowercase, number, and special character.</p>
+                  <p className="text-xs text-white/45">Use 8-20 characters with uppercase, lowercase, number, and special character.</p>
                 )}
               </div>
 
@@ -231,12 +235,75 @@ export default function SignupPage() {
               </button>
             </form>
           )}
+          </div>
+
+          <p className="text-center text-xs text-white/42">
+            Already have an account? <Link to="/user/login" className="font-semibold text-neon-pink hover:underline">Sign in</Link>
+          </p>
         </div>
 
-        <p className="text-center text-xs text-admin-30">
-          Already have an account? <Link to="/user/login" className="font-semibold text-neon-pink hover:underline">Sign in</Link>
-        </p>
       </div>
+    </div>
+  )
+}
+
+function BenefitsPanel() {
+  return (
+    <section className="relative order-2 w-full overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.1),rgba(255,255,255,0.035)_48%,rgba(255,0,122,0.12))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:p-6 lg:order-1 lg:p-7">
+      <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-neon-pink/80 to-transparent" />
+      <div className="absolute bottom-0 right-0 h-32 w-32 bg-neon-pink/10 blur-3xl" />
+
+      <div className="relative z-10 space-y-5">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-neon-pink">
+            <Sparkles className="h-3 w-3" />
+            Member Access
+          </div>
+
+          <h2 className="mt-4 max-w-xl font-heading text-3xl font-black leading-none text-white sm:text-4xl">
+            Your nights move better inside Glee.
+          </h2>
+          <p className="mt-3 max-w-lg text-sm leading-6 text-white/64">
+            Create your Glee account to keep tickets, wallet payments, and checkout details ready whenever a plan becomes real.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <SignupBenefit icon={Ticket} title="Ticket vault" text="Bought passes, QR codes, and event details stay organized." />
+          <SignupBenefit icon={Wallet} title="Wallet-ready" text="Top up once and pay quickly for eligible events." />
+          <SignupBenefit icon={ShieldCheck} title="Priority flow" text="Save account details so checkout takes fewer steps." />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr]">
+          <MiniStat value="Fast" label="checkout" tone="pink" />
+          <MiniStat value="QR" label="tickets" tone="cyan" />
+          <MiniStat value="Pay" label="wallet" tone="white" />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SignupBenefit({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
+  return (
+    <div className="group flex gap-3 rounded-2xl bg-white/[0.07] p-3 ring-1 ring-white/10 transition-transform duration-300 hover:-translate-y-0.5 hover:bg-white/[0.1]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-pink/14 text-neon-pink ring-1 ring-neon-pink/15 transition-colors group-hover:bg-neon-pink group-hover:text-white">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-sm font-bold text-white">{title}</p>
+        <p className="mt-0.5 text-xs leading-5 text-white/55">{text}</p>
+      </div>
+    </div>
+  )
+}
+
+function MiniStat({ value, label, tone }: { value: string; label: string; tone: 'pink' | 'cyan' | 'white' }) {
+  const toneClass = tone === 'pink' ? 'text-neon-pink' : tone === 'cyan' ? 'text-cyan-300' : 'text-white'
+  return (
+    <div className="rounded-2xl bg-black/20 px-3 py-3 text-center ring-1 ring-white/10">
+      <p className={`text-sm font-black ${toneClass}`}>{value}</p>
+      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/42">{label}</p>
     </div>
   )
 }
