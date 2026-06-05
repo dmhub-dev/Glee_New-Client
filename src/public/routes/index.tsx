@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Filter, Search, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, Filter, Search, ShieldCheck, Sparkles, Ticket, UserCircle, Wallet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useEvents } from '@glee/api'
 import type { Event } from '@glee/types'
+import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@glee/ui'
 import PageWrapper from '../components/layout/PageWrapper'
 import FeaturedCarousel from '../components/events/FeaturedCarousel'
 import EventGrid from '../components/events/EventGrid'
@@ -25,6 +26,7 @@ export default function LandingPage() {
   const [categoryId, setCategoryId] = useState<string | undefined>()
   const [statusFilter, setStatusFilter] = useState<PublicStatusFilter>('active')
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
+  const [accountPromptOpen, setAccountPromptOpen] = useState(false)
   const statusFilterRef = useRef<HTMLDivElement>(null)
   const { data: featuredEvents = [], isLoading: isFeaturedLoading } = useEvents({ page: 1, limit: 5, status: 'active' })
   const { data: categorySourceEvents = [] } = useEvents({ page: 1, limit: 100, status: statusFilter })
@@ -107,14 +109,20 @@ export default function LandingPage() {
         <main className="min-h-screen bg-[#10101d] pb-16 text-foreground">
           <section className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-6 px-4 pb-10 pt-6 md:max-w-3xl lg:max-w-5xl">
             <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold text-white/45">Discover</p>
-                <div className="mt-1 flex items-center gap-1.5 text-base font-bold text-white">
-                  <Sparkles className="h-4 w-4 text-neon-pink" />
-                  Events everywhere
-                </div>
-              </div>
               <img src="/glee-logo-final.svg" alt="Glee" className="h-14" />
+              <button
+                type="button"
+                onClick={() => setAccountPromptOpen(true)}
+                aria-label="Open user account"
+                className="group flex h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.08] px-2.5 pr-3 text-white shadow-[0_14px_38px_rgba(0,0,0,0.3)] backdrop-blur-xl transition-all hover:border-neon-pink/45 hover:bg-white/[0.12] active:scale-95"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neon-pink text-white shadow-[0_0_18px_rgba(255,0,122,0.35)]">
+                  <UserCircle className="h-5 w-5" />
+                </span>
+                <span className="text-xs font-black uppercase tracking-[0.14em] text-white/88 transition-colors group-hover:text-white">
+                  Glee App
+                </span>
+              </button>
             </div>
 
             <div className="space-y-4">
@@ -247,9 +255,92 @@ export default function LandingPage() {
                 </button>
               </div>
             </section>
+
+            <Dialog open={accountPromptOpen} onOpenChange={setAccountPromptOpen}>
+              <DialogContent className="mx-auto max-h-[88vh] max-w-[92vw] overflow-hidden rounded-[2rem] border-white/10 bg-[#060313] p-0 text-white shadow-[0_30px_110px_rgba(0,0,0,0.6)] sm:max-w-md">
+                <DialogHeader>
+                  <div className="relative overflow-hidden rounded-t-[2rem] border-b border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.04)_42%,rgba(255,0,122,0.12))] p-5">
+                    <div className="absolute inset-x-5 bottom-0 h-px bg-gradient-to-r from-transparent via-neon-pink/80 to-transparent" />
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="inline-flex items-center gap-2 rounded-full bg-white/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-neon-pink">
+                          <Sparkles className="h-3 w-3" />
+                          Member Access
+                        </div>
+                        <DialogTitle className="mt-4 max-w-[18rem] font-heading text-3xl font-black leading-none text-white">
+                          Step into the Glee app
+                        </DialogTitle>
+                        <DialogDescription className="mt-3 text-sm leading-6 text-white/64">
+                          Create an account to keep your nights, tickets, and payments together.
+                        </DialogDescription>
+                      </div>
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-black/25 ring-1 ring-white/10">
+                        <img src="/glee-logo-final.svg" alt="Glee" className="h-10 w-10 object-contain" />
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-2xl bg-black/20 ring-1 ring-white/10">
+                      <MiniStat value="Fast" label="checkout" />
+                      <MiniStat value="QR" label="tickets" />
+                      <MiniStat value="Pay" label="wallet" />
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <div className="space-y-5 p-5">
+                  <div className="grid gap-3">
+                    <Benefit icon={Ticket} title="Ticket vault" text="Bought passes, QR codes, and event details stay organized." />
+                    <Benefit icon={Wallet} title="Wallet-ready" text="Top up once and pay quickly for eligible events." />
+                    <Benefit icon={ShieldCheck} title="Priority flow" text="Save account details so checkout takes fewer steps." />
+                  </div>
+
+                  <div className="flex gap-3 pt-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setAccountPromptOpen(false)}
+                      className="h-11 flex-1 rounded-full bg-white/5 text-white hover:bg-white/10"
+                    >
+                      Not Now
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => navigate('/app')}
+                      className="h-11 flex-1 rounded-full bg-neon-pink font-bold text-white shadow-[0_0_24px_rgba(255,0,122,0.35)] hover:bg-neon-pink/90"
+                    >
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </section>
         </main>
       }
     />
+  )
+}
+
+function MiniStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="border-r border-white/10 px-3 py-2.5 text-center last:border-r-0">
+      <p className="text-sm font-black text-white">{value}</p>
+      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/42">{label}</p>
+    </div>
+  )
+}
+
+function Benefit({ icon: Icon, title, text }: { icon: typeof Ticket; title: string; text: string }) {
+  return (
+    <div className="group flex gap-3 rounded-2xl bg-white/[0.07] p-3 ring-1 ring-white/10 transition-colors hover:bg-white/[0.09]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-pink/14 text-neon-pink ring-1 ring-neon-pink/15">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-sm font-bold text-white">{title}</p>
+        <p className="mt-0.5 text-xs leading-5 text-white/55">{text}</p>
+      </div>
+    </div>
   )
 }
