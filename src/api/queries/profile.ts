@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { UserRole } from '@glee/types'
+import type { UserRole } from '../../types'
 import { apiFetch } from '../client'
 
 export interface ProfileData {

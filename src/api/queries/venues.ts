@@ -1,4 +1,4 @@
-import type { Venue } from '@glee/types'
+import type { Venue } from '../../types'
 
 export const venueKeys = {
   all: ['venues'] as const,

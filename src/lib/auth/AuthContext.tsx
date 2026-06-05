@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import type { AuthUser } from '@glee/api'
-import { apiLogin, apiLogout, apiMe, apiVerifyLoginTwoFactor } from '@glee/api'
-import { ALL_USER_ROLES } from '@glee/types'
-import { tokens } from '@glee/utils'
+import type { AuthUser } from '../../api'
+import { apiLogin, apiLogout, apiMe, apiVerifyLoginTwoFactor } from '../../api'
+import { ALL_USER_ROLES } from '../../types'
+import { tokens } from '../../utils'
 
 const AUTH_ROLES = new Set(ALL_USER_ROLES)
 
