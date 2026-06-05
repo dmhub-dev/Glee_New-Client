@@ -78,6 +78,8 @@ export interface AdminEventTicket {
   userId: string | null
   purchaseGroupId?: string | null
   ticketRef?: string | null
+  publicAccessToken?: string | null
+  publicUrl?: string | null
   ticketNumber?: number | null
   status?: 'ACTIVE' | 'USED' | 'EXPIRED' | 'CANCELLED' | string
   quantity: number
@@ -122,6 +124,68 @@ export interface AdminEventTicket {
       email?: string | null
     } | null
   }>
+}
+
+export interface PublicTicketPass {
+  ticket: {
+    id: string
+    ticketRef: string
+    ticketNumber: number
+    status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'CANCELLED' | string
+    qrEnabled: boolean
+    checkedInAt?: string | null
+    createdAt?: string | null
+    publicUrl?: string | null
+    ticketType?: string | null
+    ticketCategory?: { id: string; name: string; price: number } | null
+    payment?: {
+      method?: string | null
+      status?: string | null
+      isPaid?: boolean | null
+      totalPrice?: number | null
+      amountPaid?: number | null
+      outstandingAmount?: number | null
+    } | null
+    menuItems?: Array<{ id?: string | null; name: string; price: number; quantity: number }>
+  }
+  attendee: {
+    name?: string | null
+    email?: string | null
+    phone?: string | null
+  }
+  event: {
+    id: string
+    name: string
+    description?: string | null
+    startDate?: string | null
+    endDate?: string | null
+    photos?: string[]
+    location?: { id?: string; name?: string | null; address?: string | null } | null
+    category?: { id?: string; name?: string | null } | null
+    schedules?: Array<{
+      id: string
+      name: string
+      description?: string | null
+      startDate: string
+      endDate: string
+    }>
+  }
+}
+
+export function getPublicTicketPass(token: string): Promise<PublicTicketPass> {
+  return apiFetch<{ success: boolean; data: PublicTicketPass }>(
+    `/api/v1/event/tickets/public/${encodeURIComponent(token)}`,
+    { skipAuth: true },
+  ).then(r => r.data)
+}
+
+export function usePublicTicketPass(token: string | undefined) {
+  return useQuery({
+    queryKey: ['public-ticket-pass', token],
+    queryFn: () => getPublicTicketPass(token as string),
+    enabled: Boolean(token),
+    retry: false,
+  })
 }
 
 export interface AdminEventTicketsResult {
