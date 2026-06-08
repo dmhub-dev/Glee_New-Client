@@ -5,11 +5,13 @@ import {
   chatKeys,
   type EventChatMessage,
   type EventChatMessagesResponse,
+  type EventChatRoom,
   useCreateEventChatMessage,
   useDeleteEventChatMessage,
   useEventChatMessages,
   useEventChatRoom,
   useMarkEventChatRead,
+  useUpdateChatSettings,
   useUpdateEventChatMessagePin,
 } from '@glee/api'
 import {
@@ -25,6 +27,7 @@ import {
   Button,
   Input,
   Skeleton,
+  Switch,
   Textarea,
   cn,
   useToast,
@@ -128,6 +131,7 @@ export function EventChatPanel({ eventId, eventTitle, eventImage, tone = 'admin'
   const markRead = useMarkEventChatRead()
   const updatePin = useUpdateEventChatMessagePin()
   const deleteMessage = useDeleteEventChatMessage()
+  const updateSettings = useUpdateChatSettings()
 
   const pinnedMessages = useMemo(
     () => (messagesQuery.data?.data ?? []).filter(m => m.isPinned && m.type !== 'SYSTEM'),
@@ -189,6 +193,11 @@ export function EventChatPanel({ eventId, eventTitle, eventImage, tone = 'admin'
         if (!previous) return previous
         return { ...previous, data: previous.data.map(item => item.id === message.id ? message : item) }
       })
+    })
+
+    socket.on('chat:room:updated', (updatedRoom: EventChatRoom) => {
+      if (updatedRoom.eventId !== eventId) return
+      queryClient.setQueryData<EventChatRoom>(chatKeys.room(eventId), updatedRoom)
     })
 
     socket.on('chat:message:deleted', ({ messageId }: { messageId: string; eventId: string }) => {
@@ -598,6 +607,22 @@ export function EventChatPanel({ eventId, eventTitle, eventImage, tone = 'admin'
     <section className={cn('rounded-2xl border p-4', shellClass, className)}>
       {deleteDialog}
       <AdminChatHeader eventTitle={eventTitle} statusLabel={statusCopy(room.status)} connected={isSocketReady} mutedText={mutedText} />
+
+      {canModerate && (
+        <div className={cn('mt-3 flex items-center justify-between rounded-xl border px-3 py-2.5', room.staffOnly ? 'border-amber-500/30 bg-amber-500/8' : 'border-admin bg-admin-overlay')}>
+          <div className="min-w-0">
+            <p className={cn('text-xs font-semibold', room.staffOnly ? 'text-amber-400' : 'text-foreground')}>
+              {room.staffOnly ? 'Staff-only mode — attendees read-only' : 'Open chat — attendees can send messages'}
+            </p>
+          </div>
+          <Switch
+            checked={room.staffOnly}
+            disabled={updateSettings.isPending}
+            onCheckedChange={(checked) => updateSettings.mutate({ eventId, staffOnly: checked })}
+            className="ml-4 shrink-0 data-[state=checked]:bg-amber-500"
+          />
+        </div>
+      )}
 
       {socketError && (
         <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-500">

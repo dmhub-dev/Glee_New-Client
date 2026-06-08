@@ -19,6 +19,7 @@ export interface EventChatRoom {
   status: EventChatRoomStatus
   finalUpdatesUntil: string | null
   lockedAt: string | null
+  staffOnly: boolean
   access: EventChatAccess
   unreadCount: number
 }
@@ -148,6 +149,23 @@ export function useUpdateEventChatMessagePin() {
         if (!previous) return previous
         return { ...previous, data: previous.data.map(item => item.id === message.id ? message : item) }
       })
+    },
+  })
+}
+
+export function updateChatSettings(params: { eventId: string; staffOnly: boolean }): Promise<EventChatRoom> {
+  return apiFetch<EventChatRoom>(`/api/v1/event/${params.eventId}/chat/settings`, {
+    method: 'PATCH',
+    body: JSON.stringify({ staffOnly: params.staffOnly }),
+  })
+}
+
+export function useUpdateChatSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: updateChatSettings,
+    onSuccess: (room) => {
+      qc.setQueryData<EventChatRoom>(chatKeys.room(room.eventId), room)
     },
   })
 }
