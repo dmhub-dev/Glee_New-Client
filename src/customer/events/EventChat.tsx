@@ -12,6 +12,7 @@ export default function CustomerEventChatPage() {
       <EventChatPanel
         eventId={eventId ?? ''}
         eventTitle={event?.title ?? 'Event Chat'}
+        eventImage={event?.flyerSquareUrl ?? event?.flyerPortraitUrl}
         tone="customer"
         className="flex-1 overflow-hidden"
         onBack={() => navigate(-1)}

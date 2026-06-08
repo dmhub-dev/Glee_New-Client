@@ -37,6 +37,7 @@ type PanelTone = 'customer' | 'admin'
 export interface EventChatPanelProps {
   eventId: string
   eventTitle: string
+  eventImage?: string | null
   tone?: PanelTone
   className?: string
   compact?: boolean
@@ -104,17 +105,20 @@ function getSenderNameClass(sender: EventChatMessage['sender'], isCustomer: bool
   return isCustomer ? 'text-white/82' : 'text-foreground'
 }
 
-export function EventChatPanel({ eventId, eventTitle, tone = 'admin', className, compact = false, onBack }: EventChatPanelProps) {
+export function EventChatPanel({ eventId, eventTitle, eventImage, tone = 'admin', className, compact = false, onBack }: EventChatPanelProps) {
   const { isAuthenticated, user } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const socketRef = useRef<EventChatSocket | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [body, setBody] = useState('')
   const [messageType, setMessageType] = useState<'MESSAGE' | 'ANNOUNCEMENT'>('MESSAGE')
   const [isSocketReady, setIsSocketReady] = useState(false)
   const [socketError, setSocketError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<{ message: EventChatMessage; reason: string } | null>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
 
   const isCustomer = tone === 'customer'
   const enabled = Boolean(eventId) && isAuthenticated
@@ -257,6 +261,15 @@ export function EventChatPanel({ eventId, eventTitle, tone = 'admin', className,
     }
   }
 
+  function scrollToMessage(messageId: string) {
+    const el = messageRefs.current.get(messageId)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    setHighlightedId(messageId)
+    highlightTimerRef.current = setTimeout(() => setHighlightedId(null), 1600)
+  }
+
   // ── Unauthenticated ───────────────────────────────────────────────────────
   if (!isAuthenticated) {
     if (isCustomer) {
@@ -338,7 +351,11 @@ export function EventChatPanel({ eventId, eventTitle, tone = 'admin', className,
 
         if (isAnnouncement) {
           return (
-            <div key={message.id} className="mx-auto max-w-[92%] rounded-2xl border border-neon-pink/25 bg-neon-pink/10 px-4 py-3 text-center">
+            <div
+              key={message.id}
+              ref={el => { if (el) messageRefs.current.set(message.id, el); else messageRefs.current.delete(message.id) }}
+              className={cn('mx-auto max-w-[92%] rounded-2xl border border-neon-pink/25 bg-neon-pink/10 px-4 py-3 text-center transition-colors duration-700', highlightedId === message.id ? 'ring-2 ring-neon-pink/50' : '')}
+            >
               <div className="mb-1 flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wide text-neon-pink">
                 <Megaphone className="h-3.5 w-3.5" /> Announcement
                 {message.isPinned && <Pin className="h-3.5 w-3.5" />}
@@ -360,7 +377,15 @@ export function EventChatPanel({ eventId, eventTitle, tone = 'admin', className,
         }
 
         return (
-          <div key={message.id} className={cn('flex gap-2', isOwnMessage ? 'justify-end' : 'justify-start')}>
+          <div
+            key={message.id}
+            ref={el => { if (el) messageRefs.current.set(message.id, el); else messageRefs.current.delete(message.id) }}
+            className={cn(
+              'flex gap-2 rounded-xl px-1 py-0.5 transition-colors duration-700',
+              isOwnMessage ? 'justify-end' : 'justify-start',
+              highlightedId === message.id ? 'bg-neon-pink/12' : 'bg-transparent',
+            )}
+          >
             {!isOwnMessage && <ChatAvatar sender={message.sender} isCustomer={isCustomer} />}
             <div className={cn('group max-w-[82%] sm:max-w-[72%]', isOwnMessage ? 'items-end' : 'items-start')}>
               <div className={cn(
@@ -504,9 +529,17 @@ export function EventChatPanel({ eventId, eventTitle, tone = 'admin', className,
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neon-pink/15">
-            <MessageCircle className="h-5 w-5 text-neon-pink" />
-          </div>
+          {eventImage ? (
+            <img
+              src={eventImage}
+              alt={eventTitle}
+              className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-neon-pink/30"
+            />
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neon-pink/15">
+              <MessageCircle className="h-5 w-5 text-neon-pink" />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-black text-white">{eventTitle}</p>
             <div className="flex items-center gap-1.5">
@@ -529,14 +562,18 @@ export function EventChatPanel({ eventId, eventTitle, tone = 'admin', className,
 
         {/* Pinned announcements */}
         {pinnedMessages.length > 0 && (
-          <div className="shrink-0 border-b border-neon-pink/15 bg-neon-pink/8 px-4 py-2.5">
+          <button
+            type="button"
+            onClick={() => scrollToMessage(pinnedMessages[0].id)}
+            className="shrink-0 w-full border-b border-neon-pink/15 bg-neon-pink/[0.08] px-4 py-2.5 text-left transition-colors hover:bg-neon-pink/[0.14] active:bg-neon-pink/20"
+          >
             <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-neon-pink">
-              <Megaphone className="h-3 w-3" /> Pinned
+              <Pin className="h-3 w-3" /> Pinned message
             </div>
-            <p className="line-clamp-2 text-xs leading-relaxed text-white/75">
+            <p className="line-clamp-1 text-xs leading-relaxed text-white/75">
               {pinnedMessages[0].body}
             </p>
-          </div>
+          </button>
         )}
 
         {/* Messages */}
