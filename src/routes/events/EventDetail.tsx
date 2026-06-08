@@ -24,6 +24,7 @@ import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown
 import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 import EventDetailTabs from './EventDetailTabs'
+import { EventChatPanel } from '../../components/chat/EventChatPanel'
 
 const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
@@ -561,6 +562,8 @@ export default function EventDetailPage() {
 
           {/* Right: stats + breakdown */}
           <div className="space-y-5">
+
+            <EventChatPanel eventId={event.id} eventTitle={event.title} tone="admin" compact />
 
             {/* Quick stats */}
             <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">

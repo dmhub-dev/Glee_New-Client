@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, MapPin, Minus, Plus, Share2, ShoppingBag, Ticket } from 'lucide-react'
+import { EventChatPanel } from '../../components/chat/EventChatPanel'
 import CustomerLayout from '../CustomerLayout'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
@@ -376,9 +377,13 @@ export default function CustomerEventDetailPage() {
               )}
             </TabsContent>
           </Tabs>
+
+          <EventChatPanel eventId={event.id} eventTitle={event.title} tone="customer" className="xl:hidden" compact />
             </div>
 
-          <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.25)] xl:sticky xl:top-6">
+          <div className="space-y-5 xl:sticky xl:top-6">
+          <EventChatPanel eventId={event.id} eventTitle={event.title} tone="customer" className="hidden xl:block" compact />
+          <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.25)]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-heading text-xl font-black text-white">Tickets</h2>
@@ -456,6 +461,7 @@ export default function CustomerEventDetailPage() {
               </div>
             </div>
           </section>
+          </div>
 
           </div>
 
