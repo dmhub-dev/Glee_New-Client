@@ -104,13 +104,15 @@ export default function CustomerEventDetailPage() {
   const [walletPaymentType, setWalletPaymentType] = useState<'FULL' | 'INSTALLMENT'>('FULL')
   const [installmentCount, setInstallmentCount] = useState(2)
   const [aboutExpanded, setAboutExpanded] = useState(false)
+  const [showMenuAddons, setShowMenuAddons] = useState(false)
 
   const selectedTier = useMemo(() => event?.ticketTiers.find(tier => tier.id === selectedTierId) ?? event?.ticketTiers[0], [event, selectedTierId])
   const selectedMenu = useMemo(() => {
+    if (!showMenuAddons) return []
     return (event?.menuItems ?? [])
       .filter(item => (menuQtys[item.id] ?? 0) > 0)
       .map(item => ({ item, quantity: menuQtys[item.id] ?? 0 }))
-  }, [event?.menuItems, menuQtys])
+  }, [event?.menuItems, menuQtys, showMenuAddons])
   const ticketTotal = (selectedTier?.price ?? 0) * quantity
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
   const total = ticketTotal + menuTotal
@@ -280,183 +282,197 @@ export default function CustomerEventDetailPage() {
             </div>
           </section>
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
-            <div className="space-y-5">
-          <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-heading text-xl font-black text-white">About Event</h2>
-                <p className="mt-1 text-xs font-medium text-white/45">Quick overview</p>
-              </div>
-              {descriptionIsLong && (
-                <button
-                  type="button"
-                  onClick={() => setAboutExpanded(value => !value)}
-                  className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/75 hover:bg-white/10 hover:text-white"
-                >
-                  {aboutExpanded ? 'Show Less' : 'Read More'}
-                </button>
-              )}
-            </div>
-            <p className="mt-4 whitespace-pre-line text-sm leading-6 text-white/72">{visibleDescription}</p>
-          </section>
-
-          {(event.menuItems ?? []).length > 0 && (
+          <div className="space-y-5">
             <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
-              <h3 className="flex items-center gap-2 font-heading text-lg font-black text-white"><ShoppingBag className="h-4 w-4 text-neon-pink" />Menu Add-ons</h3>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {(event.menuItems ?? []).map(item => (
-                  <div key={item.id ?? item.name} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-white">{item.name}</p>
-                        <p className="mt-1 text-xs text-white/45">{item.category}</p>
-                      </div>
-                      <p className="font-mono text-sm font-semibold text-neon-pink">{money(item.price)}</p>
-                    </div>
-                    <div className="mt-3 flex items-center gap-2">
-                      <button disabled={isSoldOut} onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] ?? 0) - 1) }))} className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-white/70 disabled:cursor-not-allowed disabled:opacity-40"><Minus className="h-3.5 w-3.5" /></button>
-                      <span className="w-8 text-center font-mono text-sm text-white">{menuQtys[item.id] ?? 0}</span>
-                      <button disabled={isSoldOut} onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: (prev[item.id] ?? 0) + 1 }))} className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-white/70 disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-3.5 w-3.5" /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <Tabs defaultValue="schedule" className="rounded-3xl border border-white/12 bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
-            <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-full bg-black/25 p-1">
-              <TabsTrigger value="schedule" className="rounded-full text-white/70 data-[state=active]:bg-neon-pink data-[state=active]:text-white">Schedule</TabsTrigger>
-              <TabsTrigger value="location" className="rounded-full text-white/70 data-[state=active]:bg-neon-pink data-[state=active]:text-white">Location</TabsTrigger>
-              <TabsTrigger value="menu" className="rounded-full text-white/70 data-[state=active]:bg-neon-pink data-[state=active]:text-white">Menu</TabsTrigger>
-            </TabsList>
-            <TabsContent value="schedule" className="mt-5">
-              {(event.schedules ?? []).length ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {[...(event.schedules ?? [])].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map(schedule => (
-                    <div key={schedule.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <div className="font-mono text-sm font-semibold text-neon-pink">
-                        {formatDateTime(schedule.startDate)}
-                        <br />
-                        <span className="text-white/45">to {formatDateTime(schedule.endDate)}</span>
-                      </div>
-                      <p className="mt-3 font-semibold text-white">{schedule.name}</p>
-                      <p className="mt-1 whitespace-pre-line text-sm leading-6 text-white/60">{schedule.description}</p>
-                    </div>
-                  ))}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-heading text-xl font-black text-white">About Event</h2>
+                  <p className="mt-1 text-xs font-medium text-white/45">Quick overview</p>
                 </div>
-              ) : (
-                <p className="text-sm text-white/55">No schedule has been published for this event yet.</p>
-              )}
-            </TabsContent>
-            <TabsContent value="location" className="mt-5">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                <p className="flex items-center gap-2 font-semibold text-white"><MapPin className="h-4 w-4 text-neon-pink" />{event.location ?? 'Location TBA'}</p>
-                {event.location && (
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-sm font-semibold text-neon-pink hover:underline">
-                    Open in Google Maps
-                  </a>
+                {descriptionIsLong && (
+                  <button
+                    type="button"
+                    onClick={() => setAboutExpanded(value => !value)}
+                    className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/75 hover:bg-white/10 hover:text-white"
+                  >
+                    {aboutExpanded ? 'Show Less' : 'Read More'}
+                  </button>
                 )}
               </div>
-            </TabsContent>
-            <TabsContent value="menu" className="mt-5">
-              {(event.menuItems ?? []).length ? (
-                <div className="grid gap-3 md:grid-cols-2">
+              <p className="mt-4 whitespace-pre-line text-sm leading-6 text-white/72">{visibleDescription}</p>
+            </section>
+
+            <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.25)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="font-heading text-xl font-black text-white">Tickets</h2>
+                  <p className="mt-1 text-xs font-medium text-white/45">Choose one ticket type</p>
+                </div>
+                <p className="font-heading text-xl font-black text-neon-pink">{money(total)}</p>
+              </div>
+
+              {isSoldOut && (
+                <div className="mt-4 rounded-2xl border border-red-400/25 bg-red-500/10 p-4 text-sm font-medium text-red-100">
+                  This event is sold out. Purchases are disabled.
+                </div>
+              )}
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {event.ticketTiers.map(tier => (
+                  <button
+                    key={tier.id}
+                    type="button"
+                    disabled={isSoldOut || tier.quantityRemaining <= 0}
+                    onClick={() => {
+                      setSelectedTierId(tier.id)
+                      setQuantity(q => Math.min(Math.max(1, q), Math.max(1, tier.quantityRemaining)))
+                    }}
+                    className={[
+                      'w-full rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45',
+                      selectedTier?.id === tier.id && !isSoldOut ? 'border-neon-pink bg-neon-pink/15 shadow-[0_0_0_1px_rgba(255,45,143,0.25)]' : 'border-white/10 bg-black/20 hover:border-white/25',
+                    ].join(' ')}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={[
+                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border',
+                        selectedTier?.id === tier.id && !isSoldOut ? 'border-neon-pink bg-neon-pink text-white' : 'border-white/15 bg-white/5 text-white/35',
+                      ].join(' ')}
+                      >
+                        {selectedTier?.id === tier.id && !isSoldOut ? <CheckCircle2 className="h-5 w-5" /> : <Ticket className="h-5 w-5" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-white">{tier.name}</p>
+                          {selectedTier?.id === tier.id && !isSoldOut && (
+                            <span className="rounded-full bg-neon-pink/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-neon-pink">Selected</span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-white/45">
+                          {tier.quantityRemaining > 0 ? `${tier.quantityRemaining} available` : 'Sold out'}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-mono text-base font-bold text-neon-pink">{money(tier.price)}</p>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/35">per ticket</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm font-semibold text-white">Quantity</p>
+                  <div className="flex items-center gap-3">
+                    <button disabled={isSoldOut} onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"><Minus className="h-4 w-4" /></button>
+                    <span className="w-8 text-center font-mono text-lg text-white">{quantity}</span>
+                    <button disabled={isSoldOut || selectedTierSoldOut} onClick={() => setQuantity(q => Math.min(selectedTier?.quantityRemaining ?? 1, q + 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-4 w-4" /></button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div>
+                    <p className="text-xs text-white/45">Selected ticket</p>
+                    <p className="mt-1 text-sm font-semibold text-white">{selectedTier?.name ?? 'Choose tier'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-white/45">Order total</p>
+                    <p className="mt-1 font-heading text-xl font-black text-neon-pink">{money(total)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {(event.menuItems ?? []).length > 0 && (
+                <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-neon-pink/30">
+                  <div>
+                    <p className="font-semibold text-white">Add menu items</p>
+                    <p className="mt-1 text-sm text-white/50">Pre-order food or drinks with your ticket.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={showMenuAddons}
+                    onChange={event => setShowMenuAddons(event.target.checked)}
+                    className="h-5 w-5 accent-neon-pink"
+                  />
+                </label>
+              )}
+            </section>
+
+            {showMenuAddons && (event.menuItems ?? []).length > 0 && (
+              <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
+                <h3 className="flex items-center gap-2 font-heading text-lg font-black text-white"><ShoppingBag className="h-4 w-4 text-neon-pink" />Menu Add-ons</h3>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
                   {(event.menuItems ?? []).map(item => (
                     <div key={item.id ?? item.name} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <p className="font-semibold text-white">{item.name}</p>
-                      <p className="mt-1 text-sm text-white/55">{item.description || item.category}</p>
-                      <p className="mt-2 font-mono text-sm font-semibold text-neon-pink">{money(item.price)}</p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-white">{item.name}</p>
+                          <p className="mt-1 text-xs text-white/45">{item.category}</p>
+                        </div>
+                        <p className="font-mono text-sm font-semibold text-neon-pink">{money(item.price)}</p>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button disabled={isSoldOut} onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] ?? 0) - 1) }))} className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-white/70 disabled:cursor-not-allowed disabled:opacity-40"><Minus className="h-3.5 w-3.5" /></button>
+                        <span className="w-8 text-center font-mono text-sm text-white">{menuQtys[item.id] ?? 0}</span>
+                        <button disabled={isSoldOut} onClick={() => setMenuQtys(prev => ({ ...prev, [item.id]: (prev[item.id] ?? 0) + 1 }))} className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-white/70 disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-3.5 w-3.5" /></button>
+                      </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-white/55">No menu items are attached to this event.</p>
-              )}
-            </TabsContent>
-          </Tabs>
-            </div>
-
-          <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.25)] xl:sticky xl:top-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-heading text-xl font-black text-white">Tickets</h2>
-                <p className="mt-1 text-xs font-medium text-white/45">Choose one ticket type</p>
-              </div>
-              <p className="font-heading text-xl font-black text-neon-pink">{money(total)}</p>
-            </div>
-
-            {isSoldOut && (
-              <div className="mt-4 rounded-2xl border border-red-400/25 bg-red-500/10 p-4 text-sm font-medium text-red-100">
-                This event is sold out. Purchases are disabled.
-              </div>
+              </section>
             )}
 
-            <div className="mt-4 space-y-3">
-              {event.ticketTiers.map(tier => (
-                <button
-                  key={tier.id}
-                  type="button"
-                  disabled={isSoldOut || tier.quantityRemaining <= 0}
-                  onClick={() => {
-                    setSelectedTierId(tier.id)
-                    setQuantity(q => Math.min(Math.max(1, q), Math.max(1, tier.quantityRemaining)))
-                  }}
-                  className={[
-                    'w-full rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45',
-                    selectedTier?.id === tier.id && !isSoldOut ? 'border-neon-pink bg-neon-pink/15 shadow-[0_0_0_1px_rgba(255,45,143,0.25)]' : 'border-white/10 bg-black/20 hover:border-white/25',
-                  ].join(' ')}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={[
-                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border',
-                      selectedTier?.id === tier.id && !isSoldOut ? 'border-neon-pink bg-neon-pink text-white' : 'border-white/15 bg-white/5 text-white/35',
-                    ].join(' ')}
-                    >
-                      {selectedTier?.id === tier.id && !isSoldOut ? <CheckCircle2 className="h-5 w-5" /> : <Ticket className="h-5 w-5" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-white">{tier.name}</p>
-                        {selectedTier?.id === tier.id && !isSoldOut && (
-                          <span className="rounded-full bg-neon-pink/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-neon-pink">Selected</span>
-                        )}
+            <Tabs defaultValue="schedule" className="rounded-3xl border border-white/12 bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
+              <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-full bg-black/25 p-1">
+                <TabsTrigger value="schedule" className="rounded-full text-white/70 data-[state=active]:bg-neon-pink data-[state=active]:text-white">Schedule</TabsTrigger>
+                <TabsTrigger value="location" className="rounded-full text-white/70 data-[state=active]:bg-neon-pink data-[state=active]:text-white">Location</TabsTrigger>
+                <TabsTrigger value="menu" className="rounded-full text-white/70 data-[state=active]:bg-neon-pink data-[state=active]:text-white">Menu</TabsTrigger>
+              </TabsList>
+              <TabsContent value="schedule" className="mt-5">
+                {(event.schedules ?? []).length ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[...(event.schedules ?? [])].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map(schedule => (
+                      <div key={schedule.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <div className="font-mono text-sm font-semibold text-neon-pink">
+                          {formatDateTime(schedule.startDate)}
+                          <br />
+                          <span className="text-white/45">to {formatDateTime(schedule.endDate)}</span>
+                        </div>
+                        <p className="mt-3 font-semibold text-white">{schedule.name}</p>
+                        <p className="mt-1 whitespace-pre-line text-sm leading-6 text-white/60">{schedule.description}</p>
                       </div>
-                      <p className="mt-1 text-xs text-white/45">
-                        {tier.quantityRemaining > 0 ? `${tier.quantityRemaining} available` : 'Sold out'}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-mono text-base font-bold text-neon-pink">{money(tier.price)}</p>
-                      <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/35">per ticket</p>
-                    </div>
+                    ))}
                   </div>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-4">
-              <p className="text-sm font-semibold text-white">Quantity</p>
-              <div className="flex items-center gap-3">
-                <button disabled={isSoldOut} onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"><Minus className="h-4 w-4" /></button>
-                <span className="w-8 text-center font-mono text-lg text-white">{quantity}</span>
-                <button disabled={isSoldOut || selectedTierSoldOut} onClick={() => setQuantity(q => Math.min(selectedTier?.quantityRemaining ?? 1, q + 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/70 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-4 w-4" /></button>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-4">
-              <div>
-                <p className="text-xs text-white/45">Selected ticket</p>
-                <p className="mt-1 text-sm font-semibold text-white">{selectedTier?.name ?? 'Choose tier'}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-white/45">Order total</p>
-                <p className="mt-1 font-heading text-xl font-black text-neon-pink">{money(total)}</p>
-              </div>
-            </div>
-          </section>
-
+                ) : (
+                  <p className="text-sm text-white/55">No schedule has been published for this event yet.</p>
+                )}
+              </TabsContent>
+              <TabsContent value="location" className="mt-5">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                  <p className="flex items-center gap-2 font-semibold text-white"><MapPin className="h-4 w-4 text-neon-pink" />{event.location ?? 'Location TBA'}</p>
+                  {event.location && (
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex text-sm font-semibold text-neon-pink hover:underline">
+                      Open in Google Maps
+                    </a>
+                  )}
+                </div>
+              </TabsContent>
+              <TabsContent value="menu" className="mt-5">
+                {(event.menuItems ?? []).length ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {(event.menuItems ?? []).map(item => (
+                      <div key={item.id ?? item.name} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                        <p className="font-semibold text-white">{item.name}</p>
+                        <p className="mt-1 text-sm text-white/55">{item.description || item.category}</p>
+                        <p className="mt-2 font-mono text-sm font-semibold text-neon-pink">{money(item.price)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/55">No menu items are attached to this event.</p>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
 
           <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050017]/88 px-4 py-3 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl">

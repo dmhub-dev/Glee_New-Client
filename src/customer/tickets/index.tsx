@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMyTickets } from '@glee/api'
 import { Badge, Button, Input, Skeleton } from '@glee/ui'
-import { Calendar, MapPin, QrCode, Search, Ticket } from 'lucide-react'
+import { Calendar, MapPin, MessageCircle, QrCode, Search, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 
 const PLACEHOLDER = 'https://placehold.co/900x600/141419/FF2D8F?text=Glee'
@@ -131,15 +131,26 @@ export default function CustomerTicketsPage() {
                         <span className="rounded-md bg-neon-pink/10 px-2 py-1 text-xs font-bold text-neon-pink">{money(Number(group.totalPrice ?? 0))}</span>
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      onClick={() => navigate(`/app/tickets/${event.id}`)}
-                      disabled={!firstTicket}
-                      className="h-16 w-16 shrink-0 rounded-2xl bg-slate-100 p-0 text-slate-900 hover:bg-slate-200 disabled:opacity-40"
-                      aria-label={`View QR for ${event.name}`}
-                    >
-                      <QrCode className="h-8 w-8" />
-                    </Button>
+                    <div className="flex shrink-0 flex-col gap-2">
+                      <Button
+                        type="button"
+                        onClick={() => navigate(`/app/events/${event.id}/chat`)}
+                        disabled={!firstTicket}
+                        className="h-10 w-16 rounded-xl bg-neon-pink p-0 text-white hover:bg-neon-pink/90 disabled:opacity-40"
+                        aria-label={`Open chat for ${event.name}`}
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => navigate(`/app/tickets/${event.id}`)}
+                        disabled={!firstTicket}
+                        className="h-14 w-16 rounded-2xl bg-slate-100 p-0 text-slate-900 hover:bg-slate-200 disabled:opacity-40"
+                        aria-label={`View QR for ${event.name}`}
+                      >
+                        <QrCode className="h-7 w-7" />
+                      </Button>
+                    </div>
                   </div>
                 </article>
               )
