@@ -9,6 +9,7 @@ export interface EventChatAccess {
   canWrite: boolean
   canModerate: boolean
   canAnnounce: boolean
+  canPin: boolean
 }
 
 export interface EventChatRoom {
@@ -26,6 +27,7 @@ export interface EventChatSender {
   id: string
   displayName: string
   profileImage: string | null
+  role?: string | null
 }
 
 export interface EventChatMessage {

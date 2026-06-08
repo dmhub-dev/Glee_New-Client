@@ -51,7 +51,7 @@ const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
 ]
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
-type EventDetailTab = 'details' | 'complimentary' | 'attendants'
+type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'chat'
 
 function formatEventDate(startDate: string, endDate: string): string {
   if (endDate === startDate) {
@@ -141,7 +141,7 @@ export default function EventDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
     const state = location.state as { tab?: EventDetailTab } | null
-    return state?.tab === 'complimentary' || state?.tab === 'attendants' ? state.tab : 'details'
+    return state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' ? state.tab : 'details'
   })
 
   function handleStatusChange(newStatus: Event['status']) {
@@ -381,6 +381,14 @@ export default function EventDetailPage() {
           <ComplimentaryTicketPanel event={event} />
         ) : activeTab === 'attendants' ? (
           <TicketAttendantsPanel event={event} />
+        ) : activeTab === 'chat' ? (
+          <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+            <div className="mb-4 border-b border-admin pb-4">
+              <h2 className="font-heading text-lg font-black text-foreground">Event Chat</h2>
+              <p className="mt-1 text-sm text-admin-40">Moderate attendee conversations and post event announcements.</p>
+            </div>
+            <EventChatPanel eventId={event.id} eventTitle={event.title} tone="admin" />
+          </section>
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -562,8 +570,6 @@ export default function EventDetailPage() {
 
           {/* Right: stats + breakdown */}
           <div className="space-y-5">
-
-            <EventChatPanel eventId={event.id} eventTitle={event.title} tone="admin" compact />
 
             {/* Quick stats */}
             <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">

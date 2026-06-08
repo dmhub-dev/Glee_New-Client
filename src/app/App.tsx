@@ -36,6 +36,7 @@ const AuditLogsPage      = lazy(() => import('../routes/audit-logs/index'))
 const CustomerDashboardPage = lazy(() => import('../customer/dashboard/index'))
 const CustomerEventsPage = lazy(() => import('../customer/events/index'))
 const CustomerEventPage  = lazy(() => import('../customer/events/$eventId'))
+const CustomerEventChatPage = lazy(() => import('../customer/events/EventChat'))
 const CustomerTicketsPage = lazy(() => import('../customer/tickets/index'))
 const CustomerTicketDetailPage = lazy(() => import('../customer/tickets/$eventId'))
 const CustomerWalletPage = lazy(() => import('../customer/wallet/index'))
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/app" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerDashboardPage /></ProtectedRoute>} />
         <Route path="/app/events" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerEventsPage /></ProtectedRoute>} />
         <Route path="/app/events/:eventId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerEventPage /></ProtectedRoute>} />
+        <Route path="/app/events/:eventId/chat" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerEventChatPage /></ProtectedRoute>} />
         <Route path="/app/tickets" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerTicketsPage /></ProtectedRoute>} />
         <Route path="/app/tickets/:eventId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerTicketDetailPage /></ProtectedRoute>} />
         <Route path="/app/wallet" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerWalletPage /></ProtectedRoute>} />

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import type { AdminEventTicket } from '@glee/api'
 import { useMyTickets } from '@glee/api'
 import { Badge, Button, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from '@glee/ui'
-import { ArrowLeft, Calendar, MapPin, Ticket } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, MessageCircle, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 
 function money(value: number) {
@@ -99,10 +99,20 @@ export default function CustomerTicketDetailPage() {
                 <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-neon-pink" />{location}</p>
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm">
-              <p className="text-white/45">Purchased</p>
-              <p className="mt-1 font-semibold text-white">{ticketGroup.noOfTicketsPurchased} tickets</p>
-              <p className="mt-2 font-mono font-bold text-neon-pink">{money(Number(ticketGroup.totalPrice ?? 0))}</p>
+            <div className="flex w-full flex-col gap-3 sm:w-auto">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm">
+                <p className="text-white/45">Purchased</p>
+                <p className="mt-1 font-semibold text-white">{ticketGroup.noOfTicketsPurchased} tickets</p>
+                <p className="mt-2 font-mono font-bold text-neon-pink">{money(Number(ticketGroup.totalPrice ?? 0))}</p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => navigate(`/app/events/${event.id}/chat`)}
+                className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Join Event Chat
+              </Button>
             </div>
           </div>
 
