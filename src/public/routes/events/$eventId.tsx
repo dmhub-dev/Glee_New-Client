@@ -442,9 +442,9 @@ export default function EventDetailPage() {
           <Button
             disabled={!isPurchasable || selectedItems.length === 0}
             onClick={() => setCheckoutOpen(true)}
-            className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:opacity-40 sm:ml-0 sm:px-7"
+            className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none sm:ml-0 sm:px-7"
           >
-            {isPurchasable ? 'Buy Tickets' : 'Unavailable'}
+            {!isPurchasable ? 'Unavailable' : selectedItems.length === 0 ? 'Select a Ticket' : 'Buy Tickets'}
           </Button>
         </div>
       </div>
