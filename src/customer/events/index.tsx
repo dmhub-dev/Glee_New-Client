@@ -234,11 +234,29 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">{isExplore ? sectionTitle : 'Trending This Weekend'}</h2>
-            {!isExplore && <button type="button" onClick={() => navigate('/app/events')} className="text-xs text-neon-pink hover:underline">See All</button>}
+            <h2 className="text-lg font-semibold text-white">
+              {isExplore || query ? sectionTitle : 'Trending This Weekend'}
+            </h2>
+            {!isExplore && !query && (
+              <button type="button" onClick={() => navigate('/app/events')} className="text-xs text-neon-pink hover:underline">See All</button>
+            )}
           </div>
 
-          {isExplore && isLoading ? (
+          {/* Searching on home page — show results, skip carousel */}
+          {!isExplore && query ? (
+            isLoading ? (
+              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+                <p className="text-white/55">Searching...</p>
+              </div>
+            ) : filteredEvents.length === 0 ? (
+              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+                <p className="text-white/55">No events found for "{query}".</p>
+                <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>Clear search</Button>
+              </div>
+            ) : (
+              <EventList events={filteredEvents} showCategory={false} />
+            )
+          ) : isExplore && isLoading ? (
             <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
               <p className="text-white/55">Loading events...</p>
             </div>
@@ -264,7 +282,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           )}
         </div>
 
-        {!isExplore && (
+        {!isExplore && !query && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-white">{sectionTitle === 'Trending This Weekend' ? 'More Events' : sectionTitle}</h2>
             {isLoading ? (

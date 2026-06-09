@@ -216,12 +216,14 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading text-lg font-black text-white">Trending This Weekend</h2>
-              </div>
-              <FeaturedCarousel events={trendingEvents.slice(0, 5)} isLoading={isFeaturedLoading} />
-            </section>
+            {!search && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-heading text-lg font-black text-white">Trending This Weekend</h2>
+                </div>
+                <FeaturedCarousel events={trendingEvents.slice(0, 5)} isLoading={isFeaturedLoading} />
+              </section>
+            )}
 
             <section className="flex flex-1 flex-col gap-4 pt-2">
               <div className="flex items-center justify-between gap-3">
