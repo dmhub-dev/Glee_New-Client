@@ -1,9 +1,20 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
+import type { ReactNode } from 'react'
 import { ADMIN_ROLES, CUSTOMER_ROLES, DASHBOARD_ROLES } from '../types'
 import type { UserRole } from '../types'
 import { Skeleton } from '../ui'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
+import { useAuth } from '../lib/auth/AuthContext'
+
+function PublicOnlyRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, user } = useAuth()
+  if (isLoading) return null
+  if (isAuthenticated && user) {
+    return <Navigate to={user.role === 'user' ? '/app' : '/dashboard'} replace />
+  }
+  return <>{children}</>
+}
 
 const LoginPage          = lazy(() => import('../routes/login'))
 const SignupPage         = lazy(() => import('../routes/signup'))
@@ -65,16 +76,16 @@ export default function App() {
   return (
     <Suspense fallback={<PageSkeleton />}>
       <Routes>
-        <Route path="/" element={<PublicHomePage />} />
+        <Route path="/" element={<PublicOnlyRoute><PublicHomePage /></PublicOnlyRoute>} />
         <Route path="/events" element={<PublicEventsPage />} />
         <Route path="/events/:eventId" element={<PublicEventPage />} />
         <Route path="/checkout" element={<PublicCheckoutPage />} />
         <Route path="/payment/event-ticket/confirm" element={<EventTicketConfirmPage />} />
         <Route path="/ticket-attendant/access" element={<TicketAttendantAccessPage />} />
         <Route path="/t/:token" element={<PublicTicketPassPage />} />
-        <Route path="/login" element={<LoginPage mode="dashboard" />} />
-        <Route path="/user/login" element={<LoginPage mode="user" />} />
-        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/login" element={<PublicOnlyRoute><LoginPage mode="dashboard" /></PublicOnlyRoute>} />
+        <Route path="/user/login" element={<PublicOnlyRoute><LoginPage mode="user" /></PublicOnlyRoute>} />
+        <Route path="/signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
         <Route path="/invitations/accept/:token" element={<AcceptInvitationPage />} />
         <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfilePage /></ProtectedRoute>} />
         <Route path="/app" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerDashboardPage /></ProtectedRoute>} />

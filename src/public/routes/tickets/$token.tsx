@@ -35,8 +35,10 @@ function statusTone(status?: string) {
   return 'border-rose-400/40 bg-rose-400/15 text-rose-100'
 }
 
-function qrImageUrl(ticketRef: string) {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(ticketRef)}`
+function qrImageSrc(ticket: { qrDataUrl?: string | null; ticketRef: string }) {
+  // Prefer server-generated inline data URL — no external dependency
+  if (ticket.qrDataUrl) return ticket.qrDataUrl
+  return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(ticket.ticketRef)}`
 }
 
 export default function PublicTicketPassPage() {
@@ -115,7 +117,7 @@ export default function PublicTicketPassPage() {
 
             <div className="rounded-[28px] bg-white p-4 text-slate-950 shadow-xl">
               <div className="relative mx-auto aspect-square max-w-[320px] overflow-hidden rounded-3xl border border-slate-200 bg-white p-3">
-                <img className="h-full w-full object-contain" src={qrImageUrl(ticket.ticketRef)} alt="Ticket QR code" />
+                <img className="h-full w-full object-contain" src={qrImageSrc(ticket)} alt="Ticket QR code" />
                 {!isQrEnabled && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/88 p-6 text-center backdrop-blur-[2px]">
                     <div>
