@@ -442,9 +442,9 @@ export default function EventDetailPage() {
           <Button
             disabled={!isPurchasable || selectedItems.length === 0}
             onClick={() => setCheckoutOpen(true)}
-            className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:opacity-40 sm:ml-0 sm:px-7"
+            className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none sm:ml-0 sm:px-7"
           >
-            {isPurchasable ? 'Buy Tickets' : 'Unavailable'}
+            {!isPurchasable ? 'Unavailable' : selectedItems.length === 0 ? 'Select a Ticket' : 'Buy Tickets'}
           </Button>
         </div>
       </div>
@@ -637,24 +637,24 @@ export default function EventDetailPage() {
             </a>
           </div>
 
-          {/* Legal links — pink with underline hover */}
+          {/* Legal links */}
           <div className="flex flex-wrap gap-x-8 gap-y-2 justify-center">
             {[
-              { label: 'Privacy Policy', href: '#' },
-              { label: 'Terms of Use', href: '#' },
-              { label: 'Refunds & Returns', href: '#' },
-            ].map(({ label, href }) => (
-              <a
+              { label: 'Privacy Policy', to: '/privacy-policy' },
+              { label: 'Terms of Use', to: '/terms' },
+              { label: 'Refunds & Returns', to: '/refund-policy' },
+            ].map(({ label, to }) => (
+              <Link
                 key={label}
-                href={href}
+                to={to}
                 className="text-sm text-neon-pink/70 hover:text-neon-pink hover:underline underline-offset-4 transition-colors"
               >
                 {label}
-              </a>
+              </Link>
             ))}
           </div>
 
-          <p className="text-xs text-white/30 tracking-wide">© 2026 Hustlesasa. All rights reserved.</p>
+          <p className="text-xs text-white/30 tracking-wide">© 2026 Glee Events. All rights reserved.</p>
         </div>
       </footer>
 

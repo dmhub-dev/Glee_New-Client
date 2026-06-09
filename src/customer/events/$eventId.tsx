@@ -517,9 +517,13 @@ export default function CustomerEventDetailPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">Order total</p>
                 <p className="font-heading text-xl font-black text-white">{money(total)}</p>
               </div>
-              <Button disabled={!canPurchase || purchase.isPending} onClick={() => setPaymentModalOpen(true)} className="h-12 rounded-full bg-neon-pink px-6 text-white hover:bg-neon-pink/90 disabled:opacity-50">
+              <Button
+                disabled={!canPurchase || purchase.isPending}
+                onClick={() => setPaymentModalOpen(true)}
+                className="h-12 rounded-full bg-neon-pink px-6 text-white hover:bg-neon-pink/90 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none"
+              >
                 <Ticket className="mr-2 h-4 w-4" />
-                Pay Now
+                {canPurchase ? 'Pay Now' : isSoldOut ? 'Sold Out' : 'Select a Ticket'}
               </Button>
             </div>
           </div>

@@ -19,11 +19,19 @@ const otpPattern = /^\d{6,8}$/
 const otpMessage = 'Enter a 6 to 8 digit OTP'
 const cleanOtp = (value: string) => value.replace(/\D/g, '').slice(0, 8)
 
+const strongPassword = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(20, 'Password must be at most 20 characters')
+  .regex(/[A-Z]/, 'Password needs at least one uppercase letter')
+  .regex(/[a-z]/, 'Password needs at least one lowercase letter')
+  .regex(/[0-9]/, 'Password needs at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password needs at least one special character')
+
 const resetSchema = z.object({
   email: z.string().email('Enter a valid email'),
   otp: z.string().regex(otpPattern, otpMessage),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string().min(8, 'Confirm your password'),
+  password: strongPassword,
+  confirmPassword: z.string().min(1, 'Confirm your password'),
 }).refine(values => values.password === values.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -186,7 +194,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
 
         {/* Logo + heading */}
         <div className="flex flex-col items-center gap-4">
-          <img src="/glee-logo-final.svg" alt="Glee" className="h-16" />
+          <Link to="/"><img src="/glee-logo-final.svg" alt="Glee" className="h-16" /></Link>
           <div className="text-center">
             <h1 className="font-heading font-black text-2xl text-foreground">{isUserLogin ? 'Glee Account' : 'Glee Dashboard'}</h1>
             <p className="text-sm text-admin-40 mt-1">{isUserLogin ? 'Sign in to your customer account' : 'Sign in to continue'}</p>

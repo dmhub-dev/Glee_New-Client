@@ -136,6 +136,7 @@ export interface PublicTicketPass {
     checkedInAt?: string | null
     createdAt?: string | null
     publicUrl?: string | null
+    qrDataUrl?: string | null
     ticketType?: string | null
     ticketCategory?: { id: string; name: string; price: number } | null
     payment?: {
