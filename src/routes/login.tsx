@@ -186,7 +186,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
 
         {/* Logo + heading */}
         <div className="flex flex-col items-center gap-4">
-          <img src="/glee-logo-final.svg" alt="Glee" className="h-16" />
+          <Link to="/"><img src="/glee-logo-final.svg" alt="Glee" className="h-16" /></Link>
           <div className="text-center">
             <h1 className="font-heading font-black text-2xl text-foreground">{isUserLogin ? 'Glee Account' : 'Glee Dashboard'}</h1>
             <p className="text-sm text-admin-40 mt-1">{isUserLogin ? 'Sign in to your customer account' : 'Sign in to continue'}</p>
