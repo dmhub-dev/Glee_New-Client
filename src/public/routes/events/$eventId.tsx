@@ -654,7 +654,7 @@ export default function EventDetailPage() {
             ))}
           </div>
 
-          <p className="text-xs text-white/30 tracking-wide">© 2026 Hustlesasa. All rights reserved.</p>
+          <p className="text-xs text-white/30 tracking-wide">© 2026 Glee Events. All rights reserved.</p>
         </div>
       </footer>
 
