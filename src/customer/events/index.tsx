@@ -4,7 +4,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import type { Event } from '@glee/types'
 import { useEvents } from '@glee/api'
 import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, cn } from '@glee/ui'
-import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search, Sparkles } from 'lucide-react'
+import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 
@@ -126,11 +126,10 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
     <CustomerLayout title={isExplore ? 'Explore' : 'Home'} hidePageHeader>
       <div className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-28 pt-6 lg:px-8">
         {!isExplore && (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between lg:hidden">
             <div className="flex flex-col">
               <span className="text-xs text-white/55">Discover</span>
               <div className="flex cursor-pointer items-center font-medium text-white transition-colors hover:text-neon-pink">
-                <Sparkles className="mr-1 h-4 w-4 text-neon-pink" />
                 Events everywhere
               </div>
             </div>
@@ -157,48 +156,58 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           </h1>
         </div>
 
-        <div ref={statusFilterRef} className="relative">
-          <div className="group relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-white/55 transition-colors group-focus-within:text-neon-pink" />
-          <Input
-            placeholder="Search events, artists, venues..."
-            className="h-12 rounded-xl border-white/10 bg-white/5 pl-9 pr-12 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50 sm:pr-[17rem]"
-            value={searchQuery}
-            onChange={event => setSearchQuery(event.target.value)}
-          />
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="Filter events by status"
-            onClick={() => setStatusMenuOpen(open => !open)}
-            className="absolute right-2 top-2 h-8 w-8 text-white/55 transition-transform hover:text-white active:scale-95 sm:hidden"
-          >
-            <Filter className="h-4 w-4" />
-          </Button>
-            <div className="absolute right-1 top-1 hidden items-center gap-1 rounded-lg border border-white/10 bg-[#110A23]/95 p-1 shadow-[0_12px_35px_rgba(0,0,0,0.28)] sm:flex">
-              {STATUS_FILTERS.map(filter => (
-                <button
-                  key={filter.value}
-                  type="button"
-                  onClick={() => {
-                    setActiveCategory('All')
-                    setActiveStatus(filter.value)
-                  }}
-                  className={cn(
-                    'h-10 rounded-md px-3 text-xs font-semibold transition-all active:scale-95',
-                    activeStatus === filter.value
-                      ? 'bg-neon-pink text-white shadow-[0_0_15px_rgba(255,0,122,0.28)]'
-                      : 'text-white/58 hover:bg-white/10 hover:text-white',
-                  )}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
+        {/* Search + status filter */}
+        <div ref={statusFilterRef} className="relative flex flex-col gap-2 sm:flex-row sm:items-center">
+
+          {/* Search input — filter icon inside on mobile, clean on desktop */}
+          <div className="group relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45 transition-colors group-focus-within:text-neon-pink" />
+            <Input
+              placeholder="Search events, artists, venues..."
+              className="h-11 rounded-xl border-white/10 bg-white/5 pl-9 pr-12 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50 sm:pr-4"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            {/* Filter icon inside input — mobile only */}
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Filter events by status"
+              onClick={() => setStatusMenuOpen(open => !open)}
+              className={cn(
+                'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg transition-colors sm:hidden',
+                statusMenuOpen ? 'text-neon-pink' : 'text-white/45 hover:text-white',
+              )}
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
           </div>
 
+          {/* Desktop: separate pill row */}
+          <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 sm:flex">
+            {STATUS_FILTERS.map(filter => (
+              <button
+                key={filter.value}
+                type="button"
+                onClick={() => {
+                  setActiveCategory('All')
+                  setActiveStatus(filter.value)
+                }}
+                className={cn(
+                  'h-9 rounded-lg px-3 text-xs font-semibold transition-all active:scale-95',
+                  activeStatus === filter.value
+                    ? 'bg-neon-pink text-white shadow-[0_0_12px_rgba(255,0,122,0.3)]'
+                    : 'text-white/55 hover:bg-white/10 hover:text-white',
+                )}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile dropdown */}
           {statusMenuOpen && (
-            <div className="absolute right-0 top-14 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#160C2C] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.42)] sm:hidden">
+            <div className="absolute right-4 top-[calc(100%+0.5rem)] z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#160C2C] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.42)] sm:hidden">
               {STATUS_FILTERS.map(filter => (
                 <button
                   key={filter.value}
