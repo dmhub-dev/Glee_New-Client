@@ -54,6 +54,7 @@ const CustomerEventChatPage = lazy(() => import('../customer/events/EventChat'))
 const CustomerTicketsPage = lazy(() => import('../customer/tickets/index'))
 const CustomerTicketDetailPage = lazy(() => import('../customer/tickets/$eventId'))
 const CustomerWalletPage = lazy(() => import('../customer/wallet/index'))
+const WalletCallbackPage = lazy(() => import('../customer/wallet/callback'))
 const CustomerProfilePage = lazy(() => import('../customer/profile/index'))
 
 const EVENT_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="/app/tickets" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerTicketsPage /></ProtectedRoute>} />
         <Route path="/app/tickets/:eventId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerTicketDetailPage /></ProtectedRoute>} />
         <Route path="/app/wallet" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerWalletPage /></ProtectedRoute>} />
+        <Route path="/app/wallet/callback" element={<ProtectedRoute roles={CUSTOMER_ROLES}><WalletCallbackPage /></ProtectedRoute>} />
         <Route path="/app/profile" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerProfilePage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/events" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventsListPage /></ProtectedRoute>} />

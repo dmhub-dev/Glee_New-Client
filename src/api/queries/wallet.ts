@@ -34,10 +34,10 @@ export function getWalletTransactions(): Promise<WalletTransaction[]> {
     .then(r => r.data?.items ?? [])
 }
 
-export function topUpWallet(amount: number): Promise<{ authorization_url?: string; access_code?: string; reference?: string }> {
+export function topUpWallet(amount: number, callbackUrl?: string): Promise<{ authorization_url?: string; access_code?: string; reference?: string }> {
   return apiFetch<{ success: boolean; data: { authorization_url?: string; access_code?: string; reference?: string } }>('/api/v1/wallet/top-up', {
     method: 'POST',
-    body: JSON.stringify({ amount, currency: 'KES' }),
+    body: JSON.stringify({ amount, currency: 'KES', callbackUrl }),
   }).then(r => r.data)
 }
 
@@ -52,7 +52,7 @@ export function useWalletTransactions() {
 export function useTopUpWallet() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (amount: number) => topUpWallet(amount),
+    mutationFn: (params: { amount: number; callbackUrl?: string }) => topUpWallet(params.amount, params.callbackUrl),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: walletKeys.wallet })
       qc.invalidateQueries({ queryKey: walletKeys.transactions })
