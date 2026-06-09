@@ -105,10 +105,21 @@ export default function CustomerEventDetailPage() {
   const [aboutExpanded, setAboutExpanded] = useState(false)
   const [showMenuAddons, setShowMenuAddons] = useState(false)
 
+  // Get active wave tiers (fallback to ticketTiers if no waves defined)
+  const activeWaveTiers = useMemo(() => {
+    if (event?.ticketWaves?.length) {
+      const activeWave = event.ticketWaves.find(w => w.status === 'active')
+      if (activeWave) return activeWave.ticketTiers
+      const upcomingWave = event.ticketWaves.find(w => w.status === 'upcoming')
+      if (upcomingWave) return upcomingWave.ticketTiers
+      return []
+    }
+    return event?.ticketTiers ?? []
+  }, [event])
   // First tier with qty > 0 drives the purchase transaction
   const selectedTier = useMemo(
-    () => event?.ticketTiers.find(tier => (tierQtys[tier.id] ?? 0) > 0),
-    [event, tierQtys],
+    () => activeWaveTiers.find(tier => (tierQtys[tier.id] ?? 0) > 0),
+    [activeWaveTiers, tierQtys],
   )
   const quantity = selectedTier ? (tierQtys[selectedTier.id] ?? 1) : 1
   const selectedMenu = useMemo(() => {
@@ -118,8 +129,8 @@ export default function CustomerEventDetailPage() {
       .map(item => ({ item, quantity: menuQtys[item.id] ?? 0 }))
   }, [event?.menuItems, menuQtys, showMenuAddons])
   const ticketTotal = useMemo(
-    () => (event?.ticketTiers ?? []).reduce((sum, tier) => sum + tier.price * (tierQtys[tier.id] ?? 0), 0),
-    [event, tierQtys],
+    () => activeWaveTiers.reduce((sum, tier) => sum + tier.price * (tierQtys[tier.id] ?? 0), 0),
+    [activeWaveTiers, tierQtys],
   )
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
   const total = ticketTotal + menuTotal
@@ -157,7 +168,7 @@ export default function CustomerEventDetailPage() {
   const installmentDueNow = selectedInstallmentPlan?.dueNow ?? 0
   const walletCanStartInstallment = installmentOptions.length > 0 && (!selectedInstallmentPlan || walletBalance >= selectedInstallmentPlan.dueNow)
   const posterSrc = event?.flyerPortraitUrl ?? event?.flyerSquareUrl ?? PLACEHOLDER
-  const isSoldOut = event?.status === 'sold_out' || Boolean(event?.ticketTiers.length && event.ticketTiers.every(tier => tier.quantityRemaining <= 0))
+  const isSoldOut = event?.status === 'sold_out' || Boolean(activeWaveTiers.length && activeWaveTiers.every(tier => tier.quantityRemaining <= 0))
   const selectedTierSoldOut = !selectedTier || selectedTier.quantityRemaining <= 0
   const anyTierSelected = Object.values(tierQtys).some(q => q > 0)
   const canPurchase = Boolean(event && selectedTier && !isSoldOut && !selectedTierSoldOut && anyTierSelected && total > 0)
@@ -327,7 +338,7 @@ export default function CustomerEventDetailPage() {
 
               {/* Ticket tiers — public style, 2-col grid on sm+ */}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {event.ticketTiers.map(tier => {
+                {activeWaveTiers.map(tier => {
                   const qty = tierQtys[tier.id] ?? 0
                   const soldOut = tier.quantityRemaining <= 0 || isSoldOut
                   const maxQty = Math.min(tier.quantityRemaining, 10)

@@ -130,7 +130,17 @@ export default function EventDetailPage() {
   const endDt = event.endTime ? new Date(`${event.endDate}T${event.endTime}`) : null
   const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
   const posterSrc = event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
-  const lowestPrice = event.ticketTiers.length ? Math.min(...event.ticketTiers.map(tier => tier.price)) : 0
+  const activeWaveTiers = (() => {
+    if (event.ticketWaves?.length) {
+      const activeWave = event.ticketWaves.find(w => w.status === 'active')
+      if (activeWave) return activeWave.ticketTiers
+      const upcomingWave = event.ticketWaves.find(w => w.status === 'upcoming')
+      if (upcomingWave) return upcomingWave.ticketTiers
+      return []
+    }
+    return event.ticketTiers ?? []
+  })()
+  const lowestPrice = activeWaveTiers.length ? Math.min(...activeWaveTiers.map(tier => tier.price)) : 0
   const categoryLabel = event.categoryName ?? 'Event'
   const isPurchasable = event.status === 'active' || event.status === 'live'
   const eventStatusLabel = event.status.replace('_', ' ')
@@ -255,9 +265,9 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {/* Ticket cards */}
+          {/* Ticket cards — show only active wave tiers */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {event.ticketTiers.map(tier => {
+            {activeWaveTiers.map(tier => {
               const isSoldOut = tier.quantityRemaining === 0
               const qty = quantities[tier.id] ?? 0
               const isExpanded = expandedDescs.has(tier.id)
