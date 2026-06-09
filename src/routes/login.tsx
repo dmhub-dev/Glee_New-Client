@@ -81,7 +81,7 @@ export default function LoginPage({ mode = 'dashboard' }: LoginPageProps) {
   }
 
   function defaultDestination(role?: string | null) {
-    return role === 'user' ? '/app/events' : '/dashboard'
+    return role === 'user' ? '/app' : '/dashboard'
   }
 
   function destinationForAuthResult(role?: string | null, passwordChangeRequired?: boolean) {
