@@ -457,7 +457,7 @@ export function EventChatPanel({ eventId, eventTitle, eventImage, tone = 'admin'
   const inputDisabled = !canWrite && !(canPostAnnouncement && messageType === 'ANNOUNCEMENT')
 
   const inputArea = (
-    <div className={cn('space-y-2', isCustomer ? 'border-t border-white/10 bg-[#050017]/80 px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 backdrop-blur-xl' : 'mt-4')}>
+    <div className={cn('space-y-2 shrink-0', isCustomer ? 'border-t border-white/10 bg-[#050017]/80 px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-3 backdrop-blur-xl lg:pb-[calc(env(safe-area-inset-bottom)+1rem)]' : 'mt-4')}>
       {(locked || readOnly) && (
         <div className={cn('flex items-center gap-2 rounded-xl border px-3 py-2 text-xs', isCustomer ? 'border-white/10 bg-black/20 text-white/55' : 'border-admin bg-admin-overlay text-admin-50')}>
           <Lock className="h-3.5 w-3.5" />

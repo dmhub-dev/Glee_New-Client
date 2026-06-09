@@ -26,7 +26,8 @@ export default function CustomerLayout({
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const hideNav  = location.pathname.startsWith('/app/events/')
+  // Hide sidebar/nav on event detail pages but keep it on the chat subpage
+  const hideNav  = location.pathname.startsWith('/app/events/') && !location.pathname.endsWith('/chat')
 
   const initials = (user?.name ?? 'U')
     .split(' ').filter(Boolean).slice(0, 2)
