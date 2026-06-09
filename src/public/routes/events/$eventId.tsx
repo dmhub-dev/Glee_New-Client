@@ -637,20 +637,20 @@ export default function EventDetailPage() {
             </a>
           </div>
 
-          {/* Legal links — pink with underline hover */}
+          {/* Legal links */}
           <div className="flex flex-wrap gap-x-8 gap-y-2 justify-center">
             {[
-              { label: 'Privacy Policy', href: '#' },
-              { label: 'Terms of Use', href: '#' },
-              { label: 'Refunds & Returns', href: '#' },
-            ].map(({ label, href }) => (
-              <a
+              { label: 'Privacy Policy', to: '/privacy-policy' },
+              { label: 'Terms of Use', to: '/terms' },
+              { label: 'Refunds & Returns', to: '/refund-policy' },
+            ].map(({ label, to }) => (
+              <Link
                 key={label}
-                href={href}
+                to={to}
                 className="text-sm text-neon-pink/70 hover:text-neon-pink hover:underline underline-offset-4 transition-colors"
               >
                 {label}
-              </a>
+              </Link>
             ))}
           </div>
 

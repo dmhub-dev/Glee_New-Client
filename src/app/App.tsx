@@ -27,6 +27,9 @@ const PublicCheckoutPage = lazy(() => import('../public/routes/checkout/index'))
 const EventTicketConfirmPage = lazy(() => import('../public/routes/payment/EventTicketConfirm'))
 const TicketAttendantAccessPage = lazy(() => import('../public/routes/ticket-attendant/access'))
 const PublicTicketPassPage = lazy(() => import('../public/routes/tickets/$token'))
+const PrivacyPolicyPage   = lazy(() => import('../public/routes/legal/privacy-policy'))
+const TermsPage           = lazy(() => import('../public/routes/legal/terms'))
+const RefundPolicyPage    = lazy(() => import('../public/routes/legal/refund-policy'))
 const DashboardPage      = lazy(() => import('../routes/index'))
 const EventsListPage     = lazy(() => import('../routes/events/index'))
 const EventFormPage      = lazy(() => import('../routes/events/$eventId'))
@@ -83,6 +86,9 @@ export default function App() {
         <Route path="/payment/event-ticket/confirm" element={<EventTicketConfirmPage />} />
         <Route path="/ticket-attendant/access" element={<TicketAttendantAccessPage />} />
         <Route path="/t/:token" element={<PublicTicketPassPage />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/refund-policy" element={<RefundPolicyPage />} />
         <Route path="/login" element={<PublicOnlyRoute><LoginPage mode="dashboard" /></PublicOnlyRoute>} />
         <Route path="/user/login" element={<PublicOnlyRoute><LoginPage mode="user" /></PublicOnlyRoute>} />
         <Route path="/signup" element={<PublicOnlyRoute><SignupPage /></PublicOnlyRoute>} />
