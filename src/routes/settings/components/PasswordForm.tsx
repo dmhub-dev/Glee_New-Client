@@ -13,10 +13,18 @@ import {
 import { useChangePassword } from '@glee/api'
 import { useAuth } from '../../../lib/auth/AuthContext'
 
+const strongPassword = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(20, 'Password must be at most 20 characters')
+  .regex(/[A-Z]/, 'Password needs at least one uppercase letter')
+  .regex(/[a-z]/, 'Password needs at least one lowercase letter')
+  .regex(/[0-9]/, 'Password needs at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password needs at least one special character')
+
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword:     z.string().min(8, 'Password must be at least 8 characters'),
+    newPassword:     strongPassword,
     confirmPassword: z.string().min(1, 'Please confirm your new password'),
   })
   .refine(data => data.newPassword === data.confirmPassword, {
