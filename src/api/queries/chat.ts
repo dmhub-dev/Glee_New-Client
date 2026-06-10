@@ -113,6 +113,8 @@ export function useEventChatMessages(eventId: string, enabled = true) {
     queryKey: chatKeys.messages(eventId),
     queryFn: () => fetchEventChatMessages(eventId),
     enabled: enabled && Boolean(eventId),
+    refetchInterval: enabled ? 5000 : false,
+    refetchIntervalInBackground: false,
     retry: false,
   })
 }

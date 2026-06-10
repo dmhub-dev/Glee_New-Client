@@ -126,7 +126,7 @@ export function EventChatPanel({ eventId, eventTitle, eventImage, tone = 'admin'
   const isCustomer = tone === 'customer'
   const enabled = Boolean(eventId) && isAuthenticated
   const roomQuery = useEventChatRoom(eventId, enabled)
-  const messagesQuery = useEventChatMessages(eventId, enabled && roomQuery.data?.access.canRead !== false)
+  const messagesQuery = useEventChatMessages(eventId, enabled && roomQuery.isSuccess && roomQuery.data?.access.canRead !== false)
   const createMessage = useCreateEventChatMessage()
   const markRead = useMarkEventChatRead()
   const updatePin = useUpdateEventChatMessagePin()
