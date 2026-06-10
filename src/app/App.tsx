@@ -56,6 +56,10 @@ const CustomerTicketDetailPage = lazy(() => import('../customer/tickets/$eventId
 const CustomerWalletPage = lazy(() => import('../customer/wallet/index'))
 const WalletCallbackPage = lazy(() => import('../customer/wallet/callback'))
 const CustomerProfilePage = lazy(() => import('../customer/profile/index'))
+const CustomerReservationsPage = lazy(() => import('../customer/reservations/index'))
+const CustomerReservationVenuePage = lazy(() => import('../customer/reservations/$locationId'))
+const CustomerMyReservationsPage = lazy(() => import('../customer/reservations/my'))
+const CustomerReservationDetailPage = lazy(() => import('../customer/reservations/$reservationId'))
 
 const EVENT_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
 const BOOKINGS_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'customer_support']
@@ -104,6 +108,10 @@ export default function App() {
         <Route path="/app/wallet" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerWalletPage /></ProtectedRoute>} />
         <Route path="/app/wallet/callback" element={<ProtectedRoute roles={CUSTOMER_ROLES}><WalletCallbackPage /></ProtectedRoute>} />
         <Route path="/app/profile" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerProfilePage /></ProtectedRoute>} />
+        <Route path="/app/reservations" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationsPage /></ProtectedRoute>} />
+        <Route path="/app/reservations/my" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerMyReservationsPage /></ProtectedRoute>} />
+        <Route path="/app/reservations/:locationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationVenuePage /></ProtectedRoute>} />
+        <Route path="/app/reservations/detail/:reservationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationDetailPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/events" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventsListPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/new" element={<ProtectedRoute roles={EVENT_CREATE_ROLES}><EventFormPage /></ProtectedRoute>} />

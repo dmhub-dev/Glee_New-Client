@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Home, Search, Ticket, UserCircle, Wallet, Bell, LogOut } from 'lucide-react'
+import { CalendarCheck, Home, Search, Ticket, UserCircle, Wallet, Bell, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage, cn } from '@glee/ui'
 import { useAuth } from '../lib/auth/AuthContext'
 
@@ -8,6 +8,7 @@ const navItems = [
   { label: 'Home',    to: '/app',         icon: Home,       end: true },
   { label: 'Explore', to: '/app/events',  icon: Search },
   { label: 'Tickets', to: '/app/tickets', icon: Ticket },
+  { label: 'Reserve', to: '/app/reservations', icon: CalendarCheck },
   { label: 'Wallet',  to: '/app/wallet',  icon: Wallet },
   { label: 'Profile', to: '/app/profile', icon: UserCircle },
 ]
