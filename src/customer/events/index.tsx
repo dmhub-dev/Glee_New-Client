@@ -419,9 +419,9 @@ function AutoCarousel({ events }: { events: Event[] }) {
                   </div>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="font-semibold text-white">From {money(lowestPrice(event))}</span>
-                    <Button size="sm" className="h-9 rounded-full border border-white/20 bg-white/10 px-4 text-white backdrop-blur-sm transition-transform hover:bg-white/20 active:scale-95">
+                    <span className="inline-flex h-9 items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white backdrop-blur-sm transition-transform group-hover:bg-white/20 group-active:scale-95">
                       Details
-                    </Button>
+                    </span>
                   </div>
                 </div>
               </button>

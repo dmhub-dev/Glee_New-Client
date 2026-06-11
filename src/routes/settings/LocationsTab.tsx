@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { type Location, useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation } from '@glee/api'
 import {
   Button, Input, Badge, Textarea,
+  Switch,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
   AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
   AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
@@ -14,13 +15,22 @@ import {
   useToast,
 } from '@glee/ui'
 import {
-  Pencil, Plus, Trash2, ParkingCircle, Wind, Building2,
+  Pencil, Plus, Trash2, ParkingCircle, Wind, Building2, CalendarCheck,
   MapPin, Users, FileText, ImagePlus, X as XIcon, Image,
 } from 'lucide-react'
 import { SlidePanel } from '../../components/ui/SlidePanel'
 
 const MAX_PHOTOS = 6
 const PLACEHOLDER = 'https://placehold.co/600x400/141419/FF2D8F?text=Location'
+const VENUE_TYPES = [
+  { label: 'Club', value: 'CLUB' },
+  { label: 'Restaurant', value: 'RESTAURANT' },
+  { label: 'Hotel restaurant', value: 'HOTEL_RESTAURANT' },
+  { label: 'Lounge', value: 'LOUNGE' },
+  { label: 'Other', value: 'OTHER' },
+] as const
+
+type VenueType = typeof VENUE_TYPES[number]['value']
 
 const locationSchema = z.object({
   name:               z.string().min(1, 'Name is required'),
@@ -32,6 +42,8 @@ const locationSchema = z.object({
   isParkingAvailable: z.boolean(),
   latitude:           z.coerce.number().optional(),
   longitude:          z.coerce.number().optional(),
+  venueType:          z.enum(['CLUB', 'RESTAURANT', 'HOTEL_RESTAURANT', 'LOUNGE', 'OTHER']),
+  bookingEnabled:     z.boolean(),
 })
 type LocationFormValues = z.infer<typeof locationSchema>
 
@@ -117,6 +129,8 @@ function LocationFormPanel({
       isParkingAvailable: initial?.isParkingAvailable ?? false,
       latitude:           initial?.latitude ?? 0,
       longitude:          initial?.longitude ?? 0,
+      venueType:          initial?.venueType ?? 'OTHER',
+      bookingEnabled:     initial?.bookingEnabled ?? false,
     },
   })
 
@@ -133,6 +147,8 @@ function LocationFormPanel({
       isParkingAvailable: initial.isParkingAvailable,
       latitude:           initial.latitude,
       longitude:          initial.longitude,
+      venueType:          initial.venueType ?? 'OTHER',
+      bookingEnabled:     initial.bookingEnabled ?? false,
     })
     setExistingPics(initial.pictures ?? [])
     setNewPics([])
@@ -186,11 +202,11 @@ function LocationFormPanel({
 
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs text-admin-50">Venue Name</FormLabel>
+                <FormLabel htmlFor="location-name" className="text-xs text-admin-50">Venue Name</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
-                    <Input placeholder="e.g. The Vault Nairobi" className="bg-admin-input border-admin pl-9 text-sm" {...field} />
+                    <Input id="location-name" placeholder="e.g. The Vault Nairobi" className="bg-admin-input border-admin pl-9 text-sm" {...field} />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -199,11 +215,11 @@ function LocationFormPanel({
 
             <FormField control={form.control} name="address" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs text-admin-50">Address</FormLabel>
+                <FormLabel htmlFor="location-address" className="text-xs text-admin-50">Address</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
-                    <Input placeholder="Search or enter full address" className="bg-admin-input border-admin pl-9 text-sm" {...field} />
+                    <Input id="location-address" placeholder="Search or enter full address" className="bg-admin-input border-admin pl-9 text-sm" {...field} />
                   </div>
                 </FormControl>
                 <p className="text-[10px] text-admin-30 mt-1">Coordinates auto-filled via Google Maps when integrated.</p>
@@ -213,11 +229,11 @@ function LocationFormPanel({
 
             <FormField control={form.control} name="capacity" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs text-admin-50">Capacity</FormLabel>
+                <FormLabel htmlFor="location-capacity" className="text-xs text-admin-50">Capacity</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
-                    <Input type="number" min={1} placeholder="Max guests" className="bg-admin-input border-admin pl-9 text-sm" {...field} />
+                    <Input id="location-capacity" type="number" min={1} placeholder="Max guests" className="bg-admin-input border-admin pl-9 text-sm" {...field} />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -228,11 +244,12 @@ function LocationFormPanel({
 
             <FormField control={form.control} name="description" render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs text-admin-50">About this venue</FormLabel>
+                <FormLabel htmlFor="location-description" className="text-xs text-admin-50">About this venue</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <FileText className="absolute left-3 top-3 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
                     <Textarea
+                      id="location-description"
                       placeholder="Describe the venue, ambiance, and exclusive perks guests should know about…"
                       className="bg-admin-input border-admin pl-9 text-sm resize-none min-h-[100px]"
                       {...field}
@@ -259,6 +276,60 @@ function LocationFormPanel({
                   checked={field.value} onCheckedChange={field.onChange} />
               )} />
             </div>
+
+            <SectionLabel>Reservations</SectionLabel>
+
+            <FormField control={form.control} name="venueType" render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="location-venue-type" className="text-xs text-admin-50">Venue Type</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
+                    <select
+                      id="location-venue-type"
+                      value={field.value}
+                      onChange={event => field.onChange(event.target.value as VenueType)}
+                      className="h-10 w-full rounded-md border border-admin bg-admin-input pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-neon-pink/50"
+                    >
+                      {VENUE_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
+                    </select>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="bookingEnabled" render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <div className={[
+                    'flex items-center justify-between gap-4 rounded-xl border px-4 py-3 transition-colors',
+                    field.value ? 'border-neon-pink/40 bg-neon-pink/10' : 'border-admin bg-admin-overlay',
+                  ].join(' ')}>
+                    <div className="flex items-center gap-3">
+                      <div className={[
+                        'flex h-8 w-8 items-center justify-center rounded-lg',
+                        field.value ? 'bg-neon-pink/20 text-neon-pink' : 'bg-admin-surface text-admin-30',
+                      ].join(' ')}>
+                        <CalendarCheck className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <FormLabel id="location-booking-enabled-label" htmlFor="location-booking-enabled" className="text-sm font-medium text-foreground">Accept reservations</FormLabel>
+                        <p className="text-xs text-admin-30">Tables, slots, deposits</p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="location-booking-enabled"
+                      aria-labelledby="location-booking-enabled-label"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="data-[state=checked]:!bg-neon-pink"
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
 
             <SectionLabel>Photos {totalPhotos > 0 && `(${totalPhotos}/${MAX_PHOTOS})`}</SectionLabel>
 

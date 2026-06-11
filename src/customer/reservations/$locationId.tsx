@@ -14,8 +14,6 @@ import { Calendar, Clock, CreditCard, MapPin, ShieldCheck, Users, Wallet } from 
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 
-const PLACEHOLDER = 'https://placehold.co/1200x720/050017/FF2D8F?text=Glee+Reservations'
-
 function money(value: string | number | undefined) {
   return `KSh ${Math.max(0, Number(value ?? 0)).toLocaleString()}`
 }
@@ -162,6 +160,7 @@ export default function CustomerReservationVenuePage() {
   }
 
   const Shell = isAuthenticated ? CustomerLayout : PublicReservationShell
+  const heroImage = venue?.pictures?.[0]
 
   if (isLoading) {
     return (
@@ -191,12 +190,15 @@ export default function CustomerReservationVenuePage() {
       <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-32 pt-5 lg:px-8">
         <section className="overflow-hidden rounded-3xl bg-white/[0.08] shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
           <div className="relative aspect-[16/9] max-h-[28rem] bg-white/8">
-            <img
-              src={venue.pictures?.[0] ?? PLACEHOLDER}
-              alt={venue.name}
-              className="h-full w-full object-cover"
-              onError={event => { event.currentTarget.src = PLACEHOLDER }}
-            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,45,143,0.22),transparent_34%),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.12),transparent_24%),linear-gradient(135deg,#09011d_0%,#14072f_48%,#050017_100%)]" aria-hidden="true" />
+            {heroImage && (
+              <img
+                src={heroImage}
+                alt={venue.name}
+                className="relative h-full w-full object-cover"
+                onError={event => { event.currentTarget.style.display = 'none' }}
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-[#050017] via-[#050017]/35 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
               <Badge className="border-neon-pink/30 bg-neon-pink/15 text-neon-pink">{venueTypeLabel(venue.venueType)}</Badge>

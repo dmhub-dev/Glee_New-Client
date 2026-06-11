@@ -127,7 +127,7 @@ export default function CustomerLayout({
 
       {/* ── Page content ─────────────────────────────────────────────── */}
       <div className={cn('min-h-screen w-full bg-[#050017]', !hideNav && 'lg:pl-64')}>
-        <main className="relative min-h-screen overflow-x-hidden">
+        <main className={cn('relative min-h-screen overflow-x-hidden', !hideNav && 'pb-[calc(6.5rem+env(safe-area-inset-bottom))] lg:pb-0')}>
           {!hidePageHeader && (
             <div className="px-4 pb-2 pt-6">
               <p className="text-xs font-semibold uppercase tracking-wider text-neon-pink">Customer account</p>
