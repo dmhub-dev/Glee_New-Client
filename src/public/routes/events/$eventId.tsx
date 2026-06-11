@@ -9,6 +9,7 @@ import {
 } from '@glee/ui'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
 import { initiateGuestPurchase, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
+import EventReservationPanel from '../../../customer/events/EventReservationPanel'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
 const PUBLIC_DETAIL_STATUSES = ['active', 'live', 'cancelled', 'sold_out']
@@ -431,6 +432,8 @@ export default function EventDetailPage() {
             </div>
           )}
         </section>
+
+        <EventReservationPanel eventId={event.id} />
       </div>
 
       {/* Sticky bottom action bar */}

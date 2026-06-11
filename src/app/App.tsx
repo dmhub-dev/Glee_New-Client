@@ -25,6 +25,8 @@ const PublicEventsPage   = lazy(() => import('../public/routes/events/index'))
 const PublicEventPage    = lazy(() => import('../public/routes/events/$eventId'))
 const PublicCheckoutPage = lazy(() => import('../public/routes/checkout/index'))
 const EventTicketConfirmPage = lazy(() => import('../public/routes/payment/EventTicketConfirm'))
+const ReservationCallbackPage = lazy(() => import('../public/routes/reservations/ReservationCallback'))
+const PublicReservationDetailPage = lazy(() => import('../public/routes/reservations/$token'))
 const TicketAttendantAccessPage = lazy(() => import('../public/routes/ticket-attendant/access'))
 const PublicTicketPassPage = lazy(() => import('../public/routes/tickets/$token'))
 const PrivacyPolicyPage   = lazy(() => import('../public/routes/legal/privacy-policy'))
@@ -37,6 +39,8 @@ const EventDetailPage    = lazy(() => import('../routes/events/EventDetail'))
 const EventAttendeesPage = lazy(() => import('../routes/events/EventAttendees'))
 const BookingsPage       = lazy(() => import('../routes/bookings/index'))
 const BookingEventPage   = lazy(() => import('../routes/bookings/$eventId'))
+const ReservationsPage   = lazy(() => import('../routes/reservations/index'))
+const ReservationDetailPage = lazy(() => import('../routes/reservations/$reservationId'))
 const MenuPricingPage    = lazy(() => import('../routes/menu-pricing/index'))
 const SalesReportsPage   = lazy(() => import('../routes/sales-reports/index'))
 const FinancialsPage     = lazy(() => import('../routes/financials/index'))
@@ -64,6 +68,8 @@ const CustomerReservationDetailPage = lazy(() => import('../customer/reservation
 const EVENT_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
 const BOOKINGS_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'customer_support']
 const BOOKING_EVENT_ROLES: UserRole[] = ['vendor', 'vendor_staff', 'admin', 'customer_support']
+const RESERVATION_ROLES: UserRole[] = [...ADMIN_ROLES, 'operations_manager', 'vendor', 'vendor_staff']
+const LOCATION_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff']
 const MENU_PRICING_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff']
 const SALES_REPORT_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'finance']
 const FINANCIALS_ROLES: UserRole[] = [...ADMIN_ROLES, 'finance']
@@ -89,6 +95,8 @@ export default function App() {
         <Route path="/events/:eventId" element={<PublicEventPage />} />
         <Route path="/checkout" element={<PublicCheckoutPage />} />
         <Route path="/payment/event-ticket/confirm" element={<EventTicketConfirmPage />} />
+        <Route path="/reservation/callback" element={<ReservationCallbackPage />} />
+        <Route path="/reservation/:token" element={<PublicReservationDetailPage />} />
         <Route path="/ticket-attendant/access" element={<TicketAttendantAccessPage />} />
         <Route path="/t/:token" element={<PublicTicketPassPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -110,6 +118,7 @@ export default function App() {
         <Route path="/app/profile" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerProfilePage /></ProtectedRoute>} />
         <Route path="/app/reservations" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationsPage /></ProtectedRoute>} />
         <Route path="/app/reservations/my" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerMyReservationsPage /></ProtectedRoute>} />
+        <Route path="/reservations/:locationId" element={<CustomerReservationVenuePage />} />
         <Route path="/app/reservations/:locationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationVenuePage /></ProtectedRoute>} />
         <Route path="/app/reservations/detail/:reservationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationDetailPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
@@ -131,6 +140,22 @@ export default function App() {
           element={
             <ProtectedRoute roles={BOOKING_EVENT_ROLES}>
               <BookingEventPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/reservations"
+          element={
+            <ProtectedRoute roles={RESERVATION_ROLES}>
+              <ReservationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/reservations/:reservationId"
+          element={
+            <ProtectedRoute roles={RESERVATION_ROLES}>
+              <ReservationDetailPage />
             </ProtectedRoute>
           }
         />
@@ -209,7 +234,7 @@ export default function App() {
         <Route
           path="/dashboard/locations/:locationId"
           element={
-            <ProtectedRoute roles={ADMIN_ROLES}>
+            <ProtectedRoute roles={LOCATION_ROLES}>
               <LocationDetailPage />
             </ProtectedRoute>
           }

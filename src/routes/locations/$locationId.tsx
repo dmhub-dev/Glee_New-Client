@@ -14,6 +14,7 @@ import {
 import { useLocation, useUpdateLocation, useDeleteLocation, type Location } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { SlidePanel } from '../../components/ui/SlidePanel'
+import ReservationSetupPanel from './ReservationSetupPanel'
 import {
   ArrowLeft, Pencil, Trash2, MapPin, Users, Building2, Wind, ParkingCircle,
   Image, ImagePlus, X as XIcon, FileText,
@@ -427,6 +428,8 @@ export default function LocationDetailPage() {
             </div>
           </div>
         )}
+
+        <ReservationSetupPanel location={loc} />
       </div>
 
       {editOpen && <EditPanel location={loc} onClose={() => setEditOpen(false)} />}

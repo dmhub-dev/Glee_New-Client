@@ -2,13 +2,13 @@ import { useNavigate } from 'react-router-dom'
 import { cn } from '@glee/ui'
 import type { UserRole } from '@glee/types'
 
-type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'attendees' | 'chat'
+type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'attendees' | 'chat' | 'reservations'
 
 interface EventDetailTabsProps {
   eventId: string
   activeTab: EventDetailTab
   userRole: UserRole
-  onSelectLocalTab?: (tab: 'details' | 'complimentary' | 'attendants' | 'chat') => void
+  onSelectLocalTab?: (tab: 'details' | 'complimentary' | 'attendants' | 'chat' | 'reservations') => void
 }
 
 export default function EventDetailTabs({ eventId, activeTab, userRole, onSelectLocalTab }: EventDetailTabsProps) {
@@ -16,7 +16,7 @@ export default function EventDetailTabs({ eventId, activeTab, userRole, onSelect
   const canIssueComplimentaryTickets = ['super_admin', 'admin', 'vendor'].includes(userRole)
   const canManageAttendants = ['super_admin', 'admin', 'vendor'].includes(userRole)
 
-  function selectLocal(tab: 'details' | 'complimentary' | 'attendants' | 'chat') {
+  function selectLocal(tab: 'details' | 'complimentary' | 'attendants' | 'chat' | 'reservations') {
     if (activeTab === 'attendees') {
       navigate(`/dashboard/events/${eventId}`, tab === 'details' ? undefined : { state: { tab } })
       return
@@ -44,6 +44,11 @@ export default function EventDetailTabs({ eventId, activeTab, userRole, onSelect
           <EventDetailTabButton active={activeTab === 'attendees'} onClick={() => navigate(`/dashboard/events/${eventId}/attendees`)}>
             Attendees
           </EventDetailTabButton>
+          {canIssueComplimentaryTickets && (
+            <EventDetailTabButton active={activeTab === 'reservations'} onClick={() => selectLocal('reservations')}>
+              Reservations
+            </EventDetailTabButton>
+          )}
           <EventDetailTabButton active={activeTab === 'chat'} onClick={() => selectLocal('chat')}>
             Event Chat
           </EventDetailTabButton>

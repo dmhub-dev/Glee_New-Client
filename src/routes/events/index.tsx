@@ -125,6 +125,7 @@ function LocationReferenceGrid({
   isLoading: boolean
   allowCreate?: boolean
 }) {
+  const navigate = useNavigate()
   const { toast } = useToast()
   const createLocation = useCreateLocation({ vendorScoped: true })
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -340,6 +341,11 @@ function LocationReferenceGrid({
                   {location.isIndoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Indoor</span>}
                   {location.isOutdoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Outdoor</span>}
                 </div>
+                {location.vendorId && (
+                  <Button size="sm" onClick={() => navigate(`/dashboard/locations/${location.id}`)} className="w-full bg-neon-pink text-white hover:bg-neon-pink/90">
+                    Manage Reservations
+                  </Button>
+                )}
               </div>
             </div>
           ))}

@@ -4,6 +4,7 @@ import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticke
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, MapPin, Share2, ShoppingBag, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
+import EventReservationPanel from './EventReservationPanel'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
 type FeeType = 'PERCENTAGE' | 'FIXED'
@@ -419,6 +420,8 @@ export default function CustomerEventDetailPage() {
                 </button>
               )}
             </section>
+
+            <EventReservationPanel eventId={event.id} />
 
             {/* Menu add-on items — public style */}
             {showMenuAddons && (event.menuItems ?? []).length > 0 && (

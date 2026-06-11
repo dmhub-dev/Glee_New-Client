@@ -25,6 +25,7 @@ import { cn } from '@glee/ui'
 import type { Event } from '@glee/types'
 import EventDetailTabs from './EventDetailTabs'
 import { EventChatPanel } from '../../components/chat/EventChatPanel'
+import EventReservationSlotsPanel from './EventReservationSlotsPanel'
 
 const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
@@ -51,7 +52,7 @@ const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
 ]
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
-type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'chat'
+type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'chat' | 'reservations'
 
 function formatEventDate(startDate: string, endDate: string): string {
   if (endDate === startDate) {
@@ -141,7 +142,7 @@ export default function EventDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
     const state = location.state as { tab?: EventDetailTab } | null
-    return state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' ? state.tab : 'details'
+    return state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' || state?.tab === 'reservations' ? state.tab : 'details'
   })
 
   function handleStatusChange(newStatus: Event['status']) {
@@ -389,6 +390,8 @@ export default function EventDetailPage() {
             </div>
             <EventChatPanel eventId={event.id} eventTitle={event.title} tone="admin" />
           </section>
+        ) : activeTab === 'reservations' ? (
+          <EventReservationSlotsPanel event={event} />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 

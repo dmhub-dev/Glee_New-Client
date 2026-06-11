@@ -15,6 +15,11 @@ export interface Location {
   isParkingAvailable: boolean
   floorPlanImageUrl: string | null
   pictures: string[]
+  venueType?: 'CLUB' | 'RESTAURANT' | 'HOTEL_RESTAURANT' | 'LOUNGE' | 'OTHER'
+  bookingEnabled?: boolean
+  bookingRules?: string | null
+  cancellationCutoffHours?: number
+  timezone?: string | null
   createdAt: string
 }
 
@@ -29,6 +34,11 @@ export interface CreateLocationDto {
   longitude?: number
   isParkingAvailable: boolean
   pictures?: string[]
+  venueType?: 'CLUB' | 'RESTAURANT' | 'HOTEL_RESTAURANT' | 'LOUNGE' | 'OTHER'
+  bookingEnabled?: boolean
+  bookingRules?: string
+  cancellationCutoffHours?: number
+  timezone?: string
 }
 
 export interface UpdateLocationDto extends Partial<CreateLocationDto> {}
