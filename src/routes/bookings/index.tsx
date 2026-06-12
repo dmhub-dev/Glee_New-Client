@@ -98,8 +98,8 @@ export default function BookingsPage() {
 
   return (
     <AdminLayout
-      title={user.role === 'vendor_staff' ? 'Event Check-ins' : 'Bookings'}
-      subtitle={user.role === 'vendor_staff' ? 'Select an event, validate attendee QR codes, and monitor entry progress.' : 'Monitor booking volume and open event check-in tools.'}
+      title="Event Check-ins"
+      subtitle="Select an event, validate attendee QR codes, and monitor entry progress."
     >
       <div className="space-y-4">
         <div className="relative max-w-sm">

@@ -59,15 +59,15 @@ export default function AdminReservationDetailPage() {
     if ((status === 'CANCELLED' || status === 'NO_SHOW') && reason === undefined) return
     try {
       await updateStatus.mutateAsync({ id: reservation.id, status, reason })
-      toast({ title: 'Reservation updated', description: `Status changed to ${statusLabel(status)}.` })
+      toast({ title: 'Booking updated', description: `Status changed to ${statusLabel(status)}.` })
     } catch (error) {
-      toast({ title: 'Could not update reservation', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
+      toast({ title: 'Could not update booking', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
     }
   }
 
   if (isLoading) {
     return (
-      <AdminLayout title="Reservation">
+      <AdminLayout title="Booking">
         <div className="space-y-4">
           <Skeleton className="h-12 w-48" />
           <Skeleton className="h-72 rounded-xl" />
@@ -78,10 +78,10 @@ export default function AdminReservationDetailPage() {
 
   if (!reservation) {
     return (
-      <AdminLayout title="Reservation not found">
+      <AdminLayout title="Booking not found">
         <div className="rounded-xl border border-admin bg-admin-surface p-10 text-center">
-          <p className="text-sm text-admin-50">This reservation is no longer available.</p>
-          <Button onClick={() => navigate('/dashboard/reservations')} variant="ghost" className="mt-4">Back to reservations</Button>
+          <p className="text-sm text-admin-50">This booking is no longer available.</p>
+          <Button onClick={() => navigate('/dashboard/reservations')} variant="ghost" className="mt-4">Back to Bookings</Button>
         </div>
       </AdminLayout>
     )
@@ -98,11 +98,11 @@ export default function AdminReservationDetailPage() {
   const paymentStatus = reservation.paymentStatus ?? payment?.status ?? 'SUCCESS'
 
   return (
-    <AdminLayout title="Reservation Detail" subtitle={reservation.reference}>
+    <AdminLayout title="Booking Detail" subtitle={reservation.reference}>
       <div className="space-y-5">
         <button onClick={() => navigate('/dashboard/reservations')} className="inline-flex items-center gap-2 rounded-full border border-admin bg-admin-overlay px-4 py-1.5 text-sm text-admin-50 hover:text-foreground">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Reservations
+          Back to Bookings
         </button>
 
         <section className="rounded-xl border border-admin bg-admin-surface p-5 shadow-admin">
@@ -160,7 +160,7 @@ export default function AdminReservationDetailPage() {
           </section>
 
           <section className="rounded-xl border border-admin bg-admin-surface p-5">
-            <h2 className="flex items-center gap-2 font-heading text-base font-black text-foreground"><CalendarClock className="h-4 w-4 text-neon-pink" />Reservation Timing</h2>
+            <h2 className="flex items-center gap-2 font-heading text-base font-black text-foreground"><CalendarClock className="h-4 w-4 text-neon-pink" />Booking Timing</h2>
             <div className="mt-4 space-y-3">
               <Metric label="Start" value={formatDateTime(reservation.startDateTime)} />
               <Metric label="End" value={formatDateTime(reservation.endDateTime)} />

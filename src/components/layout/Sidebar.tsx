@@ -2,7 +2,6 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   CalendarDays,
-  Ticket,
   FileText,
   Calendar,
   Table2,
@@ -34,8 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, active: true },
   { label: 'Events', to: '/dashboard/events', icon: CalendarDays, active: true },
   { label: 'Calendar', to: '/dashboard/calendar', icon: Calendar, active: true, roles: ['super_admin', 'admin', 'operations_manager'] },
-  { label: 'Bookings', to: '/dashboard/bookings', icon: Ticket, active: true, roles: ['vendor', 'vendor_staff', 'admin', 'customer_support'] },
-  { label: 'Reservations', to: '/dashboard/reservations', icon: Table2, active: true, roles: ['super_admin', 'admin', 'operations_manager', 'vendor', 'vendor_staff'] },
+  { label: 'Bookings', to: '/dashboard/reservations', icon: Table2, active: true, roles: ['super_admin', 'admin', 'operations_manager', 'vendor', 'vendor_staff'] },
   { label: 'Menu & Pricing', to: '/dashboard/menu-pricing', icon: FileText, active: true, roles: ['vendor', 'vendor_staff', 'admin'] },
   { label: 'Sales Reports', to: '/dashboard/sales-reports', icon: BarChart2, active: true, roles: ['vendor', 'vendor_staff'] },
   { label: 'Financials', to: '/dashboard/financials', icon: BarChart2, active: true, roles: ['super_admin', 'admin', 'finance'] },
