@@ -10,14 +10,14 @@ const PLACEHOLDER = 'https://placehold.co/900x600/050017/FF2D8F?text=Glee+Reserv
 const TYPES: Array<{ label: string; value?: VenueType }> = [
   { label: 'All' },
   { label: 'Clubs', value: 'CLUB' },
-  { label: 'Restaurants', value: 'RESTAURANT' },
-  { label: 'Hotels', value: 'HOTEL_RESTAURANT' },
-  { label: 'Lounges', value: 'LOUNGE' },
+  { label: 'Restaurant/Hotel', value: 'RESTAURANT' },
   { label: 'Other', value: 'OTHER' },
 ]
 
 function venueTypeLabel(value: VenueType) {
-  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, match => match.toUpperCase())
+  if (value === 'CLUB') return 'Club'
+  if (value === 'RESTAURANT' || value === 'HOTEL_RESTAURANT') return 'Restaurant/Hotel'
+  return 'Other'
 }
 
 export default function CustomerReservationsPage() {
@@ -36,7 +36,7 @@ export default function CustomerReservationsPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neon-pink">Table reservations</p>
               <h1 className="mt-3 font-heading text-3xl font-black leading-tight text-white sm:text-5xl">Book your table</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">Reserve restaurants, clubs, lounges, and hotel venues with wallet deposit. Pick the table type; the venue assigns the exact table.</p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">Reserve restaurants, clubs, and hotel venues with wallet deposit. Pick the table type; the venue assigns the exact table.</p>
             </div>
             <Button onClick={() => navigate('/app/reservations/my')} className="h-11 rounded-full bg-neon-pink px-5 text-white hover:bg-neon-pink/90">
               <CalendarCheck className="h-4 w-4" />

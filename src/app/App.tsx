@@ -49,6 +49,7 @@ const SettingsPage       = lazy(() => import('../routes/settings/index'))
 const UsersPage          = lazy(() => import('../routes/users/index'))
 const RolesPage          = lazy(() => import('../routes/roles/index'))
 const ProfilePage        = lazy(() => import('../routes/profile/index'))
+const NewLocationPage    = lazy(() => import('../routes/locations/new'))
 const LocationDetailPage = lazy(() => import('../routes/locations/$locationId'))
 const AuditLogsPage      = lazy(() => import('../routes/audit-logs/index'))
 const CustomerDashboardPage = lazy(() => import('../customer/dashboard/index'))
@@ -228,6 +229,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={DASHBOARD_ROLES}>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/locations/new"
+          element={
+            <ProtectedRoute roles={LOCATION_ROLES}>
+              <NewLocationPage />
             </ProtectedRoute>
           }
         />

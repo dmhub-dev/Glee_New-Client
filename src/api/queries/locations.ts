@@ -34,7 +34,7 @@ export interface CreateLocationDto {
   longitude?: number
   isParkingAvailable: boolean
   pictures?: string[]
-  venueType?: 'CLUB' | 'RESTAURANT' | 'HOTEL_RESTAURANT' | 'LOUNGE' | 'OTHER'
+  venueType?: 'CLUB' | 'RESTAURANT' | 'OTHER'
   bookingEnabled?: boolean
   bookingRules?: string
   cancellationCutoffHours?: number

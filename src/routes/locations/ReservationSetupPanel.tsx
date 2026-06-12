@@ -32,11 +32,11 @@ import {
   type VenueType,
 } from '@glee/api'
 
-const VENUE_TYPES: Array<{ label: string; value: VenueType }> = [
+type CanonicalVenueType = Extract<VenueType, 'CLUB' | 'RESTAURANT' | 'OTHER'>
+
+const VENUE_TYPES: Array<{ label: string; value: CanonicalVenueType }> = [
   { label: 'Club', value: 'CLUB' },
-  { label: 'Restaurant', value: 'RESTAURANT' },
-  { label: 'Hotel restaurant', value: 'HOTEL_RESTAURANT' },
-  { label: 'Lounge', value: 'LOUNGE' },
+  { label: 'Restaurant/Hotel', value: 'RESTAURANT' },
   { label: 'Other', value: 'OTHER' },
 ]
 
@@ -74,6 +74,12 @@ function money(value: string | number) {
   return `KSh ${Number(value ?? 0).toLocaleString()}`
 }
 
+function normalizeVenueType(value?: VenueType | null): CanonicalVenueType {
+  if (value === 'CLUB') return 'CLUB'
+  if (value === 'RESTAURANT' || value === 'HOTEL_RESTAURANT') return 'RESTAURANT'
+  return 'OTHER'
+}
+
 function tableToDraft(table: LocationTable): UpsertLocationTablePayload {
   return {
     name: table.name,
@@ -109,7 +115,7 @@ export default function ReservationSetupPanel({ location }: { location: Location
   const updateSlot = useUpdateLocationReservationSlot()
 
   const [bookingEnabled, setBookingEnabled] = useState(Boolean(location.bookingEnabled))
-  const [venueType, setVenueType] = useState<VenueType>(location.venueType ?? 'OTHER')
+  const [venueType, setVenueType] = useState<CanonicalVenueType>(normalizeVenueType(location.venueType))
   const [bookingRules, setBookingRules] = useState(location.bookingRules ?? '')
   const [cancellationCutoffHours, setCancellationCutoffHours] = useState(location.cancellationCutoffHours ?? 24)
   const [timezone, setTimezone] = useState(location.timezone ?? 'Africa/Nairobi')
@@ -233,7 +239,7 @@ export default function ReservationSetupPanel({ location }: { location: Location
             <div className="mt-4 grid gap-3">
               <label className="space-y-1">
                 <span className="text-xs text-admin-40">Venue type</span>
-                <select value={venueType} onChange={event => setVenueType(event.target.value as VenueType)} className="h-10 w-full rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+                <select value={venueType} onChange={event => setVenueType(event.target.value as CanonicalVenueType)} className="h-10 w-full rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
                   {VENUE_TYPES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
                 </select>
               </label>

@@ -37,7 +37,9 @@ function selectedDayOfWeek(value: string) {
 }
 
 function venueTypeLabel(value?: string) {
-  return (value ?? 'Venue').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, match => match.toUpperCase())
+  if (value === 'CLUB') return 'Club'
+  if (value === 'RESTAURANT' || value === 'HOTEL_RESTAURANT') return 'Restaurant/Hotel'
+  return 'Other'
 }
 
 function isPaymentIntent(result: unknown): result is ReservationPaymentIntent {

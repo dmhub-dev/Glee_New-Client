@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { type Location, useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation } from '@glee/api'
+import { type Location, useLocations, useUpdateLocation, useDeleteLocation } from '@glee/api'
 import {
   Button, Input, Badge, Textarea,
   Switch,
@@ -24,9 +24,7 @@ const MAX_PHOTOS = 6
 const PLACEHOLDER = 'https://placehold.co/600x400/141419/FF2D8F?text=Location'
 const VENUE_TYPES = [
   { label: 'Club', value: 'CLUB' },
-  { label: 'Restaurant', value: 'RESTAURANT' },
-  { label: 'Hotel restaurant', value: 'HOTEL_RESTAURANT' },
-  { label: 'Lounge', value: 'LOUNGE' },
+  { label: 'Restaurant/Hotel', value: 'RESTAURANT' },
   { label: 'Other', value: 'OTHER' },
 ] as const
 
@@ -42,7 +40,7 @@ const locationSchema = z.object({
   isParkingAvailable: z.boolean(),
   latitude:           z.coerce.number().optional(),
   longitude:          z.coerce.number().optional(),
-  venueType:          z.enum(['CLUB', 'RESTAURANT', 'HOTEL_RESTAURANT', 'LOUNGE', 'OTHER']),
+  venueType:          z.enum(['CLUB', 'RESTAURANT', 'OTHER']),
   bookingEnabled:     z.boolean(),
 })
 type LocationFormValues = z.infer<typeof locationSchema>
@@ -98,6 +96,16 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+function normalizeVenueType(value?: string | null): VenueType {
+  if (value === 'CLUB') return 'CLUB'
+  if (value === 'RESTAURANT' || value === 'HOTEL_RESTAURANT') return 'RESTAURANT'
+  return 'OTHER'
+}
+
+function venueTypeLabel(value?: string | null) {
+  return VENUE_TYPES.find(type => type.value === normalizeVenueType(value))?.label ?? 'Other'
+}
+
 function LocationFormPanel({
   mode,
   initial,
@@ -129,7 +137,7 @@ function LocationFormPanel({
       isParkingAvailable: initial?.isParkingAvailable ?? false,
       latitude:           initial?.latitude ?? 0,
       longitude:          initial?.longitude ?? 0,
-      venueType:          initial?.venueType ?? 'OTHER',
+      venueType:          normalizeVenueType(initial?.venueType),
       bookingEnabled:     initial?.bookingEnabled ?? false,
     },
   })
@@ -147,7 +155,7 @@ function LocationFormPanel({
       isParkingAvailable: initial.isParkingAvailable,
       latitude:           initial.latitude,
       longitude:          initial.longitude,
-      venueType:          initial.venueType ?? 'OTHER',
+      venueType:          normalizeVenueType(initial.venueType),
       bookingEnabled:     initial.bookingEnabled ?? false,
     })
     setExistingPics(initial.pictures ?? [])
@@ -404,24 +412,11 @@ function LocationFormPanel({
 export default function LocationsTab() {
   const navigate    = useNavigate()
   const { toast }   = useToast()
-  const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Location | null>(null)
 
   const { data: locations, isLoading } = useLocations()
-  const createMutation                 = useCreateLocation()
   const updateMutation                 = useUpdateLocation()
   const deleteMutation                 = useDeleteLocation()
-
-  async function handleCreate(values: LocationFormValues, newPictures: File[]) {
-    try {
-      await createMutation.mutateAsync({ dto: values, pictures: newPictures })
-      toast({ title: 'Location created' })
-      setCreateOpen(false)
-    } catch {
-      toast({ title: 'Failed to create location', variant: 'destructive' })
-      throw new Error('failed')
-    }
-  }
 
   async function handleUpdate(values: LocationFormValues, newPictures: File[]) {
     if (!editTarget) return
@@ -448,7 +443,7 @@ export default function LocationsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading font-bold text-base text-foreground">Locations</h2>
-        <Button onClick={() => setCreateOpen(true)} className="bg-neon-pink hover:bg-neon-pink/90 text-white gap-2" size="sm">
+        <Button onClick={() => navigate('/dashboard/locations/new')} className="bg-neon-pink hover:bg-neon-pink/90 text-white gap-2" size="sm">
           <Plus className="w-4 h-4" /> Add Location
         </Button>
       </div>
@@ -467,18 +462,18 @@ export default function LocationsTab() {
           <p className="text-sm text-admin-30">No locations yet.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {(locations ?? []).map(loc => (
             <div
               key={loc.id}
+              data-testid="location-card"
               role="button"
               tabIndex={0}
               onClick={() => navigate(`/dashboard/locations/${loc.id}`)}
               onKeyDown={e => e.key === 'Enter' && navigate(`/dashboard/locations/${loc.id}`)}
-              className="bg-admin-surface border border-admin rounded-2xl overflow-hidden hover:border-neon-pink/30 hover:shadow-admin transition-all duration-150 group cursor-pointer"
+              className="group cursor-pointer overflow-hidden rounded-xl border border-admin bg-admin-surface transition-all duration-150 hover:border-neon-pink/30 hover:shadow-admin"
             >
-              {/* Cover image */}
-              <div className="relative h-40 overflow-hidden bg-admin-overlay">
+              <div className="relative h-20 overflow-hidden bg-admin-overlay">
                 {loc.pictures && loc.pictures.length > 0 ? (
                   <img
                     src={loc.pictures[0]}
@@ -491,8 +486,15 @@ export default function LocationsTab() {
                     <Image className="w-8 h-8 text-admin-20" />
                   </div>
                 )}
-                {/* Overlay actions */}
-                <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
+                  <Badge className="border-neon-pink/25 bg-neon-pink/15 px-2 py-0.5 text-[10px] text-neon-pink">
+                    Type: {venueTypeLabel(loc.venueType)}
+                  </Badge>
+                  <Badge className={loc.bookingEnabled ? 'border-emerald-500/25 bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300' : 'border-admin bg-black/45 px-2 py-0.5 text-[10px] text-admin-40'}>
+                    Reservations: {loc.bookingEnabled ? 'On' : 'Off'}
+                  </Badge>
+                </div>
+                <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     onClick={e => { e.stopPropagation(); setEditTarget(loc) }}
                     className="w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-neon-pink/80 transition-colors"
@@ -529,7 +531,6 @@ export default function LocationsTab() {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-                {/* Photo count badge */}
                 {loc.pictures && loc.pictures.length > 1 && (
                   <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-md px-2 py-0.5">
                     <Image className="w-3 h-3 text-white/70" />
@@ -538,8 +539,7 @@ export default function LocationsTab() {
                 )}
               </div>
 
-              {/* Card body */}
-              <div className="p-4 space-y-2.5">
+              <div className="space-y-2 p-2.5">
                 <div>
                   <h3 className="font-heading font-bold text-sm text-foreground line-clamp-1">{loc.name}</h3>
                   <p className="text-xs text-admin-40 truncate mt-0.5 flex items-center gap-1">
@@ -547,8 +547,19 @@ export default function LocationsTab() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 flex-wrap">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="rounded-lg border border-admin bg-admin-overlay px-2 py-1.5">
+                    <p className="text-[10px] text-admin-30">Capacity</p>
+                    <p className="font-mono text-xs font-semibold text-admin-70">{loc.capacity.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg border border-admin bg-admin-overlay px-2 py-1.5">
+                    <p className="text-[10px] text-admin-30">Photos</p>
+                    <p className="font-mono text-xs font-semibold text-admin-70">{(loc.pictures?.length ?? 0).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1">
                     {loc.isIndoors && (
                       <Badge className="text-[10px] border bg-blue-500/10 text-blue-400 border-blue-500/30 gap-1 px-1.5">
                         <Building2 className="w-2.5 h-2.5" /> Indoor
@@ -565,24 +576,15 @@ export default function LocationsTab() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-admin-40 shrink-0 ml-2">
-                    <Users className="w-3 h-3" />
-                    <span className="font-mono">{loc.capacity.toLocaleString()}</span>
-                  </div>
+                  <Button size="sm" className="h-7 shrink-0 rounded-full bg-admin-overlay px-3 text-xs text-admin-70 hover:bg-neon-pink hover:text-white">
+                    Manage
+                  </Button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
-
-      <LocationFormPanel
-        mode="create"
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-        isPending={createMutation.isPending}
-      />
 
       {editTarget && (
         <LocationFormPanel
