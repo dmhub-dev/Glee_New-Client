@@ -192,25 +192,38 @@ export function VenueListSection({
   isLoading,
   seeAllPath,
   getVenuePath,
+  limit = 6,
+  showSeeAll = true,
+  showHeader = true,
+  title = 'Reserve Clubs and Restaurant/Hotel',
 }: {
   venues: ReservationVenue[]
   isLoading: boolean
   seeAllPath: string
   getVenuePath: (venueId: string) => string
+  limit?: number | null
+  showSeeAll?: boolean
+  showHeader?: boolean
+  title?: string
 }) {
   const navigate = useNavigate()
-  const visibleVenues = venues.filter(isClubOrRestaurantVenue).slice(0, 6)
+  const filteredVenues = venues.filter(isClubOrRestaurantVenue)
+  const visibleVenues = limit === null ? filteredVenues : filteredVenues.slice(0, limit)
 
   if (!isLoading && visibleVenues.length === 0) return null
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-white">Reserve Clubs and Restaurant/Hotel</h2>
-        <button type="button" onClick={() => navigate(seeAllPath)} className="text-xs font-semibold text-neon-pink hover:underline">
-          See All
-        </button>
-      </div>
+      {showHeader && (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          {showSeeAll && (
+            <button type="button" onClick={() => navigate(seeAllPath)} className="text-xs font-semibold text-neon-pink hover:underline">
+              See All
+            </button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(210px,230px))] lg:justify-start">
         {isLoading
           ? Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-64 rounded-2xl bg-white/10" />)

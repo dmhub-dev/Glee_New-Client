@@ -138,7 +138,7 @@ export default function CustomerReservationVenuePage() {
       toast({ title: 'Select a table', description: 'Choose an available table before checkout.', variant: 'destructive' })
       return
     }
-    const guestFieldsMissing = !guestName.trim() || !guestEmail.trim() || !guestPhone.trim()
+    const guestFieldsMissing = !isAuthenticated && (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim())
     if (guestFieldsMissing) {
       toast({ title: 'Guest details required', description: 'Add your name, email, and phone number to continue.', variant: 'destructive' })
       return
@@ -152,9 +152,9 @@ export default function CustomerReservationVenuePage() {
         tableCategory: selectedCategory.category,
         paymentMethod: 'PAYSTACK',
         callbackUrl: `${window.location.origin}/reservation/callback`,
-        guestName: guestName.trim() || undefined,
-        guestEmail: guestEmail.trim() || undefined,
-        guestPhone: guestPhone.trim() || undefined,
+        guestName: !isAuthenticated ? guestName.trim() : undefined,
+        guestEmail: !isAuthenticated ? guestEmail.trim() : undefined,
+        guestPhone: !isAuthenticated ? guestPhone.trim() : undefined,
       })
       if (isPaymentIntent(result)) {
         if (!result.authorization_url) throw new Error('Payment provider did not return a checkout URL')
@@ -375,11 +375,11 @@ export default function CustomerReservationVenuePage() {
             Continue browsing
           </Button>
           <Button
-            disabled={!selectedCategory || !selectedSlotId}
-            onClick={() => setCheckoutOpen(true)}
+            disabled={!selectedCategory || !selectedSlotId || createReservation.isPending}
+            onClick={() => isAuthenticated ? handleReserve() : setCheckoutOpen(true)}
             className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none sm:ml-0 sm:px-7"
           >
-            {selectedCategory ? 'Book Table' : 'Select a Table'}
+            {createReservation.isPending ? 'Reserving...' : selectedCategory ? 'Book Table' : 'Select a Table'}
           </Button>
         </div>
       </div>

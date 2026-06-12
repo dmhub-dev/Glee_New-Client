@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { CalendarCheck, Home, Search, Ticket, UserCircle, Wallet, Bell, LogOut } from 'lucide-react'
+import { Home, Search, Ticket, UserCircle, Wallet, Bell, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage, cn } from '@glee/ui'
 import { useAuth } from '../lib/auth/AuthContext'
 
@@ -8,7 +8,6 @@ const navItems = [
   { label: 'Home',    to: '/app',         icon: Home,       end: true },
   { label: 'Explore', to: '/app/events',  icon: Search },
   { label: 'Tickets', to: '/app/tickets', icon: Ticket },
-  { label: 'Reserve', to: '/app/reservations', icon: CalendarCheck },
   { label: 'Wallet',  to: '/app/wallet',  icon: Wallet },
   { label: 'Profile', to: '/app/profile', icon: UserCircle },
 ]
@@ -27,8 +26,9 @@ export default function CustomerLayout({
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  // Hide sidebar/nav on event detail pages but keep it on the chat subpage
-  const hideNav  = location.pathname.startsWith('/app/events/') && !location.pathname.endsWith('/chat')
+  const isEventDetail = location.pathname.startsWith('/app/events/') && !location.pathname.endsWith('/chat')
+  const isReservationDetail = location.pathname.startsWith('/app/reservations/')
+  const hideNav = isEventDetail || isReservationDetail
 
   const initials = (user?.name ?? 'U')
     .split(' ').filter(Boolean).slice(0, 2)

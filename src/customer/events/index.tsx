@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import useEmblaCarousel from 'embla-carousel-react'
 import type { Event } from '@glee/types'
 import { useEvents, useReservationVenues } from '@glee/api'
@@ -7,9 +7,10 @@ import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, cn } from '@
 import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
-import { VenueCarouselSection, VenueListSection } from '../../components/reservations/VenueShowcase'
+import { VenueCarouselSection, VenueListSection, isClubOrRestaurantVenue } from '../../components/reservations/VenueShowcase'
 
 type StatusFilter = 'active' | 'live' | 'sold_out' | 'cancelled'
+type ExploreContentType = 'events' | 'venues'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/050017/FF007A?text=Glee'
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
@@ -50,6 +51,7 @@ export function CustomerHomePage() {
 
 function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const [activeCategory, setActiveCategory] = useState<string>('All')
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('active')
@@ -57,6 +59,8 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const statusFilterRef = useRef<HTMLDivElement>(null)
   const isExplore = mode === 'explore'
+  const contentType: ExploreContentType = isExplore && searchParams.get('type') === 'venues' ? 'venues' : 'events'
+  const isVenueExplore = isExplore && contentType === 'venues'
   const selectedCategoryId = activeCategory === 'All' ? undefined : activeCategory
   const query = searchQuery.trim()
   const { data: carouselSourceEvents = [], isLoading: isCarouselLoading } = useEvents({ page: 1, limit: 5, status: 'active' })
@@ -103,15 +107,20 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
       .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime())
   }, [carouselSourceEvents])
   const reservationVenues = reservationVenuesData?.items ?? []
+  const visibleReservationVenues = reservationVenues.filter(isClubOrRestaurantVenue)
   const customerVenuePath = (venueId: string) => `/app/reservations/${venueId}`
 
   const activeCategoryLabel = categoryFilters.find(category => category.value === activeCategory)?.label ?? 'Filtered Events'
 
-  const sectionTitle = searchQuery.trim()
-    ? `Results for "${searchQuery.trim()}"`
-    : activeCategory !== 'All'
-      ? activeCategoryLabel
-      : isExplore ? 'All Events' : 'Trending This Weekend'
+  const sectionTitle = isVenueExplore
+    ? searchQuery.trim()
+      ? `Hot spot results for "${searchQuery.trim()}"`
+      : 'Clubs & Restaurant/Hotel'
+    : searchQuery.trim()
+      ? `Results for "${searchQuery.trim()}"`
+      : activeCategory !== 'All'
+        ? activeCategoryLabel
+        : isExplore ? 'All Events' : 'Trending This Weekend'
 
   const initials = (user?.name ?? 'User')
     .split(' ')
@@ -124,6 +133,14 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
     setActiveCategory('All')
     setActiveStatus('active')
     setSearchQuery('')
+  }
+
+  const setContentType = (type: ExploreContentType) => {
+    const next = new URLSearchParams(searchParams)
+    next.set('type', type)
+    setSearchParams(next)
+    setActiveCategory('All')
+    setStatusMenuOpen(false)
   }
 
   return (
@@ -151,14 +168,45 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
         )}
 
         <div>
-          <h1 className="text-2xl font-bold text-white">
-            {isExplore ? 'Explore every ' : 'Find your '}
-            <span className="bg-gradient-to-br from-[#FF7A3C] via-[#FF007A] to-[#9B51E0] bg-clip-text text-transparent">
-              {isExplore ? 'event' : 'vibe'}
-            </span>
-            {isExplore ? '' : ' tonight'}
+          <h1 className="text-2xl font-bold text-white" aria-label={isVenueExplore ? 'Explore clubs and restaurants' : undefined}>
+            {isVenueExplore ? (
+              <>
+                Explore <span className="bg-gradient-to-br from-[#FF7A3C] via-[#FF007A] to-[#9B51E0] bg-clip-text text-transparent">clubs and restaurants</span>
+              </>
+            ) : (
+              <>
+                {isExplore ? 'Explore every ' : 'Find your '}
+                <span className="bg-gradient-to-br from-[#FF7A3C] via-[#FF007A] to-[#9B51E0] bg-clip-text text-transparent">
+                  {isExplore ? 'event' : 'vibe'}
+                </span>
+                {isExplore ? '' : ' tonight'}
+              </>
+            )}
           </h1>
         </div>
+
+        {isExplore && (
+          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {[
+              { key: 'events' as const, label: 'Events' },
+              { key: 'venues' as const, label: 'Clubs & Restaurants' },
+            ].map(item => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setContentType(item.key)}
+                className={cn(
+                  'shrink-0 rounded-full border px-5 py-2.5 text-sm font-bold transition-all active:scale-95',
+                  contentType === item.key
+                    ? 'border-neon-pink bg-neon-pink text-white shadow-[0_0_18px_rgba(255,0,122,0.34)]'
+                    : 'border-white/10 bg-white/5 text-white/62 hover:border-white/20 hover:bg-white/10 hover:text-white',
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Search + status filter */}
         <div ref={statusFilterRef} className="relative flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -172,23 +220,24 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
-            {/* Filter icon inside input — mobile only */}
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Filter events by status"
-              onClick={() => setStatusMenuOpen(open => !open)}
-              className={cn(
-                'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg transition-colors sm:hidden',
-                statusMenuOpen ? 'text-neon-pink' : 'text-white/45 hover:text-white',
-              )}
-            >
-              <Filter className="h-4 w-4" />
-            </Button>
+            {!isVenueExplore && (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Filter events by status"
+                onClick={() => setStatusMenuOpen(open => !open)}
+                className={cn(
+                  'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg transition-colors sm:hidden',
+                  statusMenuOpen ? 'text-neon-pink' : 'text-white/45 hover:text-white',
+                )}
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {/* Desktop: separate pill row */}
-          <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 sm:flex">
+          {!isVenueExplore && <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 sm:flex">
             {STATUS_FILTERS.map(filter => (
               <button
                 key={filter.value}
@@ -207,10 +256,10 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
                 {filter.label}
               </button>
             ))}
-          </div>
+          </div>}
 
           {/* Mobile dropdown */}
-          {statusMenuOpen && (
+          {statusMenuOpen && !isVenueExplore && (
             <div className="absolute right-4 top-[calc(100%+0.5rem)] z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#160C2C] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.42)] sm:hidden">
               {STATUS_FILTERS.map(filter => (
                 <button
@@ -234,7 +283,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           )}
         </div>
 
-        <FilterRow values={categoryFilters} active={activeCategory} onChange={setActiveCategory} />
+        {!isVenueExplore && <FilterRow values={categoryFilters} active={activeCategory} onChange={setActiveCategory} />}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -242,7 +291,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
               {isExplore || query ? sectionTitle : 'Trending This Weekend'}
             </h2>
             {!isExplore && !query && (
-              <button type="button" onClick={() => navigate('/app/events')} className="text-xs text-neon-pink hover:underline">See All</button>
+              <button type="button" onClick={() => navigate('/app/events?type=events')} className="text-xs text-neon-pink hover:underline">See All</button>
             )}
           </div>
 
@@ -260,6 +309,27 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
             ) : (
               <EventList events={filteredEvents} showCategory={false} />
             )
+          ) : isVenueExplore && isReservationVenuesLoading ? (
+            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+              <p className="text-white/55">Loading clubs and restaurants...</p>
+            </div>
+          ) : isVenueExplore && visibleReservationVenues.length === 0 ? (
+            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
+              <p className="text-white/55">No clubs or restaurants found matching your criteria.</p>
+              <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
+                Clear Search
+              </Button>
+            </div>
+          ) : isVenueExplore ? (
+            <VenueListSection
+              venues={reservationVenues}
+              isLoading={isReservationVenuesLoading}
+              seeAllPath="/app/events?type=venues"
+              getVenuePath={customerVenuePath}
+              limit={null}
+              showSeeAll={false}
+              showHeader={false}
+            />
           ) : isExplore && isLoading ? (
             <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
               <p className="text-white/55">Loading events...</p>
@@ -290,7 +360,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           <VenueCarouselSection
             venues={reservationVenues}
             isLoading={isReservationVenuesLoading}
-            seeAllPath="/app/reservations"
+            seeAllPath="/app/events?type=venues"
             getVenuePath={customerVenuePath}
           />
         )}
@@ -299,7 +369,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           <VenueListSection
             venues={reservationVenues}
             isLoading={isReservationVenuesLoading}
-            seeAllPath="/app/reservations"
+            seeAllPath="/app/events?type=venues"
             getVenuePath={customerVenuePath}
           />
         )}
@@ -328,7 +398,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           <VenueListSection
             venues={reservationVenues}
             isLoading={isReservationVenuesLoading}
-            seeAllPath="/app/reservations"
+            seeAllPath="/app/events?type=venues"
             getVenuePath={customerVenuePath}
           />
         )}

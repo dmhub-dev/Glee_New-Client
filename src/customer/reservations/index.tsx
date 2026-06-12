@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReservationVenues, type ReservationVenue, type VenueType } from '@glee/api'
 import { Badge, Button, Input, Skeleton, cn } from '@glee/ui'
-import { CalendarCheck, ChevronLeft, MapPin, Search, SlidersHorizontal, UserCircle } from 'lucide-react'
+import { ChevronLeft, MapPin, Search, SlidersHorizontal, UserCircle } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 import PageWrapper from '../../public/components/layout/PageWrapper'
@@ -120,7 +120,6 @@ export default function CustomerReservationsPage() {
   const filters = useMemo(() => ({ search: search.trim() || undefined, venueType, limit: 100 }), [search, venueType])
   const { data, isLoading } = useReservationVenues(filters)
   const venues = (data?.items ?? []).filter(venue => venue.venueType === 'CLUB' || venue.venueType === 'RESTAURANT' || venue.venueType === 'HOTEL_RESTAURANT')
-  const myReservationsPath = isAuthenticated ? '/app/reservations/my' : '/user/login'
   const reservationPath = (venueId: string) => isAuthenticated ? `/app/reservations/${venueId}` : `/reservations/${venueId}`
 
   const content = (
@@ -150,15 +149,7 @@ export default function CustomerReservationsPage() {
               Search clubs, restaurants, and hotel venues with table booking enabled.
             </p>
           </div>
-          {isAuthenticated ? (
-            <Button
-              onClick={() => navigate(myReservationsPath)}
-              className="h-11 w-fit rounded-full bg-neon-pink px-5 text-white hover:bg-neon-pink/90"
-            >
-              <CalendarCheck className="h-4 w-4" />
-              My reservations
-            </Button>
-          ) : (
+          {!isAuthenticated && (
             <button
               type="button"
               onClick={() => navigate('/signup')}
