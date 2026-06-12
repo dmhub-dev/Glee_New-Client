@@ -98,6 +98,7 @@ export default function App() {
         <Route path="/payment/event-ticket/confirm" element={<EventTicketConfirmPage />} />
         <Route path="/reservation/callback" element={<ReservationCallbackPage />} />
         <Route path="/reservation/:token" element={<PublicReservationDetailPage />} />
+        <Route path="/reservations" element={<CustomerReservationsPage />} />
         <Route path="/ticket-attendant/access" element={<TicketAttendantAccessPage />} />
         <Route path="/t/:token" element={<PublicTicketPassPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

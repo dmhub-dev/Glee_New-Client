@@ -100,7 +100,7 @@ export default function PublicEventsPage() {
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/8 text-white transition-colors hover:bg-white/12 hover:text-neon-pink"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/[0.12] text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition-colors hover:border-neon-pink/50 hover:bg-white/[0.18] hover:text-neon-pink"
                 aria-label="Back to home"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -114,7 +114,7 @@ export default function PublicEventsPage() {
                 <h1 className="mt-2 max-w-sm font-heading text-3xl font-black leading-tight text-white sm:text-4xl">
                   All Events
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/80">
                   Search every public Glee event and narrow results by category or status.
                 </p>
               </div>
@@ -133,7 +133,7 @@ export default function PublicEventsPage() {
                     aria-label="Filter events by status"
                     aria-expanded={statusMenuOpen}
                     onClick={() => setStatusMenuOpen(value => !value)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white transition-colors hover:border-neon-pink/50 hover:text-neon-pink sm:hidden"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.08] text-white transition-colors hover:border-neon-pink/50 hover:bg-white/[0.12] hover:text-neon-pink sm:hidden"
                   >
                     <Filter className="h-4 w-4" />
                   </button>
@@ -149,7 +149,7 @@ export default function PublicEventsPage() {
                             'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
                             active
                               ? 'bg-neon-pink text-white shadow-neon'
-                              : 'text-white/58 hover:bg-white/8 hover:text-white',
+                              : 'text-white/65 hover:bg-white/[0.08] hover:text-white',
                           ].join(' ')}
                         >
                           {status.label}

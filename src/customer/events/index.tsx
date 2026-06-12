@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useEmblaCarousel from 'embla-carousel-react'
 import type { Event } from '@glee/types'
-import { useEvents } from '@glee/api'
+import { useEvents, useReservationVenues } from '@glee/api'
 import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, cn } from '@glee/ui'
 import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
+import { VenueCarouselSection, VenueListSection } from '../../components/reservations/VenueShowcase'
 
 type StatusFilter = 'active' | 'live' | 'sold_out' | 'cancelled'
 
@@ -60,6 +61,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   const query = searchQuery.trim()
   const { data: carouselSourceEvents = [], isLoading: isCarouselLoading } = useEvents({ page: 1, limit: 5, status: 'active' })
   const { data: categorySourceEvents = [] } = useEvents({ page: 1, limit: 100, status: activeStatus })
+  const { data: reservationVenuesData, isLoading: isReservationVenuesLoading } = useReservationVenues({ page: 1, limit: 100, search: query || undefined })
   const { data: events = [], isLoading } = useEvents({
     page: 1,
     limit: isExplore ? 100 : 12,
@@ -100,6 +102,8 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
     return carouselSourceEvents
       .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime())
   }, [carouselSourceEvents])
+  const reservationVenues = reservationVenuesData?.items ?? []
+  const customerVenuePath = (venueId: string) => `/app/reservations/${venueId}`
 
   const activeCategoryLabel = categoryFilters.find(category => category.value === activeCategory)?.label ?? 'Filtered Events'
 
@@ -163,7 +167,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           <div className="group relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45 transition-colors group-focus-within:text-neon-pink" />
             <Input
-              placeholder="Search events, artists, venues..."
+              placeholder="Search events, clubs, restaurants..."
               className="h-11 rounded-xl border-white/10 bg-white/5 pl-9 pr-12 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50 sm:pr-4"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
@@ -283,6 +287,24 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
         </div>
 
         {!isExplore && !query && (
+          <VenueCarouselSection
+            venues={reservationVenues}
+            isLoading={isReservationVenuesLoading}
+            seeAllPath="/app/reservations"
+            getVenuePath={customerVenuePath}
+          />
+        )}
+
+        {!isExplore && query && (
+          <VenueListSection
+            venues={reservationVenues}
+            isLoading={isReservationVenuesLoading}
+            seeAllPath="/app/reservations"
+            getVenuePath={customerVenuePath}
+          />
+        )}
+
+        {!isExplore && !query && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-white">{sectionTitle === 'Trending This Weekend' ? 'More Events' : sectionTitle}</h2>
             {isLoading ? (
@@ -300,6 +322,15 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
               <EventList events={filteredEvents.slice(0, 5)} showCategory={false} />
             )}
           </div>
+        )}
+
+        {!isExplore && !query && (
+          <VenueListSection
+            venues={reservationVenues}
+            isLoading={isReservationVenuesLoading}
+            seeAllPath="/app/reservations"
+            getVenuePath={customerVenuePath}
+          />
         )}
       </div>
     </CustomerLayout>

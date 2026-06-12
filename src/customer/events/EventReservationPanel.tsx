@@ -84,8 +84,8 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
 
   async function reserveTable() {
     if (!selectedSlotId || !selectedCategory) return
-    const paystackGuestFieldsMissing = !isAuthenticated && paymentMethod === 'PAYSTACK' && (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim())
-    if (paystackGuestFieldsMissing) {
+    const guestFieldsMissing = !isAuthenticated && paymentMethod === 'PAYSTACK' && (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim())
+    if (guestFieldsMissing) {
       toast({ title: 'Guest details required', description: 'Add your name, email, and phone number to continue.', variant: 'destructive' })
       return
     }
@@ -102,7 +102,7 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
         guestPhone: !isAuthenticated ? guestPhone.trim() : undefined,
       })
       if (isPaymentIntent(result)) {
-        if (!result.authorization_url) throw new Error('Paystack did not return a checkout URL')
+        if (!result.authorization_url) throw new Error('Payment provider did not return a checkout URL')
         safeSessionStorageSet(reservationVerificationStorageKey(result.reference), result.verificationToken)
         safeSessionStorageSet(
           reservationCheckoutContextStorageKey(result.reference),
@@ -201,7 +201,7 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
         </div>
 
         <aside className="rounded-2xl border border-white/12 bg-black/25 p-4">
-          <p className="text-xs font-semibold uppercase text-white/40">Deposit</p>
+          <p className="text-xs font-semibold uppercase text-white/40">Checkout</p>
           <p className="mt-2 font-heading text-3xl font-black text-white">{money(deposit)}</p>
           <div className="mt-4 grid gap-2">
             <button
@@ -212,7 +212,7 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
                 : 'flex items-center gap-3 rounded-2xl border border-white/12 bg-black/20 p-3 text-left text-white/65 transition hover:border-white/25'}
             >
               <CreditCard className="h-4 w-4 text-neon-pink" />
-              <span className="text-sm font-semibold">Paystack</span>
+              <span className="text-sm font-semibold">Pay directly</span>
             </button>
             {isAuthenticated && (
               <button
@@ -243,7 +243,7 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
             onClick={reserveTable}
             className="mt-4 h-12 w-full rounded-full bg-neon-pink text-white hover:bg-neon-pink/90 disabled:bg-white/15 disabled:text-white/35"
           >
-            {createReservation.isPending ? 'Reserving...' : paymentMethod === 'WALLET' ? 'Pay With Wallet' : 'Continue to Paystack'}
+            {createReservation.isPending ? 'Reserving...' : paymentMethod === 'WALLET' ? 'Pay With Wallet' : 'Proceed to Pay'}
           </Button>
         </aside>
       </div>

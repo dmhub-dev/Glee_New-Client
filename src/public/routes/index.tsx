@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Filter, Search, UserCircle } from 'lucide-react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useEvents } from '@glee/api'
+import { useEvents, useReservationVenues } from '@glee/api'
 import type { Event } from '@glee/types'
 import PageWrapper from '../components/layout/PageWrapper'
 import FeaturedCarousel from '../components/events/FeaturedCarousel'
 import EventGrid from '../components/events/EventGrid'
+import { VenueCarouselSection, VenueListSection } from '../../components/reservations/VenueShowcase'
 
 const PAGE_SIZE = 12
 type PublicStatusFilter = Extract<Event['status'], 'active' | 'live' | 'cancelled' | 'sold_out'>
@@ -19,7 +20,6 @@ const STATUS_FILTERS: Array<{ value: PublicStatusFilter; label: string }> = [
 
 export default function LandingPage() {
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<string | undefined>()
@@ -28,8 +28,9 @@ export default function LandingPage() {
   const statusFilterRef = useRef<HTMLDivElement>(null)
   const { data: featuredEvents = [], isLoading: isFeaturedLoading } = useEvents({ page: 1, limit: 5, status: 'active' })
   const { data: categorySourceEvents = [] } = useEvents({ page: 1, limit: 100, status: statusFilter })
+  const { data: reservationVenuesData, isLoading: isReservationVenuesLoading } = useReservationVenues({ page: 1, limit: 100, search: search || undefined })
   const { data: events = [], isLoading } = useEvents({
-    page,
+    page: 1,
     limit: PAGE_SIZE,
     search: search || undefined,
     category: categoryId,
@@ -38,7 +39,6 @@ export default function LandingPage() {
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      setPage(1)
       setSearch(searchInput.trim())
     }, 300)
     return () => window.clearTimeout(id)
@@ -86,7 +86,8 @@ export default function LandingPage() {
     ]
   }, [categorySourceEvents])
 
-  const canGoNext = events.length >= PAGE_SIZE
+  const reservationVenues = reservationVenuesData?.items ?? []
+  const publicVenuePath = (venueId: string) => `/reservations/${venueId}`
   const statusLabel = STATUS_FILTERS.find(status => status.value === statusFilter)?.label ?? 'Active'
   const resultTitle = search
     ? `Results for "${search}"`
@@ -95,7 +96,6 @@ export default function LandingPage() {
       : `${statusLabel} Events`
 
   const selectStatus = (status: PublicStatusFilter) => {
-    setPage(1)
     setCategoryId(undefined)
     setStatusFilter(status)
     setStatusMenuOpen(false)
@@ -134,7 +134,7 @@ export default function LandingPage() {
                   <input
                     value={searchInput}
                     onChange={event => setSearchInput(event.target.value)}
-                    placeholder="Search events, artists, venues..."
+                    placeholder="Search events, clubs, restaurants..."
                     className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/45"
                   />
                   <button
@@ -142,7 +142,7 @@ export default function LandingPage() {
                     aria-label="Filter events by status"
                     aria-expanded={statusMenuOpen}
                     onClick={() => setStatusMenuOpen(value => !value)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white transition-colors hover:border-neon-pink/50 hover:text-neon-pink sm:hidden"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.08] text-white transition-colors hover:border-neon-pink/50 hover:bg-white/[0.12] hover:text-neon-pink sm:hidden"
                   >
                     <Filter className="h-4 w-4" />
                   </button>
@@ -158,7 +158,7 @@ export default function LandingPage() {
                             'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
                             active
                               ? 'bg-neon-pink text-white shadow-neon'
-                              : 'text-white/58 hover:bg-white/8 hover:text-white',
+                              : 'text-white/65 hover:bg-white/[0.08] hover:text-white',
                           ].join(' ')}
                         >
                           {status.label}
@@ -199,10 +199,7 @@ export default function LandingPage() {
                   <button
                     key={category.id ?? 'all'}
                     type="button"
-                    onClick={() => {
-                      setPage(1)
-                      setCategoryId(category.id)
-                    }}
+                    onClick={() => setCategoryId(category.id)}
                     className={[
                       'shrink-0 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors',
                       categoryId === category.id
@@ -225,35 +222,43 @@ export default function LandingPage() {
               </section>
             )}
 
+            {!search && (
+              <VenueCarouselSection
+                venues={reservationVenues}
+                isLoading={isReservationVenuesLoading}
+                seeAllPath="/reservations"
+                getVenuePath={publicVenuePath}
+              />
+            )}
+
             <section className="flex flex-1 flex-col gap-4 pt-2">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-heading text-lg font-black text-white">{resultTitle}</h2>
                 <div className="flex items-center gap-3">
-                  {page > 1 && <span className="text-xs font-semibold text-white/60">Page {page}</span>}
                   <button type="button" onClick={() => navigate('/events')} className="text-sm font-semibold text-neon-pink hover:text-neon-hover">
                     See All
                   </button>
                 </div>
               </div>
               <EventGrid events={listedEvents} isLoading={isLoading} />
-              <div className="mt-auto flex items-center justify-end gap-2 pt-6">
-                <button
-                  type="button"
-                  disabled={page === 1 || isLoading}
-                  onClick={() => setPage(value => Math.max(1, value - 1))}
-                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/75 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={!canGoNext || isLoading}
-                  onClick={() => setPage(value => value + 1)}
-                  className="rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white shadow-neon disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  Next
-                </button>
-              </div>
+
+              {search && (
+                <VenueListSection
+                  venues={reservationVenues}
+                  isLoading={isReservationVenuesLoading}
+                  seeAllPath="/reservations"
+                  getVenuePath={publicVenuePath}
+                />
+              )}
+
+              {!search && (
+                <VenueListSection
+                  venues={reservationVenues}
+                  isLoading={isReservationVenuesLoading}
+                  seeAllPath="/reservations"
+                  getVenuePath={publicVenuePath}
+                />
+              )}
             </section>
 
             <footer className="border-t border-white/10 mt-4 py-12 px-8">

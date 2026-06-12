@@ -3,6 +3,7 @@ import { cn } from '@glee/ui'
 
 const navLinks = [
   { label: 'Events', to: '/events' },
+  { label: 'Reservations', to: '/reservations' },
   { label: 'Sign in', to: '/login' },
 ]
 

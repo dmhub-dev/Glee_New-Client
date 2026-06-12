@@ -6,11 +6,12 @@ import {
   useCreateReservation,
   useReservationAvailability,
   useReservationVenue,
+  type AvailabilityCategory,
   type ReservationPaymentIntent,
-  type ReservationPaymentMethod,
+  type ReservationVenue,
 } from '@glee/api'
-import { Badge, Button, Input, Skeleton, useToast } from '@glee/ui'
-import { Calendar, Clock, CreditCard, MapPin, ShieldCheck, Users, Wallet } from 'lucide-react'
+import { Badge, Button, Input, Separator, Skeleton, useToast } from '@glee/ui'
+import { ChevronLeft, Clock, MapPin, ShieldCheck, Users, X } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 
@@ -42,6 +43,15 @@ function venueTypeLabel(value?: string) {
   return 'Other'
 }
 
+function tableDetailsForCategory(venue: ReservationVenue | undefined, categoryName: string) {
+  const tables = venue?.reservationTables?.filter(table => table.isActive && table.category === categoryName) ?? []
+  return {
+    count: tables.length,
+    names: tables.map(table => table.name).slice(0, 3).join(', '),
+    description: tables.find(table => table.description)?.description,
+  }
+}
+
 function isPaymentIntent(result: unknown): result is ReservationPaymentIntent {
   return Boolean(result && typeof result === 'object' && 'authorization_url' in result && 'reservation' in result)
 }
@@ -61,8 +71,9 @@ function PublicReservationShell({ children }: { title: string; hidePageHeader?: 
         <button type="button" onClick={() => window.location.assign('/')} className="inline-flex items-center">
           <img src="/glee-logo-final.svg" alt="Glee" className="h-9 brightness-0 invert" />
         </button>
-        <Button type="button" variant="outline" onClick={() => window.location.assign('/events')} className="rounded-full border-white/15 bg-transparent text-white/70 hover:bg-white/10 hover:text-white">
-          Events
+        <Button type="button" variant="outline" onClick={() => window.location.assign('/reservations')} className="rounded-full border-white/15 bg-transparent text-white/70 hover:bg-white/10 hover:text-white">
+          <ChevronLeft className="h-4 w-4" />
+          Reservations
         </Button>
       </header>
       {children}
@@ -74,12 +85,12 @@ export default function CustomerReservationVenuePage() {
   const { locationId = '' } = useParams()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [date, setDate] = useState(today())
   const [guestCount, setGuestCount] = useState(2)
   const [slotId, setSlotId] = useState('')
   const [tableCategory, setTableCategory] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<ReservationPaymentMethod>('PAYSTACK')
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [guestName, setGuestName] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
@@ -95,11 +106,13 @@ export default function CustomerReservationVenuePage() {
   const availabilityParams = useMemo(() => ({ date, slotId: selectedSlotId, guestCount }), [date, selectedSlotId, guestCount])
   const availability = useReservationAvailability(locationId, availabilityParams, Boolean(locationId && selectedSlotId && date && guestCount > 0))
   const categories = availability.data?.categories ?? []
-  const selectedCategory = useMemo(
-    () => categories.find(category => category.category === tableCategory) ?? categories[0],
+  const selectedCategory = useMemo<AvailabilityCategory | undefined>(
+    () => categories.find(category => category.category === tableCategory),
     [categories, tableCategory],
   )
   const selectedSlot = availableSlots.find(slot => slot.id === selectedSlotId)
+  const selectedCategoryDetails = selectedCategory ? tableDetailsForCategory(venue, selectedCategory.category) : null
+  const totalDueNow = Number(selectedCategory?.depositAmount ?? 0)
 
   useEffect(() => {
     if (slotId && !availableSlots.some(slot => slot.id === slotId)) {
@@ -115,15 +128,18 @@ export default function CustomerReservationVenuePage() {
   }, [categories, tableCategory])
 
   useEffect(() => {
-    if (!isAuthenticated && paymentMethod === 'WALLET') {
-      setPaymentMethod('PAYSTACK')
-    }
-  }, [isAuthenticated, paymentMethod])
+    if (!user) return
+    setGuestName(current => current || user.name || '')
+    setGuestEmail(current => current || user.email || '')
+  }, [user])
 
   async function handleReserve() {
-    if (!selectedSlotId || !selectedCategory) return
-    const paystackGuestFieldsMissing = !isAuthenticated && paymentMethod === 'PAYSTACK' && (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim())
-    if (paystackGuestFieldsMissing) {
+    if (!selectedSlotId || !selectedCategory) {
+      toast({ title: 'Select a table', description: 'Choose an available table before checkout.', variant: 'destructive' })
+      return
+    }
+    const guestFieldsMissing = !guestName.trim() || !guestEmail.trim() || !guestPhone.trim()
+    if (guestFieldsMissing) {
       toast({ title: 'Guest details required', description: 'Add your name, email, and phone number to continue.', variant: 'destructive' })
       return
     }
@@ -134,14 +150,14 @@ export default function CustomerReservationVenuePage() {
         date,
         guestCount,
         tableCategory: selectedCategory.category,
-        paymentMethod,
-        callbackUrl: paymentMethod === 'PAYSTACK' ? `${window.location.origin}/reservation/callback` : undefined,
-        guestName: !isAuthenticated ? guestName.trim() : undefined,
-        guestEmail: !isAuthenticated ? guestEmail.trim() : undefined,
-        guestPhone: !isAuthenticated ? guestPhone.trim() : undefined,
+        paymentMethod: 'PAYSTACK',
+        callbackUrl: `${window.location.origin}/reservation/callback`,
+        guestName: guestName.trim() || undefined,
+        guestEmail: guestEmail.trim() || undefined,
+        guestPhone: guestPhone.trim() || undefined,
       })
       if (isPaymentIntent(result)) {
-        if (!result.authorization_url) throw new Error('Paystack did not return a checkout URL')
+        if (!result.authorization_url) throw new Error('Payment provider did not return a checkout URL')
         safeSessionStorageSet(reservationVerificationStorageKey(result.reference), result.verificationToken)
         safeSessionStorageSet(
           reservationCheckoutContextStorageKey(result.reference),
@@ -179,7 +195,7 @@ export default function CustomerReservationVenuePage() {
       <Shell title="Reservation" hidePageHeader>
         <div className="mx-auto w-full max-w-3xl px-4 py-12 text-center">
           <p className="text-sm font-semibold text-white">Venue not found</p>
-          <Button onClick={() => navigate(isAuthenticated ? '/app/reservations' : '/events')} className="mt-4 rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
+          <Button onClick={() => navigate(isAuthenticated ? '/app/reservations' : '/reservations')} className="mt-4 rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
             Back to reservations
           </Button>
         </div>
@@ -190,6 +206,18 @@ export default function CustomerReservationVenuePage() {
   return (
     <Shell title={venue.name} hidePageHeader>
       <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-32 pt-5 lg:px-8">
+        {isAuthenticated && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate('/app/reservations')}
+            className="rounded-full border-white/15 bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            All reservations
+          </Button>
+        )}
+
         <section className="overflow-hidden rounded-3xl bg-white/[0.08] shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
           <div className="relative aspect-[16/9] max-h-[28rem] bg-white/8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,45,143,0.22),transparent_34%),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.12),transparent_24%),linear-gradient(135deg,#09011d_0%,#14072f_48%,#050017_100%)]" aria-hidden="true" />
@@ -214,8 +242,8 @@ export default function CustomerReservationVenuePage() {
           {venue.description && <p className="px-5 pb-5 pt-1 text-sm leading-6 text-white/58 sm:px-6">{venue.description}</p>}
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-4 rounded-3xl bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.22)] sm:p-5">
+        <section className="space-y-4 rounded-3xl bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.22)] sm:p-5">
+          <div className="space-y-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neon-pink">Booking details</p>
               <h2 className="mt-2 font-heading text-2xl font-black text-white">Choose date, time, and table</h2>
@@ -224,7 +252,16 @@ export default function CustomerReservationVenuePage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-2 text-sm text-white/65">
                 <span>Date</span>
-                <Input type="date" value={date} min={today()} onChange={event => setDate(event.target.value)} className="h-12 rounded-2xl border-white/10 bg-white/5 text-white" />
+                <Input
+                  type="date"
+                  value={date}
+                  min={today()}
+                  onChange={event => {
+                    setDate(event.target.value)
+                    setTableCategory('')
+                  }}
+                  className="h-12 rounded-2xl border-white/10 bg-white/5 text-white"
+                />
               </label>
               <label className="space-y-2 text-sm text-white/65">
                 <span>Guests</span>
@@ -232,7 +269,10 @@ export default function CustomerReservationVenuePage() {
                   type="number"
                   min={1}
                   value={guestCount}
-                  onChange={event => setGuestCount(Math.max(1, Number(event.target.value) || 1))}
+                  onChange={event => {
+                    setGuestCount(Math.max(1, Number(event.target.value) || 1))
+                    setTableCategory('')
+                  }}
                   className="h-12 rounded-2xl border-white/10 bg-white/5 text-white"
                 />
               </label>
@@ -252,7 +292,10 @@ export default function CustomerReservationVenuePage() {
                       <button
                         key={slot.id}
                         type="button"
-                        onClick={() => setSlotId(slot.id)}
+                        onClick={() => {
+                          setSlotId(slot.id)
+                          setTableCategory('')
+                        }}
                         className={`rounded-2xl border p-4 text-left transition ${active ? 'border-neon-pink bg-neon-pink/10 shadow-[0_0_22px_rgba(255,45,143,0.14)]' : 'border-white/10 bg-black/20 hover:border-neon-pink/35'}`}
                       >
                         <p className="font-semibold text-white">{slot.label}</p>
@@ -265,8 +308,8 @@ export default function CustomerReservationVenuePage() {
             </div>
 
             <div>
-              <p className="mb-2 text-sm font-semibold text-white">Table type</p>
-              <div className="grid gap-2">
+              <p className="mb-2 text-sm font-semibold text-white">Select table</p>
+              <div className="grid gap-3 lg:grid-cols-2">
                 {availability.isLoading ? (
                   <Skeleton className="h-28 rounded-2xl bg-white/10" />
                 ) : availability.isError ? (
@@ -286,78 +329,155 @@ export default function CustomerReservationVenuePage() {
                         <p className="font-heading text-lg font-black text-white">{category.category}</p>
                         <Badge className="border-transparent bg-white/10 text-white/70">{category.availableCount} left</Badge>
                       </div>
-                      <div className="mt-3 grid gap-2 text-xs text-white/55 sm:grid-cols-3">
-                        <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-neon-pink" />{category.minGuests}-{category.maxGuests} guests</span>
-                        <span>Min spend {money(category.minimumSpend)}</span>
-                        <span className="font-semibold text-neon-pink">Deposit {money(category.depositAmount)}</span>
-                      </div>
+                      {(() => {
+                        const tableDetails = tableDetailsForCategory(venue, category.category)
+                        return (
+                          <>
+                            <div className="mt-3 grid gap-2 text-xs text-white/55 sm:grid-cols-3">
+                              <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-neon-pink" />{category.minGuests}-{category.maxGuests} guests</span>
+                              <span className="font-semibold text-white">Min spend {money(category.minimumSpend)}</span>
+                              <span className="font-semibold text-neon-pink">Deposit {money(category.depositAmount)}</span>
+                            </div>
+                            {(tableDetails.names || tableDetails.description) && (
+                              <div className="mt-3 rounded-xl bg-white/[0.06] p-3 text-xs leading-5 text-white/55">
+                                {tableDetails.names && <p><span className="text-white/35">Tables:</span> {tableDetails.names}{tableDetails.count > 3 ? ` +${tableDetails.count - 3} more` : ''}</p>}
+                                {tableDetails.description && <p className="mt-1 line-clamp-2">{tableDetails.description}</p>}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
                     </button>
                   )
                 })}
               </div>
             </div>
           </div>
+        </section>
+      </div>
 
-          <aside className="h-fit rounded-3xl bg-white/[0.08] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-neon-pink">Deposit summary</p>
-            <h2 className="mt-3 font-heading text-2xl font-black text-white">Reserve your table</h2>
-            <div className="mt-5 space-y-3 text-sm text-white/65">
-              <p className="flex items-center gap-2"><Calendar className="h-4 w-4 text-neon-pink" />{date}</p>
-              <p className="flex items-center gap-2"><Clock className="h-4 w-4 text-neon-pink" />{selectedSlot?.label ?? 'Select time'}</p>
-              <p className="flex items-center gap-2"><Users className="h-4 w-4 text-neon-pink" />{guestCount} guest{guestCount === 1 ? '' : 's'}</p>
-            </div>
-            <div className="mt-5 grid gap-2">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050017]/92 px-4 py-3 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <div className="min-w-0 pr-2">
+            <p className="text-xs text-white/45">{selectedCategory ? 'Total due now' : 'Select a table'}</p>
+            <p className="font-heading text-xl font-black text-white">
+              {selectedCategory ? money(totalDueNow) : money(0)}
+            </p>
+            {selectedCategory && (
+              <p className="truncate text-xs text-white/45">Minimum spend {money(selectedCategory.minimumSpend)}</p>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate(isAuthenticated ? '/app/reservations' : '/reservations')}
+            className="ml-auto hidden rounded-full border-white/15 bg-transparent text-white/70 hover:bg-white/10 hover:text-white sm:inline-flex"
+          >
+            Continue browsing
+          </Button>
+          <Button
+            disabled={!selectedCategory || !selectedSlotId}
+            onClick={() => setCheckoutOpen(true)}
+            className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none sm:ml-0 sm:px-7"
+          >
+            {selectedCategory ? 'Book Table' : 'Select a Table'}
+          </Button>
+        </div>
+      </div>
+
+      {checkoutOpen && selectedCategory && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={event => {
+            if (event.target === event.currentTarget && !createReservation.isPending) setCheckoutOpen(false)
+          }}
+        >
+          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-white/15 bg-[#0f0f15] p-6 text-white shadow-[0_26px_90px_rgba(0,0,0,0.5)] sm:p-8">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neon-pink">Checkout</p>
+                <h2 className="mt-1 font-heading text-2xl font-black text-white">Complete Your Reservation</h2>
+              </div>
               <button
                 type="button"
-                onClick={() => setPaymentMethod('PAYSTACK')}
-                className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${paymentMethod === 'PAYSTACK' ? 'border-neon-pink bg-neon-pink/10 text-white' : 'border-white/10 bg-black/20 text-white/65 hover:border-white/25'}`}
+                onClick={() => !createReservation.isPending && setCheckoutOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-2xl leading-none text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Close checkout"
               >
-                <CreditCard className="h-4 w-4 text-neon-pink" />
-                <span className="text-sm font-semibold">Paystack card or mobile money</span>
+                <X className="h-5 w-5" />
               </button>
-              {isAuthenticated && (
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('WALLET')}
-                  className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${paymentMethod === 'WALLET' ? 'border-neon-pink bg-neon-pink/10 text-white' : 'border-white/10 bg-black/20 text-white/65 hover:border-white/25'}`}
-                >
-                  <Wallet className="h-4 w-4 text-neon-pink" />
-                  <span className="text-sm font-semibold">Glee wallet</span>
-                </button>
-              )}
             </div>
-            {!authLoading && !isAuthenticated && (
-              <div className="mt-5 space-y-3">
-                <Input value={guestName} onChange={event => setGuestName(event.target.value)} placeholder="Full name" className="h-11 rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-white/35" />
-                <Input type="email" value={guestEmail} onChange={event => setGuestEmail(event.target.value)} placeholder="Email address" className="h-11 rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-white/35" />
-                <Input type="tel" value={guestPhone} onChange={event => setGuestPhone(event.target.value)} placeholder="Phone number" className="h-11 rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-white/35" />
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+              <p className="text-sm font-semibold text-white">Order summary</p>
+              <div className="flex items-start gap-3">
+                {heroImage && (
+                  <img
+                    src={heroImage}
+                    alt={venue.name}
+                    className="h-16 w-16 shrink-0 rounded-lg border border-white/10 object-cover"
+                    onError={event => { event.currentTarget.style.display = 'none' }}
+                  />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate font-semibold leading-tight text-white">{venue.name}</p>
+                  <p className="mt-1 truncate text-xs text-white/45">{venue.address}</p>
+                  <p className="mt-1 font-mono text-xs text-white/45">{date} · {selectedSlot?.label ?? formatSlotTime(selectedSlot)}</p>
+                </div>
               </div>
-            )}
-            <div className="mt-5 rounded-2xl bg-black/20 p-4">
-              <p className="text-xs text-white/45">Table type</p>
-              <p className="mt-1 font-semibold text-white">{selectedCategory?.category ?? 'Select table'}</p>
-              <p className="mt-4 text-xs text-white/45">Minimum spend</p>
-              <p className="mt-1 font-mono text-lg font-black text-white">{money(selectedCategory?.minimumSpend)}</p>
-              <p className="mt-4 text-xs text-white/45">Deposit due now</p>
-              <p className="mt-1 font-heading text-3xl font-black text-neon-pink">{money(selectedCategory?.depositAmount)}</p>
+
+              <Separator className="bg-white/10" />
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-white/65">{selectedCategory.category}</span>
+                  <span className="font-mono text-white">{money(selectedCategory.depositAmount)}</span>
+                </div>
+                <p className="text-xs text-white/40">{guestCount} guest{guestCount === 1 ? '' : 's'} · Minimum spend {money(selectedCategory.minimumSpend)}</p>
+                {selectedCategoryDetails?.names && (
+                  <p className="text-xs text-white/40">Tables: {selectedCategoryDetails.names}{selectedCategoryDetails.count > 3 ? ` +${selectedCategoryDetails.count - 3} more` : ''}</p>
+                )}
+              </div>
+
+              <Separator className="bg-white/10" />
+
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-white">Total due now</span>
+                <span className="font-mono text-lg font-bold text-neon-pink">{money(totalDueNow)}</span>
+              </div>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="space-y-2 text-sm text-white/70">
+                <span>Full name</span>
+                <Input value={guestName} onChange={event => setGuestName(event.target.value)} placeholder="Jane Doe" className="h-12 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/30 focus:border-neon-pink" />
+              </label>
+              <label className="space-y-2 text-sm text-white/70">
+                <span>Email address</span>
+                <Input type="email" value={guestEmail} onChange={event => setGuestEmail(event.target.value)} placeholder="jane@example.com" className="h-12 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/30 focus:border-neon-pink" />
+              </label>
+              <label className="space-y-2 text-sm text-white/70">
+                <span>Phone number</span>
+                <Input type="tel" value={guestPhone} onChange={event => setGuestPhone(event.target.value)} placeholder="+254 700 000 000" className="h-12 rounded-xl border-white/15 bg-white/5 text-white placeholder:text-white/30 focus:border-neon-pink" />
+              </label>
+            </div>
+
             {venue.bookingRules && (
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-xs leading-5 text-white/58">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-xs leading-5 text-white/58">
                 <ShieldCheck className="mb-2 h-4 w-4 text-neon-pink" />
                 {venue.bookingRules}
               </div>
             )}
+
             <Button
-              disabled={!selectedCategory || !selectedSlotId || createReservation.isPending}
+              disabled={createReservation.isPending}
               onClick={handleReserve}
-              className="mt-4 h-12 w-full rounded-full bg-neon-pink text-white hover:bg-neon-pink/90 disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100"
+              className="h-12 w-full rounded-full bg-neon-pink text-base font-semibold text-white shadow-neon transition-all hover:scale-[1.01] hover:bg-neon-hover active:scale-[0.99] disabled:opacity-40"
             >
-              {paymentMethod === 'WALLET' ? <Wallet className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
-              {createReservation.isPending ? 'Reserving...' : paymentMethod === 'WALLET' ? 'Pay Deposit With Wallet' : 'Continue to Paystack'}
+              {createReservation.isPending ? 'Reserving...' : 'Proceed to Pay'}
             </Button>
-          </aside>
-        </section>
-      </div>
+          </div>
+        </div>
+      )}
     </Shell>
   )
 }
