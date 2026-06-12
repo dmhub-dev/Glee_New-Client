@@ -462,36 +462,34 @@ export default function LocationsTab() {
           <p className="text-sm text-admin-30">No locations yet.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {(locations ?? []).map(loc => (
-            <div
+            <article
               key={loc.id}
               data-testid="location-card"
               role="button"
               tabIndex={0}
               onClick={() => navigate(`/dashboard/locations/${loc.id}`)}
               onKeyDown={e => e.key === 'Enter' && navigate(`/dashboard/locations/${loc.id}`)}
-              className="group cursor-pointer overflow-hidden rounded-xl border border-admin bg-admin-surface transition-all duration-150 hover:border-neon-pink/30 hover:shadow-admin"
+              className="group cursor-pointer overflow-hidden rounded-2xl border border-admin bg-admin-surface shadow-admin transition-all duration-200 hover:-translate-y-0.5 hover:border-neon-pink/35 hover:shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
             >
-              <div className="relative h-20 overflow-hidden bg-admin-overlay">
+              <div className="relative h-28 overflow-hidden bg-admin-overlay">
                 {loc.pictures && loc.pictures.length > 0 ? (
                   <img
                     src={loc.pictures[0]}
                     alt={loc.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neon-pink/5 to-admin-overlay">
+                  <div className="w-full h-full flex items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(255,45,143,0.16),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01))]">
                     <Image className="w-8 h-8 text-admin-20" />
                   </div>
                 )}
-                <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
-                  <Badge className="border-neon-pink/25 bg-neon-pink/15 px-2 py-0.5 text-[10px] text-neon-pink">
-                    Type: {venueTypeLabel(loc.venueType)}
-                  </Badge>
-                  <Badge className={loc.bookingEnabled ? 'border-emerald-500/25 bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300' : 'border-admin bg-black/45 px-2 py-0.5 text-[10px] text-admin-40'}>
-                    Reservations: {loc.bookingEnabled ? 'On' : 'Off'}
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/75 to-transparent" />
+                <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                  <Badge className="border-neon-pink/25 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-neon-pink backdrop-blur">
+                    {venueTypeLabel(loc.venueType)}
                   </Badge>
                 </div>
                 <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -531,57 +529,24 @@ export default function LocationsTab() {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-                {loc.pictures && loc.pictures.length > 1 && (
-                  <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-md px-2 py-0.5">
-                    <Image className="w-3 h-3 text-white/70" />
-                    <span className="text-[11px] text-white/80">{loc.pictures.length}</span>
-                  </div>
-                )}
               </div>
 
-              <div className="space-y-2 p-2.5">
+              <div className="space-y-3 p-4">
                 <div>
-                  <h3 className="font-heading font-bold text-sm text-foreground line-clamp-1">{loc.name}</h3>
-                  <p className="text-xs text-admin-40 truncate mt-0.5 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 shrink-0" />{loc.address}
+                  <h3 className="font-heading font-black text-base text-foreground line-clamp-1">{loc.name}</h3>
+                  <p className="text-xs text-admin-40 truncate mt-1 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 shrink-0 text-neon-pink" />{loc.address}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1.5">
-                  <div className="rounded-lg border border-admin bg-admin-overlay px-2 py-1.5">
-                    <p className="text-[10px] text-admin-30">Capacity</p>
-                    <p className="font-mono text-xs font-semibold text-admin-70">{loc.capacity.toLocaleString()}</p>
-                  </div>
-                  <div className="rounded-lg border border-admin bg-admin-overlay px-2 py-1.5">
-                    <p className="text-[10px] text-admin-30">Photos</p>
-                    <p className="font-mono text-xs font-semibold text-admin-70">{(loc.pictures?.length ?? 0).toLocaleString()}</p>
-                  </div>
-                </div>
-
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-1">
-                    {loc.isIndoors && (
-                      <Badge className="text-[10px] border bg-blue-500/10 text-blue-400 border-blue-500/30 gap-1 px-1.5">
-                        <Building2 className="w-2.5 h-2.5" /> Indoor
-                      </Badge>
-                    )}
-                    {loc.isOutdoors && (
-                      <Badge className="text-[10px] border bg-green-500/10 text-green-400 border-green-500/30 gap-1 px-1.5">
-                        <Wind className="w-2.5 h-2.5" /> Outdoor
-                      </Badge>
-                    )}
-                    {loc.isParkingAvailable && (
-                      <Badge className="text-[10px] border bg-admin-overlay text-admin-50 border-admin gap-1 px-1.5">
-                        <ParkingCircle className="w-2.5 h-2.5" /> Parking
-                      </Badge>
-                    )}
-                  </div>
+                  <span className="text-xs text-admin-40">{venueTypeLabel(loc.venueType)}</span>
                   <Button size="sm" className="h-7 shrink-0 rounded-full bg-admin-overlay px-3 text-xs text-admin-70 hover:bg-neon-pink hover:text-white">
                     Manage
                   </Button>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}

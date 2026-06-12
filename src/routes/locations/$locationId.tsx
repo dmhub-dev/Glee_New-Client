@@ -9,19 +9,31 @@ import {
   AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
   AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
   AlertDialogCancel, AlertDialogAction,
+  Switch,
   useToast,
 } from '@glee/ui'
 import { useLocation, useUpdateLocation, useDeleteLocation, type Location } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
-import { SlidePanel } from '../../components/ui/SlidePanel'
 import ReservationSetupPanel from './ReservationSetupPanel'
 import {
   ArrowLeft, Pencil, Trash2, MapPin, Users, Building2, Wind, ParkingCircle,
-  Image, ImagePlus, X as XIcon, FileText,
+  CalendarCheck, Image, ImagePlus, Save, X as XIcon,
 } from 'lucide-react'
 
 const MAX_PHOTOS = 6
 const PLACEHOLDER = 'https://placehold.co/800x500/141419/FF2D8F?text=Location'
+type CanonicalVenueType = 'CLUB' | 'RESTAURANT' | 'OTHER'
+
+const SPACE_TYPES = [
+  { label: 'Indoor', value: 'indoor', hint: 'Interior rooms, dining halls, private areas, or hotel spaces.', icon: Building2 },
+  { label: 'Outdoor', value: 'outdoor', hint: 'Rooftops, gardens, terraces, pool decks, patios, or open-air venues.', icon: Wind },
+] as const
+
+const VENUE_TYPES: Array<{ label: string; value: CanonicalVenueType; hint: string }> = [
+  { label: 'Club', value: 'CLUB', hint: 'VIP booths, bottle service, sections, and late-night table slots.' },
+  { label: 'Restaurant/Hotel', value: 'RESTAURANT', hint: 'Dining tables, hotel restaurants, terraces, and service windows.' },
+  { label: 'Other', value: 'OTHER', hint: 'Event spaces, halls, rooftops, studios, and special-purpose venues.' },
+]
 
 const locationSchema = z.object({
   name:               z.string().min(1, 'Name is required'),
@@ -33,43 +45,22 @@ const locationSchema = z.object({
   isParkingAvailable: z.boolean(),
   latitude:           z.coerce.number().optional(),
   longitude:          z.coerce.number().optional(),
+  venueType:          z.enum(['CLUB', 'RESTAURANT', 'OTHER']),
+  bookingEnabled:     z.boolean(),
 })
 type LocationFormValues = z.infer<typeof locationSchema>
 
-function FeatureToggleCard({
-  icon: Icon, label, description, checked, onCheckedChange,
-}: { icon: React.ElementType; label: string; description: string; checked: boolean; onCheckedChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onCheckedChange(!checked)}
-      className={[
-        'w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-150 text-left',
-        checked ? 'bg-neon-pink/10 border-neon-pink/40' : 'bg-admin-overlay border-admin hover:border-admin-30',
-      ].join(' ')}
-    >
-      <div className={['w-8 h-8 rounded-lg flex items-center justify-center shrink-0', checked ? 'bg-neon-pink/20 text-neon-pink' : 'bg-admin-surface text-admin-30'].join(' ')}>
-        <Icon className="w-4 h-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className={['text-sm font-medium', checked ? 'text-foreground' : 'text-admin-50'].join(' ')}>{label}</p>
-        <p className="text-xs text-admin-30">{description}</p>
-      </div>
-      <div className={['w-4 h-4 rounded-full border-2 shrink-0', checked ? 'bg-neon-pink border-neon-pink' : 'border-admin'].join(' ')} />
-    </button>
-  )
+function normalizeVenueType(value?: Location['venueType'] | null): CanonicalVenueType {
+  if (value === 'CLUB') return 'CLUB'
+  if (value === 'RESTAURANT' || value === 'HOTEL_RESTAURANT') return 'RESTAURANT'
+  return 'OTHER'
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2 mt-1">
-      <p className="text-[10px] uppercase tracking-widest font-semibold text-admin-30">{children}</p>
-      <div className="flex-1 h-px bg-admin" />
-    </div>
-  )
+function venueTypeLabel(value?: Location['venueType'] | CanonicalVenueType | null) {
+  return VENUE_TYPES.find(type => type.value === normalizeVenueType(value))?.label ?? 'Other'
 }
 
-function EditPanel({
+function EditLocationPage({
   location,
   onClose,
 }: {
@@ -78,7 +69,7 @@ function EditPanel({
 }) {
   const { toast }       = useToast()
   const updateMutation  = useUpdateLocation()
-  const [existingPics, setExistingPics] = useState<string[]>(location.pictures ?? [])
+  const existingPics = location.pictures ?? []
   const [newPics, setNewPics] = useState<{ file: File; preview: string }[]>([])
 
   const form = useForm<LocationFormValues>({
@@ -93,10 +84,15 @@ function EditPanel({
       isParkingAvailable: location.isParkingAvailable,
       latitude:           location.latitude,
       longitude:          location.longitude,
+      venueType:          normalizeVenueType(location.venueType),
+      bookingEnabled:     location.bookingEnabled ?? false,
     },
   })
 
+  const values = form.watch()
   const totalPhotos = existingPics.length + newPics.length
+  const previewImage = newPics[0]?.preview ?? existingPics[0] ?? null
+  const selectedSpace = values.isIndoors ? 'indoor' : values.isOutdoors ? 'outdoor' : undefined
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -117,127 +113,272 @@ function EditPanel({
   }
 
   return (
-    <SlidePanel open title="Edit Location" onClose={onClose}>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-            <SectionLabel>Basic Info</SectionLabel>
+    <AdminLayout title="Edit Location" subtitle={location.name}>
+      <div className="flex gap-8">
+        <div className="min-w-0 flex-1 space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-2 rounded-full border border-admin-md bg-admin-input px-4 py-2 text-sm text-admin-50 transition-colors hover:bg-admin-overlay hover:text-admin-80"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Cancel editing
+            </button>
+            <button
+              type="button"
+              aria-label="Close edit form"
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-admin-md bg-admin-input text-admin-40 transition-colors hover:border-red-500/35 hover:bg-red-500/10 hover:text-red-400"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
 
-            <FormField control={form.control} name="name" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs text-admin-50">Venue Name</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
-                    <Input className="bg-admin-input border-admin pl-9 text-sm" {...field} />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
+                <div>
+                  <h2 className="font-heading text-sm font-bold text-foreground">Basic Info</h2>
+                  <p className="mt-1 text-xs text-admin-40">Core information shown on event pages and reservation screens.</p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField control={form.control} name="name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-admin-50">Venue Name</FormLabel>
+                      <FormControl>
+                        <Input className="border-admin-md bg-admin-input text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="capacity" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-admin-50">Capacity</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={1} className="border-admin-md bg-admin-input text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="address" render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel className="text-xs text-admin-50">Address</FormLabel>
+                      <FormControl>
+                        <Input className="border-admin-md bg-admin-input text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="description" render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel className="text-xs text-admin-50">About this venue</FormLabel>
+                      <FormControl>
+                        <Textarea rows={4} className="resize-none border-admin-md bg-admin-input text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+              </section>
+
+              <section className="space-y-5 rounded-2xl border border-admin bg-admin-surface p-5">
+                <div>
+                  <h2 className="font-heading text-sm font-bold text-foreground">Venue Profile</h2>
+                  <p className="mt-1 text-xs text-admin-40">Match the create-location flow: space type, venue category, parking, and reservations.</p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-admin-30">1. Choose the space type</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {SPACE_TYPES.map(type => {
+                      const selected = selectedSpace === type.value
+                      const Icon = type.icon
+                      return (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() => {
+                            form.setValue('isIndoors', type.value === 'indoor', { shouldDirty: true })
+                            form.setValue('isOutdoors', type.value === 'outdoor', { shouldDirty: true })
+                          }}
+                          className={[
+                            'rounded-xl border p-4 text-left transition-colors',
+                            selected ? 'border-neon-pink/50 bg-neon-pink/10 text-foreground' : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80',
+                          ].join(' ')}
+                        >
+                          <span className="flex items-center gap-2 text-sm font-semibold">
+                            <Icon className="h-4 w-4" />
+                            {type.label}
+                          </span>
+                          <span className="mt-1 block text-xs opacity-75">{type.hint}</span>
+                        </button>
+                      )
+                    })}
                   </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+                </div>
 
-            <FormField control={form.control} name="address" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs text-admin-50">Address</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
-                    <Input className="bg-admin-input border-admin pl-9 text-sm" {...field} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-admin-30">2. Choose the venue category</p>
+                  <FormField control={form.control} name="venueType" render={({ field }) => (
+                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      {VENUE_TYPES.map(type => {
+                        const selected = field.value === type.value
+                        return (
+                          <button
+                            key={type.value}
+                            type="button"
+                            onClick={() => field.onChange(type.value)}
+                            className={[
+                              'rounded-xl border p-4 text-left transition-colors',
+                              selected ? 'border-neon-pink/50 bg-neon-pink/10 text-foreground' : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80',
+                            ].join(' ')}
+                          >
+                            <span className="flex items-center gap-2 text-sm font-semibold">
+                              <Building2 className="h-4 w-4" />
+                              {type.label}
+                            </span>
+                            <span className="mt-1 block text-xs opacity-75">{type.hint}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )} />
+                </div>
 
-            <FormField control={form.control} name="capacity" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs text-admin-50">Capacity</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
-                    <Input type="number" min={1} className="bg-admin-input border-admin pl-9 text-sm" {...field} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <SectionLabel>Description & Perks</SectionLabel>
-
-            <FormField control={form.control} name="description" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs text-admin-50">About this venue</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-3 w-3.5 h-3.5 text-admin-30 pointer-events-none" />
-                    <Textarea placeholder="Describe the venue, ambiance, and exclusive perks…" className="bg-admin-input border-admin pl-9 text-sm resize-none min-h-[100px]" {...field} />
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-
-            <SectionLabel>Venue Features</SectionLabel>
-            <div className="space-y-2">
-              <FormField control={form.control} name="isIndoors" render={({ field }) => (
-                <FeatureToggleCard icon={Building2} label="Indoor" description="Air-conditioned interior space" checked={field.value} onCheckedChange={field.onChange} />
-              )} />
-              <FormField control={form.control} name="isOutdoors" render={({ field }) => (
-                <FeatureToggleCard icon={Wind} label="Outdoor" description="Open-air terrace or garden area" checked={field.value} onCheckedChange={field.onChange} />
-              )} />
-              <FormField control={form.control} name="isParkingAvailable" render={({ field }) => (
-                <FeatureToggleCard icon={ParkingCircle} label="Parking" description="Dedicated parking for guests" checked={field.value} onCheckedChange={field.onChange} />
-              )} />
-            </div>
-
-            <SectionLabel>Photos {totalPhotos > 0 && `(${totalPhotos}/${MAX_PHOTOS})`}</SectionLabel>
-
-            {(existingPics.length > 0 || newPics.length > 0) && (
-              <div className="grid grid-cols-3 gap-2">
-                {existingPics.map(src => (
-                  <div key={src} className="relative aspect-square rounded-lg overflow-hidden group border border-admin">
-                    <img src={src} alt="" className="w-full h-full object-cover" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
-                    <button type="button" onClick={() => setExistingPics(p => p.filter(u => u !== src))}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <XIcon className="w-3 h-3 text-white" />
+                <div className="grid gap-3 md:grid-cols-2">
+                  <FormField control={form.control} name="isParkingAvailable" render={({ field }) => (
+                    <button
+                      type="button"
+                      onClick={() => field.onChange(!field.value)}
+                      className={[
+                        'flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors',
+                        field.value ? 'border-neon-pink/45 bg-neon-pink/10 text-foreground' : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80',
+                      ].join(' ')}
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <ParkingCircle className="h-5 w-5 shrink-0 text-neon-pink" />
+                        <span>
+                          <span className="block text-sm font-semibold text-foreground">Secure, ample parking</span>
+                          <span className="mt-1 block text-xs text-admin-40">Show this to guests before booking.</span>
+                        </span>
+                      </span>
                     </button>
+                  )} />
+                  <FormField control={form.control} name="bookingEnabled" render={({ field }) => (
+                    <div className={[
+                      'flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors',
+                      field.value ? 'border-neon-pink/45 bg-neon-pink/10' : 'border-admin bg-admin-overlay',
+                    ].join(' ')}>
+                      <span className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-pink/12 text-neon-pink">
+                          <CalendarCheck className="h-4 w-4" />
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold text-foreground">Accept reservations</span>
+                          <span className="mt-1 block text-xs text-admin-40">Tables, slots, and deposits.</span>
+                        </span>
+                      </span>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} className="data-[state=checked]:!bg-neon-pink" />
+                    </div>
+                  )} />
+                </div>
+              </section>
+
+              <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="font-heading text-sm font-bold text-foreground">Photos</h2>
+                    <p className="mt-1 text-xs text-admin-40">Existing photos stay attached. Add up to {MAX_PHOTOS - existingPics.length} more images.</p>
                   </div>
-                ))}
-                {newPics.map((n, i) => (
-                  <div key={n.preview} className="relative aspect-square rounded-lg overflow-hidden group border border-neon-pink/30">
-                    <img src={n.preview} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => setNewPics(p => p.filter((_, j) => j !== i))}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <XIcon className="w-3 h-3 text-white" />
-                    </button>
+                  <span className="rounded-full border border-admin bg-admin-overlay px-3 py-1 text-xs text-admin-40">{totalPhotos}/{MAX_PHOTOS}</span>
+                </div>
+
+                {(existingPics.length > 0 || newPics.length > 0) && (
+                  <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+                    {existingPics.map(src => (
+                      <div key={src} className="relative aspect-square overflow-hidden rounded-xl border border-admin bg-admin-overlay">
+                        <img src={src} alt="" className="h-full w-full object-cover" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
+                      </div>
+                    ))}
+                    {newPics.map((n, i) => (
+                      <div key={n.preview} className="group relative aspect-square overflow-hidden rounded-xl border border-neon-pink/30">
+                        <img src={n.preview} alt="" className="h-full w-full object-cover" />
+                        <button type="button" onClick={() => setNewPics(p => p.filter((_, j) => j !== i))}
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 opacity-0 transition-opacity group-hover:opacity-100">
+                          <XIcon className="h-3.5 w-3.5 text-white" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+
+                {totalPhotos < MAX_PHOTOS && (
+                  <label className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-admin py-8 transition-all hover:border-neon-pink/50 hover:bg-neon-pink/5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-admin-overlay">
+                      <ImagePlus className="h-4 w-4 text-admin-40" />
+                    </span>
+                    <span className="text-sm font-medium text-admin-60">Add photos</span>
+                    <span className="text-xs text-admin-30">JPEG, PNG or WebP</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleFileChange} />
+                  </label>
+                )}
+              </section>
+
+              <div className="sticky bottom-0 flex items-center justify-between border-t border-admin bg-admin-body py-4">
+                <Button type="button" variant="outline" onClick={onClose} className="rounded-full border-admin px-5 text-admin-60 hover:bg-admin-input">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateMutation.isPending} className="gap-2 rounded-full bg-neon-pink px-6 font-semibold text-white hover:bg-neon-pink/90">
+                  <Save className="h-4 w-4" />
+                  {updateMutation.isPending ? 'Saving...' : 'Save changes'}
+                </Button>
               </div>
-            )}
+            </form>
+          </Form>
+        </div>
 
-            {totalPhotos < MAX_PHOTOS && (
-              <label className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border border-dashed border-admin hover:border-neon-pink/50 hover:bg-neon-pink/5 transition-all cursor-pointer">
-                <div className="w-9 h-9 rounded-full bg-admin-overlay flex items-center justify-center">
-                  <ImagePlus className="w-4 h-4 text-admin-40" />
+        <aside className="hidden w-80 shrink-0 xl:block">
+          <div className="sticky top-20 space-y-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-admin-30">Edit Preview</p>
+            <div className="overflow-hidden rounded-2xl border border-admin bg-admin-surface shadow-admin">
+              <div className="relative h-36 bg-admin-overlay">
+                {previewImage ? (
+                  <img src={previewImage} alt="" className="h-full w-full object-cover" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-admin-30">
+                    <MapPin className="h-8 w-8" />
+                  </div>
+                )}
+                <div className="absolute left-3 top-3 rounded-full border border-neon-pink/25 bg-neon-pink/15 px-2.5 py-1 text-xs font-semibold text-neon-pink">
+                  {venueTypeLabel(values.venueType)}
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-admin-60">Add photos</p>
-                  <p className="text-xs text-admin-30">JPEG, PNG or WebP · max {MAX_PHOTOS} photos</p>
+              </div>
+              <div className="space-y-4 p-4">
+                <div>
+                  <h3 className="line-clamp-1 font-heading text-lg font-black text-foreground">{values.name || 'Venue name'}</h3>
+                  <p className="mt-1 line-clamp-2 text-xs text-admin-40">{values.address || 'Venue address'}</p>
                 </div>
-                <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleFileChange} />
-              </label>
-            )}
+                <div className="grid grid-cols-2 gap-2">
+                  <PreviewStat label="Capacity" value={Number(values.capacity || 0).toLocaleString()} />
+                  <PreviewStat label="Reservations" value={values.bookingEnabled ? 'On' : 'Off'} />
+                </div>
+              </div>
+            </div>
           </div>
+        </aside>
+      </div>
+    </AdminLayout>
+  )
+}
 
-          <div className="px-6 py-4 border-t border-admin flex justify-end gap-2 shrink-0">
-            <Button type="button" variant="ghost" onClick={onClose} className="text-admin-50">Cancel</Button>
-            <Button type="submit" disabled={updateMutation.isPending} className="bg-neon-pink hover:bg-neon-pink/90 text-white min-w-[110px]">
-              {updateMutation.isPending ? 'Saving…' : 'Save changes'}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </SlidePanel>
+function PreviewStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-admin bg-admin-overlay p-3">
+      <p className="text-[10px] uppercase tracking-wide text-admin-30">{label}</p>
+      <p className="mt-1 font-heading text-sm font-black text-foreground">{value}</p>
+    </div>
   )
 }
 
@@ -254,7 +395,7 @@ export default function LocationDetailPage() {
   if (isLoading) {
     return (
       <AdminLayout title="Location" subtitle="">
-        <div className="space-y-4 max-w-4xl">
+        <div className="space-y-4">
           <Skeleton className="h-64 rounded-2xl" />
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-24 w-full" />
@@ -268,7 +409,7 @@ export default function LocationDetailPage() {
       <AdminLayout title="Location not found" subtitle="">
         <div className="text-center py-20">
           <p className="text-admin-40 text-sm mb-4">This location doesn't exist or was deleted.</p>
-          <Button onClick={() => navigate('/dashboard/settings?tab=locations')} variant="ghost">← Back to settings</Button>
+          <Button onClick={() => navigate('/dashboard/events?section=locations')} variant="ghost">← Back to Locations</Button>
         </div>
       </AdminLayout>
     )
@@ -281,35 +422,41 @@ export default function LocationDetailPage() {
     try {
       await deleteMutation.mutateAsync(loc!.id)
       toast({ title: 'Location deleted' })
-      navigate('/dashboard/settings?tab=locations')
+      navigate('/dashboard/events?section=locations')
     } catch {
       toast({ title: 'Failed to delete location', variant: 'destructive' })
     }
   }
 
+  if (editOpen) {
+    return <EditLocationPage location={loc} onClose={() => setEditOpen(false)} />
+  }
+
   return (
     <AdminLayout title={loc.name} subtitle={loc.address}>
-      <div className="max-w-4xl space-y-6">
-        {/* Top bar */}
-        <div className="flex items-center justify-between gap-3">
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 rounded-2xl border border-admin bg-admin-surface p-4 shadow-admin sm:flex-row sm:items-center sm:justify-between">
           <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-admin-40 hover:text-foreground text-sm transition-colors"
+            onClick={() => navigate('/dashboard/events?section=locations')}
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-admin-md bg-admin-input px-4 py-2 text-sm font-medium text-admin-50 transition-colors hover:bg-admin-overlay hover:text-admin-80"
           >
-            <ArrowLeft className="w-4 h-4" /> Back
+            <ArrowLeft className="h-4 w-4" />
+            Back to Locations
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              size="sm"
               onClick={() => setEditOpen(true)}
-              className="gap-1.5 bg-neon-pink hover:bg-neon-pink/90 text-white"
+              aria-label="Open edit form"
+              className="gap-2 rounded-full bg-neon-pink px-5 text-white hover:bg-neon-pink/90"
             >
-              <Pencil className="w-3.5 h-3.5" /> Edit
+              <Pencil className="h-4 w-4" />
+              Edit Location
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10 gap-1.5">
-                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                <Button variant="outline" className="gap-2 rounded-full border-red-500/25 px-5 text-red-400 hover:bg-red-500/10 hover:text-red-300">
+                  <Trash2 className="h-4 w-4" />
+                  Delete
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
@@ -330,56 +477,76 @@ export default function LocationDetailPage() {
           </div>
         </div>
 
-        {/* Hero image */}
-        <div className="relative h-72 sm:h-96 rounded-2xl overflow-hidden bg-admin-overlay">
-          {hero ? (
-            <img
-              src={hero}
-              alt={loc.name}
-              className="w-full h-full object-cover"
-              onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-neon-pink/5 to-admin-overlay">
-              <Image className="w-10 h-10 text-admin-20" />
-              <p className="text-xs text-admin-30">No photos yet</p>
-            </div>
-          )}
-          {/* Thumbnail strip */}
-          {pictures.length > 1 && (
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-              {pictures.map((src, i) => (
-                <button
-                  key={src}
-                  onClick={() => setHeroIdx(i)}
-                  className={[
-                    'w-10 h-10 rounded-lg overflow-hidden border-2 transition-all',
-                    heroIdx === i ? 'border-neon-pink scale-110' : 'border-white/30 opacity-60 hover:opacity-100',
-                  ].join(' ')}
-                >
-                  <img src={src} alt="" className="w-full h-full object-cover" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Info grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-2 bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
-            <div>
-              <h1 className="font-heading font-black text-xl text-foreground">{loc.name}</h1>
-              <p className="text-sm text-admin-40 flex items-center gap-1.5 mt-1">
-                <MapPin className="w-3.5 h-3.5 shrink-0" />{loc.address}
-              </p>
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_420px]">
+          <div className="space-y-4">
+            <div className="relative h-[360px] overflow-hidden rounded-2xl border border-admin bg-admin-overlay shadow-admin lg:h-[520px]">
+              {hero ? (
+                <img
+                  src={hero}
+                  alt={loc.name}
+                  className="h-full w-full object-cover"
+                  onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-neon-pink/5 to-admin-overlay">
+                  <Image className="h-10 w-10 text-admin-20" />
+                  <p className="text-xs text-admin-30">No photos yet</p>
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/75 to-transparent" />
+              <div className="absolute bottom-5 left-5 right-5">
+                <Badge className="mb-3 border-neon-pink/25 bg-neon-pink/15 text-neon-pink">{venueTypeLabel(loc.venueType)}</Badge>
+                <h1 className="font-heading text-2xl font-black text-white md:text-4xl">{loc.name}</h1>
+                <p className="mt-2 flex items-center gap-2 text-sm text-white/75">
+                  <MapPin className="h-4 w-4 shrink-0 text-neon-pink" />
+                  {loc.address}
+                </p>
+              </div>
             </div>
 
-            {loc.description && (
-              <p className="text-sm text-admin-60 leading-relaxed">{loc.description}</p>
+            {pictures.length > 1 && (
+              <div className="grid grid-cols-4 gap-3 md:grid-cols-6">
+                {pictures.map((src, i) => (
+                  <button
+                    key={src}
+                    onClick={() => setHeroIdx(i)}
+                    className={[
+                      'aspect-[4/3] overflow-hidden rounded-xl border-2 transition-all',
+                      heroIdx === i ? 'border-neon-pink' : 'border-transparent hover:border-admin-md',
+                    ].join(' ')}
+                  >
+                    <img src={src} alt="" className="h-full w-full object-cover transition-transform duration-200 hover:scale-105" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
+                  </button>
+                ))}
+              </div>
             )}
+          </div>
 
-            {/* Features */}
-            <div className="flex flex-wrap gap-2 pt-1">
+          <aside className="space-y-4">
+            <div className="rounded-2xl border border-admin bg-admin-surface p-6 shadow-admin">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Venue overview</p>
+              <h2 className="mt-3 font-heading text-2xl font-black text-foreground">{loc.name}</h2>
+              <p className="mt-3 flex items-start gap-2 text-sm text-admin-40">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-neon-pink" />
+                {loc.address}
+              </p>
+              {loc.description ? (
+                <p className="mt-5 text-sm leading-6 text-admin-60">{loc.description}</p>
+              ) : (
+                <p className="mt-5 rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No description added yet.</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <DetailMetric icon={Users} label="Max capacity" value={loc.capacity.toLocaleString()} />
+              <DetailMetric icon={CalendarCheck} label="Reservations" value={loc.bookingEnabled ? 'Enabled' : 'Off'} />
+              <DetailMetric icon={loc.isOutdoors && !loc.isIndoors ? Wind : Building2} label="Space" value={loc.isIndoors && loc.isOutdoors ? 'Indoor + Outdoor' : loc.isIndoors ? 'Indoor' : loc.isOutdoors ? 'Outdoor' : 'Not set'} />
+              <DetailMetric icon={ParkingCircle} label="Parking" value={loc.isParkingAvailable ? 'Available' : 'Not set'} />
+            </div>
+
+            <div className="rounded-2xl border border-admin bg-admin-surface p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Venue features</p>
+              <div className="mt-4 flex flex-wrap gap-2">
               {loc.isIndoors && (
                 <Badge className="text-xs border bg-blue-500/10 text-blue-400 border-blue-500/30 gap-1.5 px-2.5 py-1">
                   <Building2 className="w-3 h-3" /> Indoor
@@ -395,44 +562,28 @@ export default function LocationDetailPage() {
                   <ParkingCircle className="w-3 h-3" /> Parking
                 </Badge>
               )}
+                {!loc.isIndoors && !loc.isOutdoors && !loc.isParkingAvailable && (
+                  <span className="text-sm text-admin-40">No features selected yet.</span>
+                )}
+              </div>
             </div>
-          </div>
-
-          <div className="bg-admin-surface border border-admin rounded-2xl p-5 flex flex-col justify-center items-center gap-2">
-            <div className="w-12 h-12 rounded-2xl bg-neon-pink/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-neon-pink" />
-            </div>
-            <p className="font-heading font-black text-3xl text-foreground">{loc.capacity.toLocaleString()}</p>
-            <p className="text-xs text-admin-30 uppercase tracking-wider">Max capacity</p>
-          </div>
-        </div>
-
-        {/* Photo grid */}
-        {pictures.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-admin-50">All photos ({pictures.length})</h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-              {pictures.map((src, i) => (
-                <button
-                  key={src}
-                  onClick={() => setHeroIdx(i)}
-                  className={[
-                    'aspect-square rounded-xl overflow-hidden border-2 transition-all',
-                    heroIdx === i ? 'border-neon-pink' : 'border-transparent hover:border-admin',
-                  ].join(' ')}
-                >
-                  <img src={src} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
-                    onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+          </aside>
+        </section>
 
         <ReservationSetupPanel location={loc} />
       </div>
-
-      {editOpen && <EditPanel location={loc} onClose={() => setEditOpen(false)} />}
     </AdminLayout>
+  )
+}
+
+function DetailMetric({ icon: Icon, label, value }: { icon: typeof Users; label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-admin bg-admin-surface p-4 shadow-admin">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-pink/10 text-neon-pink">
+        <Icon className="h-4 w-4" />
+      </div>
+      <p className="mt-3 text-[10px] uppercase tracking-wide text-admin-30">{label}</p>
+      <p className="mt-1 truncate font-heading text-lg font-black text-foreground">{value}</p>
+    </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
 import {
   Badge,
   Button,
@@ -10,10 +10,12 @@ import {
 import {
   CalendarClock,
   Clock,
+  ImagePlus,
   Plus,
   Power,
   Save,
   Table2,
+  X,
 } from 'lucide-react'
 import {
   useCreateLocationReservationSlot,
@@ -50,7 +52,14 @@ const DAYS = [
   { label: 'Sat', value: 6 },
 ]
 
-const emptyTable: UpsertLocationTablePayload = {
+const DEPOSIT_PERCENTAGES = [20, 40, 60, 80, 100]
+
+type TableDraft = UpsertLocationTablePayload & {
+  hasCategoryPhoto: boolean
+  categoryPhoto?: { file: File; preview: string }
+}
+
+const emptyTable: TableDraft = {
   name: '',
   category: '',
   description: '',
@@ -60,6 +69,7 @@ const emptyTable: UpsertLocationTablePayload = {
   depositType: 'FLAT',
   depositValue: 0,
   isActive: true,
+  hasCategoryPhoto: false,
 }
 
 const emptySlot: UpsertReservationSlotPayload = {
@@ -80,7 +90,7 @@ function normalizeVenueType(value?: VenueType | null): CanonicalVenueType {
   return 'OTHER'
 }
 
-function tableToDraft(table: LocationTable): UpsertLocationTablePayload {
+function tableToDraft(table: LocationTable): TableDraft {
   return {
     name: table.name,
     category: table.category,
@@ -91,6 +101,7 @@ function tableToDraft(table: LocationTable): UpsertLocationTablePayload {
     depositType: table.depositType,
     depositValue: Number(table.depositValue),
     isActive: table.isActive,
+    hasCategoryPhoto: false,
   }
 }
 
@@ -120,7 +131,7 @@ export default function ReservationSetupPanel({ location }: { location: Location
   const [cancellationCutoffHours, setCancellationCutoffHours] = useState(location.cancellationCutoffHours ?? 24)
   const [timezone, setTimezone] = useState(location.timezone ?? 'Africa/Nairobi')
 
-  const [tableDraft, setTableDraft] = useState<UpsertLocationTablePayload>(emptyTable)
+  const [tableDraft, setTableDraft] = useState<TableDraft>(emptyTable)
   const [editingTableId, setEditingTableId] = useState<string | null>(null)
   const [slotDraft, setSlotDraft] = useState<UpsertReservationSlotPayload>(emptySlot)
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
@@ -164,8 +175,9 @@ export default function ReservationSetupPanel({ location }: { location: Location
       return
     }
     try {
+      const { hasCategoryPhoto: _hasCategoryPhoto, categoryPhoto: _categoryPhoto, ...tablePayload } = tableDraft
       const payload = {
-        ...tableDraft,
+        ...tablePayload,
         minGuests: Number(tableDraft.minGuests),
         maxGuests: Number(tableDraft.maxGuests),
         minimumSpend: Number(tableDraft.minimumSpend),
@@ -182,6 +194,25 @@ export default function ReservationSetupPanel({ location }: { location: Location
     } catch (error) {
       toast({ title: 'Could not save table', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
     }
+  }
+
+  function setTableDepositType(depositType: DepositType) {
+    setTableDraft(prev => ({
+      ...prev,
+      depositType,
+      depositValue: depositType === 'PERCENTAGE' ? 20 : 0,
+    }))
+  }
+
+  function setTableCategoryPhoto(file: File) {
+    setTableDraft(prev => ({ ...prev, categoryPhoto: { file, preview: URL.createObjectURL(file) } }))
+  }
+
+  function handleTableCategoryPhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setTableCategoryPhoto(file)
+    event.target.value = ''
   }
 
   async function saveSlot() {
@@ -272,20 +303,66 @@ export default function ReservationSetupPanel({ location }: { location: Location
           <div className="rounded-xl border border-admin bg-admin-overlay p-4">
             <PanelHeading icon={Table2} title="Physical Tables" count={tables.length} />
             <div className="mt-4 grid gap-3">
-              <Input placeholder="Table name e.g. VIP Booth 1" value={tableDraft.name} onChange={event => setTableDraft(prev => ({ ...prev, name: event.target.value }))} className="border-admin bg-admin-input" />
-              <Input placeholder="Category shown to customers" value={tableDraft.category} onChange={event => setTableDraft(prev => ({ ...prev, category: event.target.value }))} className="border-admin bg-admin-input" />
+              <DraftLabel label="Table name">
+                <Input placeholder="e.g. VIP Booth 1" value={tableDraft.name} onChange={event => setTableDraft(prev => ({ ...prev, name: event.target.value }))} className="border-admin bg-admin-input" />
+              </DraftLabel>
+              <DraftLabel label="Customer category">
+                <Input placeholder="Category shown to customers" value={tableDraft.category} onChange={event => setTableDraft(prev => ({ ...prev, category: event.target.value }))} className="border-admin bg-admin-input" />
+              </DraftLabel>
               <div className="grid grid-cols-2 gap-2">
-                <Input type="number" min={1} value={tableDraft.minGuests} onChange={event => setTableDraft(prev => ({ ...prev, minGuests: Number(event.target.value) }))} className="border-admin bg-admin-input" />
-                <Input type="number" min={1} value={tableDraft.maxGuests} onChange={event => setTableDraft(prev => ({ ...prev, maxGuests: Number(event.target.value) }))} className="border-admin bg-admin-input" />
+                <DraftLabel label="Minimum guests">
+                  <Input type="number" min={1} value={tableDraft.minGuests} onChange={event => setTableDraft(prev => ({ ...prev, minGuests: Number(event.target.value) }))} className="border-admin bg-admin-input" />
+                </DraftLabel>
+                <DraftLabel label="Maximum guests">
+                  <Input type="number" min={1} value={tableDraft.maxGuests} onChange={event => setTableDraft(prev => ({ ...prev, maxGuests: Number(event.target.value) }))} className="border-admin bg-admin-input" />
+                </DraftLabel>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <Input type="number" min={0} placeholder="Minimum spend" value={tableDraft.minimumSpend} onChange={event => setTableDraft(prev => ({ ...prev, minimumSpend: Number(event.target.value) }))} className="border-admin bg-admin-input" />
-                <Input type="number" min={0} placeholder="Deposit" value={tableDraft.depositValue} onChange={event => setTableDraft(prev => ({ ...prev, depositValue: Number(event.target.value) }))} className="border-admin bg-admin-input" />
+                <DraftLabel label="Minimum spend">
+                  <Input type="number" min={0} value={tableDraft.minimumSpend} onChange={event => setTableDraft(prev => ({ ...prev, minimumSpend: Number(event.target.value) }))} className="border-admin bg-admin-input" />
+                </DraftLabel>
+                <DraftLabel label="Deposit type">
+                  <select value={tableDraft.depositType} onChange={event => setTableDepositType(event.target.value as DepositType)} className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+                    <option value="FLAT">Flat deposit</option>
+                    <option value="PERCENTAGE">Percentage deposit</option>
+                  </select>
+                </DraftLabel>
               </div>
-              <select value={tableDraft.depositType} onChange={event => setTableDraft(prev => ({ ...prev, depositType: event.target.value as DepositType }))} className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
-                <option value="FLAT">Flat deposit</option>
-                <option value="PERCENTAGE">Percentage deposit</option>
-              </select>
+              {tableDraft.depositType === 'FLAT' ? (
+                <DraftLabel label="Flat deposit amount">
+                  <Input type="number" min={0} value={tableDraft.depositValue} onChange={event => setTableDraft(prev => ({ ...prev, depositValue: Number(event.target.value) }))} className="border-admin bg-admin-input" />
+                </DraftLabel>
+              ) : (
+                <DraftLabel label="Percentage deposit">
+                  <select value={tableDraft.depositValue} onChange={event => setTableDraft(prev => ({ ...prev, depositValue: Number(event.target.value) }))} className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+                    {DEPOSIT_PERCENTAGES.map(value => (
+                      <option key={value} value={value}>{value}%</option>
+                    ))}
+                  </select>
+                </DraftLabel>
+              )}
+              <label className="flex min-h-10 items-center gap-3 rounded-md border border-admin bg-admin-input px-3 text-sm text-admin-40">
+                <input
+                  type="checkbox"
+                  checked={tableDraft.hasCategoryPhoto}
+                  onChange={event => setTableDraft(prev => ({
+                    ...prev,
+                    hasCategoryPhoto: event.target.checked,
+                    categoryPhoto: event.target.checked ? prev.categoryPhoto : undefined,
+                  }))}
+                  className="h-4 w-4 rounded border-admin accent-neon-pink"
+                />
+                Add table category picture
+              </label>
+              {tableDraft.hasCategoryPhoto && (
+                <TableCategoryPhotoPicker
+                  inputId="reservation-table-category-photo"
+                  photo={tableDraft.categoryPhoto}
+                  onFile={setTableCategoryPhoto}
+                  onInputChange={handleTableCategoryPhotoChange}
+                  onClear={() => setTableDraft(prev => ({ ...prev, categoryPhoto: undefined }))}
+                />
+              )}
               <Button onClick={saveTable} disabled={createTable.isPending || updateTable.isPending} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
                 <Plus className="h-4 w-4" />
                 {editingTableId ? 'Update Table' : 'Add Table'}
@@ -378,6 +455,80 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-admin bg-admin-overlay p-4">
       <p className="text-xs text-admin-40">{label}</p>
       <p className="mt-1 font-heading text-xl font-black text-foreground">{value}</p>
+    </div>
+  )
+}
+
+function DraftLabel({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="space-y-1">
+      <span className="text-xs text-admin-40">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function TableCategoryPhotoPicker({
+  inputId,
+  photo,
+  onFile,
+  onInputChange,
+  onClear,
+}: {
+  inputId: string
+  photo?: { file: File; preview: string }
+  onFile: (file: File) => void
+  onInputChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onClear: () => void
+}) {
+  return (
+    <div className="space-y-2">
+      <span className="text-xs text-admin-40">Upload table category picture</span>
+      <div
+        onDragOver={event => event.preventDefault()}
+        onDrop={event => {
+          event.preventDefault()
+          const file = event.dataTransfer.files?.[0]
+          if (file) onFile(file)
+        }}
+        className={`group relative overflow-hidden rounded-2xl border border-dashed p-4 transition-colors ${
+          photo ? 'border-neon-pink/40 bg-neon-pink/8' : 'border-admin-md bg-admin-input hover:border-neon-pink/45 hover:bg-admin-overlay'
+        }`}
+      >
+        {photo ? (
+          <div className="flex items-center gap-4">
+            <img src={photo.preview} alt="" className="h-20 w-20 rounded-xl object-cover shadow-[0_12px_32px_rgba(0,0,0,0.24)]" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">{photo.file.name}</p>
+              <p className="mt-1 text-xs text-admin-40">This preview represents the table category image.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center rounded-full bg-neon-pink px-3 text-xs font-semibold text-white transition hover:bg-neon-pink/90">
+                  Change image
+                </label>
+                <button type="button" onClick={onClear} className="inline-flex h-8 items-center gap-1 rounded-full border border-admin px-3 text-xs font-semibold text-admin-50 transition hover:border-red-500/35 hover:text-red-400">
+                  <X className="h-3.5 w-3.5" />
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <label htmlFor={inputId} className="flex cursor-pointer flex-col items-center justify-center rounded-xl py-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-pink/12 text-neon-pink ring-1 ring-neon-pink/20 transition group-hover:scale-105">
+              <ImagePlus className="h-5 w-5" />
+            </span>
+            <span className="mt-3 text-sm font-semibold text-foreground">Drag an image here or click to upload</span>
+            <span className="mt-1 text-xs text-admin-40">JPG, PNG, or WebP for this table category.</span>
+          </label>
+        )}
+        <input
+          id={inputId}
+          className="sr-only"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={onInputChange}
+        />
+      </div>
     </div>
   )
 }

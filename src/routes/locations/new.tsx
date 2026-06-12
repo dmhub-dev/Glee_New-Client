@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { ChangeEvent, ElementType, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -40,30 +40,20 @@ import { useAdminUser } from '../../app/providers'
 const MAX_PHOTOS = 6
 
 type CanonicalVenueType = Extract<VenueType, 'CLUB' | 'RESTAURANT' | 'OTHER'>
+type SpaceType = 'indoor' | 'outdoor'
 
-const VENUE_TYPES: Array<{ label: string; value: CanonicalVenueType; hint: string }> = [
-  { label: 'Club', value: 'CLUB', hint: 'VIP booths, table sections, and late-night time slots.' },
-  { label: 'Restaurant/Hotel', value: 'RESTAURANT', hint: 'Dining tables, hotel restaurants, service windows, and minimum spend rules.' },
-  { label: 'Other', value: 'OTHER', hint: 'General event locations that may not take reservations.' },
+const SPACE_TYPES: Array<{ label: string; value: SpaceType; hint: string; icon: ElementType }> = [
+  { label: 'Indoor', value: 'indoor', hint: 'Enclosed rooms, dining halls, clubs, private areas, or hotel spaces.', icon: Building2 },
+  { label: 'Outdoor', value: 'outdoor', hint: 'Rooftops, gardens, terraces, pool decks, patios, or open-air venues.', icon: Wind },
 ]
 
-const VENUE_TYPE_DETAILS: Record<CanonicalVenueType, { title: string; copy: string; bullets: string[] }> = {
-  CLUB: {
-    title: 'Club information',
-    copy: 'Use this for nightlife venues, clubs with lounge areas, VIP sections, and bottle-service spaces.',
-    bullets: ['Default tables lean toward VIP booths and group minimum spends.', 'Use table categories for lounge, balcony, dance-floor, or premium booth sections.', 'Evening and late-night booking slots work best here.'],
-  },
-  RESTAURANT: {
-    title: 'Restaurant/Hotel information',
-    copy: 'Use this for restaurants, hotel restaurants, terraces, dining rooms, and hospitality venues.',
-    bullets: ['Default tables lean toward dining and premium dining categories.', 'Use table categories for terrace, private dining, window, or lounge seating.', 'Lunch, dinner, brunch, and hotel service windows work best here.'],
-  },
-  OTHER: {
-    title: 'Other location information',
-    copy: 'Use this for event spaces that mainly host events and may not need normal table reservations.',
-    bullets: ['Reservations are turned off by default for this type.', 'Enable reservations manually if this location has bookable tables.', 'Use the description for special rooms, halls, rooftops, or temporary lounge areas.'],
-  },
-}
+const VENUE_TYPES: Array<{ label: string; value: CanonicalVenueType; hint: string }> = [
+  { label: 'Club', value: 'CLUB', hint: 'VIP booths, bottle service, sections, and late-night table slots.' },
+  { label: 'Restaurant/Hotel', value: 'RESTAURANT', hint: 'Dining tables, hotel restaurants, terraces, and service windows.' },
+  { label: 'Other', value: 'OTHER', hint: 'Event spaces, halls, rooftops, studios, and special-purpose venues.' },
+]
+
+const DEPOSIT_PERCENTAGES = [20, 40, 60, 80, 100]
 
 const DAYS = [
   { label: 'Sun', value: 0 },
@@ -79,15 +69,36 @@ const locationSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   address: z.string().min(1, 'Address is required'),
   description: z.string().optional(),
-  capacity: z.coerce.number().int().positive('Capacity must be a positive number'),
+  capacity: z.preprocess(
+    value => value === '' || value === undefined || value === null ? undefined : value,
+    z.coerce.number({ required_error: 'Capacity is required' }).int().positive('Capacity must be a positive number'),
+  ),
   isIndoors: z.boolean(),
   isOutdoors: z.boolean(),
   isParkingAvailable: z.boolean(),
-  venueType: z.enum(['CLUB', 'RESTAURANT', 'OTHER']),
+  venueType: z.preprocess(
+    value => value === '' || value === undefined || value === null ? undefined : value,
+    z.enum(['CLUB', 'RESTAURANT', 'OTHER'], { required_error: 'Choose a venue category' }),
+  ),
   bookingEnabled: z.boolean(),
   bookingRules: z.string().optional(),
-  cancellationCutoffHours: z.coerce.number().int().min(0),
-  timezone: z.string().min(1, 'Timezone is required'),
+  cancellationCutoffHours: z.preprocess(
+    value => value === '' || value === undefined || value === null ? undefined : value,
+    z.coerce.number().int().min(0).optional(),
+  ),
+  timezone: z.string().optional(),
+}).superRefine((values, ctx) => {
+  if (!values.isIndoors && !values.isOutdoors) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['isIndoors'], message: 'Choose whether this venue is indoor or outdoor' })
+  }
+  if (values.bookingEnabled) {
+    if (values.cancellationCutoffHours === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['cancellationCutoffHours'], message: 'Cancellation cutoff is required' })
+    }
+    if (!values.timezone?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['timezone'], message: 'Timezone is required' })
+    }
+  }
 })
 
 type LocationFormValues = z.infer<typeof locationSchema>
@@ -97,42 +108,39 @@ type TableDraft = {
   name: string
   category: string
   description: string
-  quantity: number
-  minGuests: number
-  maxGuests: number
-  minimumSpend: number
+  quantity: number | ''
+  minGuests: number | ''
+  maxGuests: number | ''
+  minimumSpend: number | ''
   depositType: DepositType
-  depositValue: number
+  depositValue: number | ''
+  hasCategoryPhoto: boolean
+  categoryPhoto?: { file: File; preview: string }
 }
 
 function newTableDraft(type: CanonicalVenueType = 'CLUB'): TableDraft {
-  const defaults = {
-    CLUB: { name: 'VIP Booth', category: 'VIP Booth', min: 2, max: 6, spend: 10000, deposit: 1500 },
-    RESTAURANT: { name: 'Dining Table', category: 'Restaurant/Hotel Table', min: 2, max: 4, spend: 5000, deposit: 1000 },
-    OTHER: { name: 'Reserved Table', category: 'General', min: 1, max: 4, spend: 0, deposit: 0 },
-  }[type]
-
   return {
     id: `table-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    name: defaults.name,
-    category: defaults.category,
+    name: '',
+    category: type === 'RESTAURANT' ? 'Restaurant/Hotel Table' : '',
     description: '',
-    quantity: 1,
-    minGuests: defaults.min,
-    maxGuests: defaults.max,
-    minimumSpend: defaults.spend,
+    quantity: '',
+    minGuests: '',
+    maxGuests: '',
+    minimumSpend: '',
     depositType: 'FLAT',
-    depositValue: defaults.deposit,
+    depositValue: '',
+    hasCategoryPhoto: false,
   }
 }
 
 function newSlotDraft(): UpsertReservationSlotPayload & { id: string } {
   return {
     id: `slot-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    label: 'Evening',
-    startTime: '18:00',
-    endTime: '23:00',
-    daysOfWeek: [5, 6],
+    label: '',
+    startTime: '',
+    endTime: '',
+    daysOfWeek: [],
     isActive: true,
   }
 }
@@ -147,7 +155,7 @@ function venueTypeLabel(value: VenueType | CanonicalVenueType) {
   return VENUE_TYPES.find(type => type.value === normalizeVenueType(value))?.label ?? 'Venue'
 }
 
-function money(value: number) {
+function money(value: string | number) {
   return `KSh ${Number(value || 0).toLocaleString()}`
 }
 
@@ -162,8 +170,8 @@ export default function NewLocationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([])
-  const [tables, setTables] = useState<TableDraft[]>([newTableDraft('CLUB')])
-  const [slots, setSlots] = useState<Array<UpsertReservationSlotPayload & { id: string }>>([newSlotDraft()])
+  const [tables, setTables] = useState<TableDraft[]>([])
+  const [slots, setSlots] = useState<Array<UpsertReservationSlotPayload & { id: string }>>([])
 
   const {
     register,
@@ -172,33 +180,55 @@ export default function NewLocationPage() {
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<LocationFormValues>({
-    resolver: zodResolver(locationSchema),
+    resolver: zodResolver(locationSchema) as Resolver<LocationFormValues>,
     defaultValues: {
       name: '',
       address: '',
       description: '',
-      capacity: 120,
-      isIndoors: true,
+      capacity: undefined as unknown as number,
+      isIndoors: false,
       isOutdoors: false,
       isParkingAvailable: false,
-      venueType: 'CLUB',
-      bookingEnabled: true,
-      bookingRules: 'Reservation deposits secure the table. Guests should arrive on time and meet the minimum spend during service.',
-      cancellationCutoffHours: 24,
-      timezone: 'Africa/Nairobi',
+      venueType: undefined as unknown as CanonicalVenueType,
+      bookingEnabled: false,
+      bookingRules: '',
+      cancellationCutoffHours: undefined,
+      timezone: '',
     },
   })
 
   const values = watch()
+  const selectedVenueType = values.venueType as CanonicalVenueType | undefined
   const isSaving = isSubmitting || createLocation.isPending || createTable.isPending || createSlot.isPending
   const tableQuantity = tables.reduce((sum, table) => sum + Number(table.quantity || 0), 0)
   const activeDays = Array.from(new Set(slots.flatMap(slot => slot.daysOfWeek))).sort()
+  const selectedSpace: SpaceType | undefined = values.isIndoors ? 'indoor' : values.isOutdoors ? 'outdoor' : undefined
+
+  function ensureReservationDrafts(type: CanonicalVenueType = 'CLUB') {
+    setTables(current => current.length ? current : [newTableDraft(type)])
+    setSlots(current => current.length ? current : [newSlotDraft()])
+    setValue('bookingRules', values.bookingRules || 'Reservation deposits secure the table. Guests should arrive on time and meet the minimum spend during service.', { shouldDirty: true, shouldValidate: true })
+    setValue('cancellationCutoffHours', values.cancellationCutoffHours ?? 24, { shouldDirty: true, shouldValidate: true })
+    setValue('timezone', values.timezone || 'Africa/Nairobi', { shouldDirty: true, shouldValidate: true })
+  }
+
+  function handleSpaceTypeChange(value: SpaceType) {
+    setValue('isIndoors', value === 'indoor', { shouldDirty: true, shouldValidate: true })
+    setValue('isOutdoors', value === 'outdoor', { shouldDirty: true, shouldValidate: true })
+  }
 
   function handleVenueTypeChange(value: CanonicalVenueType) {
     setValue('venueType', value, { shouldDirty: true, shouldValidate: true })
     if (value === 'OTHER') setValue('bookingEnabled', false, { shouldDirty: true, shouldValidate: true })
-    if (value !== 'OTHER' && !values.bookingEnabled) setValue('bookingEnabled', true, { shouldDirty: true, shouldValidate: true })
-    setTables(current => current.length === 1 && !current[0].description ? [newTableDraft(value)] : current)
+    if (value !== 'OTHER') {
+      setValue('bookingEnabled', true, { shouldDirty: true, shouldValidate: true })
+      ensureReservationDrafts(value)
+    }
+  }
+
+  function handleBookingEnabledChange(value: boolean) {
+    setValue('bookingEnabled', value, { shouldDirty: true, shouldValidate: true })
+    if (value) ensureReservationDrafts(selectedVenueType ?? 'OTHER')
   }
 
   function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
@@ -212,6 +242,24 @@ export default function NewLocationPage() {
     setTables(current => current.map(table => table.id === id ? { ...table, ...patch } : table))
   }
 
+  function updateTableDepositType(id: string, depositType: DepositType) {
+    updateTable(id, {
+      depositType,
+      depositValue: depositType === 'PERCENTAGE' ? 20 : 0,
+    })
+  }
+
+  function setTableCategoryPhoto(id: string, file: File) {
+    updateTable(id, { categoryPhoto: { file, preview: URL.createObjectURL(file) } })
+  }
+
+  function handleTableCategoryPhotoChange(id: string, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setTableCategoryPhoto(id, file)
+    event.target.value = ''
+  }
+
   function updateSlot(id: string, patch: Partial<UpsertReservationSlotPayload>) {
     setSlots(current => current.map(slot => slot.id === id ? { ...slot, ...patch } : slot))
   }
@@ -222,14 +270,25 @@ export default function NewLocationPage() {
       toast({ title: 'Reservation setup required', description: 'Add at least one table and one booking slot.', variant: 'destructive' })
       return false
     }
-    const invalidTable = tables.find(table => !table.name.trim() || !table.category.trim() || table.quantity < 1 || table.maxGuests < table.minGuests)
+    const invalidTable = tables.find(table => (
+      !table.name.trim()
+      || !table.category.trim()
+      || table.quantity === ''
+      || table.minGuests === ''
+      || table.maxGuests === ''
+      || table.minimumSpend === ''
+      || table.depositValue === ''
+      || Number(table.quantity) < 1
+      || Number(table.minGuests) < 1
+      || Number(table.maxGuests) < Number(table.minGuests)
+    ))
     if (invalidTable) {
       toast({ title: 'Check table inventory', description: 'Each table needs a name, category, quantity, and valid guest range.', variant: 'destructive' })
       return false
     }
-    const invalidSlot = slots.find(slot => !slot.label.trim() || slot.daysOfWeek.length === 0)
+    const invalidSlot = slots.find(slot => !slot.label.trim() || !slot.startTime || !slot.endTime || slot.daysOfWeek.length === 0)
     if (invalidSlot) {
-      toast({ title: 'Check booking slots', description: 'Each slot needs a label and at least one active day.', variant: 'destructive' })
+      toast({ title: 'Check booking slots', description: 'Each slot needs a label, start time, end time, and at least one active day.', variant: 'destructive' })
       return false
     }
     return true
@@ -252,19 +311,19 @@ export default function NewLocationPage() {
           venueType: formValues.venueType,
           bookingEnabled: formValues.bookingEnabled,
           bookingRules: formValues.bookingRules,
-          cancellationCutoffHours: formValues.cancellationCutoffHours,
-          timezone: formValues.timezone,
+          cancellationCutoffHours: formValues.cancellationCutoffHours ?? 24,
+          timezone: formValues.timezone || 'Africa/Nairobi',
         },
         pictures: photos.map(photo => photo.file),
       })
 
       if (formValues.bookingEnabled) {
         for (const table of tables) {
-          for (let index = 0; index < table.quantity; index += 1) {
+          for (let index = 0; index < Number(table.quantity); index += 1) {
             await createTable.mutateAsync({
               locationId: created.id,
               payload: {
-                name: table.quantity > 1 ? `${table.name} ${index + 1}` : table.name,
+                name: Number(table.quantity) > 1 ? `${table.name} ${index + 1}` : table.name,
                 category: table.category,
                 description: table.description,
                 minGuests: Number(table.minGuests),
@@ -318,13 +377,13 @@ export default function NewLocationPage() {
                 <p className="mt-1 text-xs text-admin-40">Core information shown on event pages and reservation screens.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <FieldError label="Venue Name" htmlFor="location-name" error={errors.name?.message}>
+                <FieldError label="Venue Name" htmlFor="location-name" error={errors.name?.message} required>
                   <Input id="location-name" {...register('name')} placeholder="e.g. The Vault Nairobi" className="border-admin-md bg-admin-input" />
                 </FieldError>
-                <FieldError label="Capacity" htmlFor="location-capacity" error={errors.capacity?.message}>
+                <FieldError label="Capacity" htmlFor="location-capacity" error={errors.capacity?.message} required>
                   <Input id="location-capacity" type="number" min={1} {...register('capacity')} className="border-admin-md bg-admin-input" />
                 </FieldError>
-                <FieldError label="Address" htmlFor="location-address" error={errors.address?.message} className="md:col-span-2">
+                <FieldError label="Address" htmlFor="location-address" error={errors.address?.message} className="md:col-span-2" required>
                   <Input id="location-address" {...register('address')} placeholder="Full venue address" className="border-admin-md bg-admin-input" />
                 </FieldError>
                 <FieldError label="About this venue" htmlFor="location-description" error={errors.description?.message} className="md:col-span-2">
@@ -336,12 +395,42 @@ export default function NewLocationPage() {
             <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
               <div>
                 <h2 className="font-heading text-sm font-bold text-foreground">Venue Profile</h2>
-                <p className="mt-1 text-xs text-admin-40">Classify the venue and mark the facilities guests care about.</p>
+                <p className="mt-1 text-xs text-admin-40">Start with the physical space, then choose the venue category and guest parking setup.</p>
               </div>
-              <div className="grid gap-4 md:grid-cols-[1fr_240px]">
-                <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-5">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-admin-30">1. Choose the space type <RequiredMark /></p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {SPACE_TYPES.map(type => {
+                      const selected = selectedSpace === type.value
+                      const Icon = type.icon
+                      return (
+                        <button
+                          key={type.value}
+                          type="button"
+                          onClick={() => handleSpaceTypeChange(type.value)}
+                          className={cn(
+                            'rounded-xl border p-4 text-left transition-colors',
+                            selected ? 'border-neon-pink/50 bg-neon-pink/10 text-foreground' : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80',
+                          )}
+                        >
+                          <span className="flex items-center gap-2 text-sm font-semibold">
+                            {selected ? <Check className="h-4 w-4 text-neon-pink" /> : <Icon className="h-4 w-4" />}
+                            {type.label}
+                          </span>
+                          <span className="mt-1 block text-xs opacity-75">{type.hint}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {errors.isIndoors?.message && <p className="mt-2 text-xs text-red-400">{errors.isIndoors.message}</p>}
+                </div>
+
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-admin-30">2. Choose the venue category <RequiredMark /></p>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
                   {VENUE_TYPES.map(type => {
-                    const selected = values.venueType === type.value
+                    const selected = selectedVenueType === type.value
                     return (
                       <button
                         key={type.value}
@@ -360,22 +449,31 @@ export default function NewLocationPage() {
                       </button>
                     )
                   })}
+                  </div>
+                  {errors.venueType?.message && <p className="mt-2 text-xs text-red-400">{errors.venueType.message}</p>}
                 </div>
-                <div className="space-y-2">
-                  <FeatureToggle icon={Building2} label="Indoor" checked={values.isIndoors} onClick={() => setValue('isIndoors', !values.isIndoors)} />
-                  <FeatureToggle icon={Wind} label="Outdoor" checked={values.isOutdoors} onClick={() => setValue('isOutdoors', !values.isOutdoors)} />
-                  <FeatureToggle icon={ParkingCircle} label="Parking" checked={values.isParkingAvailable} onClick={() => setValue('isParkingAvailable', !values.isParkingAvailable)} />
-                </div>
-              </div>
-              <div className="rounded-xl border border-admin bg-admin-overlay p-4">
-                <p className="font-heading text-sm font-black text-foreground">{VENUE_TYPE_DETAILS[values.venueType].title}</p>
-                <p className="mt-1 text-sm leading-6 text-admin-50">{VENUE_TYPE_DETAILS[values.venueType].copy}</p>
-                <div className="mt-3 grid gap-2 md:grid-cols-3">
-                  {VENUE_TYPE_DETAILS[values.venueType].bullets.map(item => (
-                    <div key={item} className="rounded-lg border border-admin bg-admin-surface px-3 py-2 text-xs leading-5 text-admin-50">
-                      {item}
-                    </div>
-                  ))}
+
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-admin-30">3. Guest parking</p>
+                  <button
+                    type="button"
+                    onClick={() => setValue('isParkingAvailable', !values.isParkingAvailable, { shouldDirty: true, shouldValidate: true })}
+                    className={cn(
+                      'mt-3 flex w-full items-center justify-between rounded-xl border p-4 text-left transition-colors',
+                      values.isParkingAvailable ? 'border-neon-pink/45 bg-neon-pink/10 text-foreground' : 'border-admin bg-admin-overlay text-admin-50 hover:border-admin-md hover:text-admin-80',
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <ParkingCircle className={cn('h-5 w-5 shrink-0', values.isParkingAvailable ? 'text-neon-pink' : 'text-admin-40')} />
+                      <span>
+                        <span className="block text-sm font-semibold text-foreground">Does this venue have secure, ample parking?</span>
+                        <span className="mt-1 block text-xs text-admin-40">This helps guests decide transport and arrival plans before booking.</span>
+                      </span>
+                    </span>
+                    <span className={cn('ml-4 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border', values.isParkingAvailable ? 'border-neon-pink bg-neon-pink text-white' : 'border-admin-md text-admin-30')}>
+                      {values.isParkingAvailable && <Check className="h-3.5 w-3.5" />}
+                    </span>
+                  </button>
                 </div>
               </div>
             </section>
@@ -414,15 +512,19 @@ export default function NewLocationPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="font-heading text-sm font-bold text-foreground">Reservation Setup</h2>
-                  <p className="mt-1 text-xs text-admin-40">Turn this on for clubs and restaurant/hotel venues that accept table bookings.</p>
+                  <p className="mt-1 text-xs text-admin-40">
+                    {values.venueType === 'OTHER'
+                      ? 'Optional table bookings are available for other venues when they have bookable tables or sections.'
+                      : 'Reservation setup is enabled automatically for clubs and restaurant/hotel venues.'}
+                  </p>
                 </div>
-                <Switch checked={values.bookingEnabled} onCheckedChange={value => setValue('bookingEnabled', value)} className="data-[state=checked]:!bg-neon-pink" />
+                <Switch checked={values.bookingEnabled} onCheckedChange={handleBookingEnabledChange} className="data-[state=checked]:!bg-neon-pink" />
               </div>
               <div className={cn('grid gap-4 md:grid-cols-2', !values.bookingEnabled && 'opacity-45')}>
-                <FieldError label="Cancellation cutoff hours" htmlFor="location-cancellation-cutoff" error={errors.cancellationCutoffHours?.message}>
+                <FieldError label="Cancellation cutoff hours" htmlFor="location-cancellation-cutoff" error={errors.cancellationCutoffHours?.message} required={values.bookingEnabled}>
                   <Input id="location-cancellation-cutoff" type="number" min={0} disabled={!values.bookingEnabled} {...register('cancellationCutoffHours')} className="border-admin-md bg-admin-input" />
                 </FieldError>
-                <FieldError label="Timezone" htmlFor="location-timezone" error={errors.timezone?.message}>
+                <FieldError label="Timezone" htmlFor="location-timezone" error={errors.timezone?.message} required={values.bookingEnabled}>
                   <Input id="location-timezone" disabled={!values.bookingEnabled} {...register('timezone')} className="border-admin-md bg-admin-input" />
                 </FieldError>
                 <FieldError label="Booking rules" htmlFor="location-booking-rules" error={errors.bookingRules?.message} className="md:col-span-2">
@@ -439,7 +541,7 @@ export default function NewLocationPage() {
                       <h2 className="font-heading text-sm font-bold text-foreground">Table Inventory</h2>
                       <p className="mt-1 text-xs text-admin-40">Use quantity to create multiple physical tables in the same category.</p>
                     </div>
-                    <Button type="button" variant="outline" onClick={() => setTables(current => [...current, newTableDraft(values.venueType)])} className="gap-2 border-admin text-admin-70 hover:bg-admin-input">
+                    <Button type="button" variant="outline" onClick={() => setTables(current => [...current, newTableDraft(selectedVenueType ?? 'OTHER')])} className="gap-2 border-admin text-admin-70 hover:bg-admin-input">
                       <Plus className="h-4 w-4" />
                       Add Category
                     </Button>
@@ -454,18 +556,69 @@ export default function NewLocationPage() {
                           </button>
                         </div>
                         <div className="grid gap-3 md:grid-cols-4">
-                          <Input value={table.name} onChange={event => updateTable(table.id, { name: event.target.value })} placeholder="Table name" className="border-admin-md bg-admin-input md:col-span-2" />
-                          <Input value={table.category} onChange={event => updateTable(table.id, { category: event.target.value })} placeholder="Customer category" className="border-admin-md bg-admin-input" />
-                          <Input type="number" min={1} value={table.quantity} onChange={event => updateTable(table.id, { quantity: Number(event.target.value) })} placeholder="Quantity" className="border-admin-md bg-admin-input" />
-                          <Input type="number" min={1} value={table.minGuests} onChange={event => updateTable(table.id, { minGuests: Number(event.target.value) })} placeholder="Min guests" className="border-admin-md bg-admin-input" />
-                          <Input type="number" min={1} value={table.maxGuests} onChange={event => updateTable(table.id, { maxGuests: Number(event.target.value) })} placeholder="Max guests" className="border-admin-md bg-admin-input" />
-                          <Input type="number" min={0} value={table.minimumSpend} onChange={event => updateTable(table.id, { minimumSpend: Number(event.target.value) })} placeholder="Minimum spend" className="border-admin-md bg-admin-input" />
-                          <Input type="number" min={0} value={table.depositValue} onChange={event => updateTable(table.id, { depositValue: Number(event.target.value) })} placeholder="Deposit" className="border-admin-md bg-admin-input" />
-                          <select value={table.depositType} onChange={event => updateTable(table.id, { depositType: event.target.value as DepositType })} className="h-10 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground">
-                            <option value="FLAT">Flat deposit</option>
-                            <option value="PERCENTAGE">Percentage deposit</option>
-                          </select>
-                          <Input value={table.description} onChange={event => updateTable(table.id, { description: event.target.value })} placeholder="Optional table notes" className="border-admin-md bg-admin-input md:col-span-3" />
+                          <FieldError label="Internal table name" htmlFor={`${table.id}-name`} className="md:col-span-2" required>
+                            <Input id={`${table.id}-name`} value={table.name} onChange={event => updateTable(table.id, { name: event.target.value })} placeholder="e.g. VIP Booth" className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="Customer-facing category" htmlFor={`${table.id}-category`} required>
+                            <Input id={`${table.id}-category`} value={table.category} onChange={event => updateTable(table.id, { category: event.target.value })} placeholder="e.g. VIP Booth" className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="Physical table quantity" htmlFor={`${table.id}-quantity`} required>
+                            <Input id={`${table.id}-quantity`} type="number" min={1} value={table.quantity} onChange={event => updateTable(table.id, { quantity: event.target.value === '' ? '' : Number(event.target.value) })} className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="Minimum guests" htmlFor={`${table.id}-min-guests`} required>
+                            <Input id={`${table.id}-min-guests`} type="number" min={1} value={table.minGuests} onChange={event => updateTable(table.id, { minGuests: event.target.value === '' ? '' : Number(event.target.value) })} className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="Maximum guests" htmlFor={`${table.id}-max-guests`} required>
+                            <Input id={`${table.id}-max-guests`} type="number" min={1} value={table.maxGuests} onChange={event => updateTable(table.id, { maxGuests: event.target.value === '' ? '' : Number(event.target.value) })} className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="Minimum spend" htmlFor={`${table.id}-minimum-spend`} required>
+                            <Input id={`${table.id}-minimum-spend`} type="number" min={0} value={table.minimumSpend} onChange={event => updateTable(table.id, { minimumSpend: event.target.value === '' ? '' : Number(event.target.value) })} className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="Deposit type" htmlFor={`${table.id}-deposit-type`} required>
+                            <select id={`${table.id}-deposit-type`} value={table.depositType} onChange={event => updateTableDepositType(table.id, event.target.value as DepositType)} className="h-10 w-full rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground">
+                              <option value="FLAT">Flat deposit</option>
+                              <option value="PERCENTAGE">Percentage deposit</option>
+                            </select>
+                          </FieldError>
+                          {table.depositType === 'FLAT' ? (
+                            <FieldError label="Flat deposit amount" htmlFor={`${table.id}-flat-deposit`} required>
+                              <Input id={`${table.id}-flat-deposit`} type="number" min={0} value={table.depositValue} onChange={event => updateTable(table.id, { depositValue: event.target.value === '' ? '' : Number(event.target.value) })} className="border-admin-md bg-admin-input" />
+                            </FieldError>
+                          ) : (
+                            <FieldError label="Percentage deposit" htmlFor={`${table.id}-percentage-deposit`} required>
+                              <select id={`${table.id}-percentage-deposit`} value={table.depositValue} onChange={event => updateTable(table.id, { depositValue: Number(event.target.value) })} className="h-10 w-full rounded-md border border-admin-md bg-admin-input px-3 text-sm text-foreground">
+                                {DEPOSIT_PERCENTAGES.map(value => (
+                                  <option key={value} value={value}>{value}%</option>
+                                ))}
+                              </select>
+                            </FieldError>
+                          )}
+                          <FieldError label="Table notes" htmlFor={`${table.id}-description`} className="md:col-span-3">
+                            <Input id={`${table.id}-description`} value={table.description} onChange={event => updateTable(table.id, { description: event.target.value })} placeholder="Optional table notes shown internally" className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <label className="flex min-h-10 items-center gap-3 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-admin-50 md:col-span-4">
+                            <input
+                              type="checkbox"
+                              checked={table.hasCategoryPhoto}
+                              onChange={event => updateTable(table.id, {
+                                hasCategoryPhoto: event.target.checked,
+                                categoryPhoto: event.target.checked ? table.categoryPhoto : undefined,
+                              })}
+                              className="h-4 w-4 rounded border-admin accent-neon-pink"
+                            />
+                            Add table category picture
+                          </label>
+                          {table.hasCategoryPhoto && (
+                            <div className="md:col-span-4">
+                              <TableCategoryPhotoPicker
+                                inputId={`${table.id}-category-photo`}
+                                photo={table.categoryPhoto}
+                                onFile={file => setTableCategoryPhoto(table.id, file)}
+                                onInputChange={event => handleTableCategoryPhotoChange(table.id, event)}
+                                onClear={() => updateTable(table.id, { categoryPhoto: undefined })}
+                              />
+                            </div>
+                          )}
                         </div>
                       </article>
                     ))}
@@ -493,11 +646,18 @@ export default function NewLocationPage() {
                           </button>
                         </div>
                         <div className="grid gap-3 md:grid-cols-[1fr_140px_140px]">
-                          <Input value={slot.label} onChange={event => updateSlot(slot.id, { label: event.target.value })} placeholder="Slot label e.g. Dinner" className="border-admin-md bg-admin-input" />
-                          <Input type="time" value={slot.startTime} onChange={event => updateSlot(slot.id, { startTime: event.target.value })} className="border-admin-md bg-admin-input" />
-                          <Input type="time" value={slot.endTime} onChange={event => updateSlot(slot.id, { endTime: event.target.value })} className="border-admin-md bg-admin-input" />
+                          <FieldError label="Slot label" htmlFor={`${slot.id}-label`} required>
+                            <Input id={`${slot.id}-label`} value={slot.label} onChange={event => updateSlot(slot.id, { label: event.target.value })} placeholder="e.g. Dinner" className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="Start time" htmlFor={`${slot.id}-start-time`} required>
+                            <Input id={`${slot.id}-start-time`} type="time" value={slot.startTime} onChange={event => updateSlot(slot.id, { startTime: event.target.value })} className="border-admin-md bg-admin-input" />
+                          </FieldError>
+                          <FieldError label="End time" htmlFor={`${slot.id}-end-time`} required>
+                            <Input id={`${slot.id}-end-time`} type="time" value={slot.endTime} onChange={event => updateSlot(slot.id, { endTime: event.target.value })} className="border-admin-md bg-admin-input" />
+                          </FieldError>
                         </div>
-                        <div className="mt-3 grid grid-cols-7 gap-1">
+                        <p className="mt-3 text-xs font-medium text-admin-50">Active days <RequiredMark /></p>
+                        <div className="mt-2 grid grid-cols-7 gap-1">
                           {DAYS.map(day => {
                             const active = slot.daysOfWeek.includes(day.value)
                             return (
@@ -571,32 +731,85 @@ export default function NewLocationPage() {
   )
 }
 
-function FieldError({ label, htmlFor, error, className, children }: { label: string; htmlFor?: string; error?: string; className?: string; children: ReactNode }) {
+function FieldError({ label, htmlFor, error, className, required, children }: { label: string; htmlFor?: string; error?: string; className?: string; required?: boolean; children: ReactNode }) {
   return (
     <div className={cn('space-y-1', className)}>
-      <Label htmlFor={htmlFor} className="text-xs text-admin-50">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-xs text-admin-50">
+        {label}
+        {required && <RequiredMark />}
+      </Label>
       {children}
       {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   )
 }
 
-function FeatureToggle({ icon: Icon, label, checked, onClick }: { icon: ElementType; label: string; checked: boolean; onClick: () => void }) {
+function RequiredMark() {
+  return <span className="ml-1 text-neon-pink" aria-label="required">*</span>
+}
+
+function TableCategoryPhotoPicker({
+  inputId,
+  photo,
+  onFile,
+  onInputChange,
+  onClear,
+}: {
+  inputId: string
+  photo?: { file: File; preview: string }
+  onFile: (file: File) => void
+  onInputChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onClear: () => void
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm transition-colors',
-        checked ? 'border-neon-pink/40 bg-neon-pink/10 text-neon-pink' : 'border-admin bg-admin-overlay text-admin-50 hover:text-admin-70',
-      )}
-    >
-      <span className="flex items-center gap-2">
-        <Icon className="h-4 w-4" />
-        {label}
-      </span>
-      <span className={cn('h-2.5 w-2.5 rounded-full', checked ? 'bg-neon-pink' : 'bg-admin-30')} />
-    </button>
+    <div className="space-y-2">
+      <Label htmlFor={inputId} className="text-xs text-admin-50">Upload table category picture</Label>
+      <div
+        onDragOver={event => event.preventDefault()}
+        onDrop={event => {
+          event.preventDefault()
+          const file = event.dataTransfer.files?.[0]
+          if (file) onFile(file)
+        }}
+        className={cn(
+          'group relative overflow-hidden rounded-2xl border border-dashed p-4 transition-colors',
+          photo ? 'border-neon-pink/40 bg-neon-pink/8' : 'border-admin-md bg-admin-input hover:border-neon-pink/45 hover:bg-admin-overlay',
+        )}
+      >
+        {photo ? (
+          <div className="flex items-center gap-4">
+            <img src={photo.preview} alt="" className="h-20 w-20 rounded-xl object-cover shadow-[0_12px_32px_rgba(0,0,0,0.24)]" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">{photo.file.name}</p>
+              <p className="mt-1 text-xs text-admin-40">This image will represent the table category once table media is supported.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center rounded-full bg-neon-pink px-3 text-xs font-semibold text-white transition hover:bg-neon-pink/90">
+                  Change image
+                </label>
+                <button type="button" onClick={onClear} className="inline-flex h-8 items-center rounded-full border border-admin px-3 text-xs font-semibold text-admin-50 transition hover:border-red-500/35 hover:text-red-400">
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <label htmlFor={inputId} className="flex cursor-pointer flex-col items-center justify-center rounded-xl py-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-pink/12 text-neon-pink ring-1 ring-neon-pink/20 transition group-hover:scale-105">
+              <ImagePlus className="h-5 w-5" />
+            </span>
+            <span className="mt-3 text-sm font-semibold text-foreground">Drag an image here or click to upload</span>
+            <span className="mt-1 text-xs text-admin-40">JPG, PNG, or WebP for this table category.</span>
+          </label>
+        )}
+        <input
+          id={inputId}
+          className="sr-only"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={onInputChange}
+        />
+      </div>
+    </div>
   )
 }
 

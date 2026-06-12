@@ -152,60 +152,47 @@ function LocationReferenceGrid({
           {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-48 rounded-xl" />)}
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {locations.map(location => (
-            <div key={location.id} data-testid="location-card" className="overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin">
-              <div className="relative h-20 bg-admin-overlay">
+            <article
+              key={location.id}
+              data-testid="location-card"
+              className="group overflow-hidden rounded-2xl border border-admin bg-admin-surface shadow-admin transition duration-200 hover:-translate-y-0.5 hover:border-neon-pink/35 hover:shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+            >
+              <div className="relative h-28 overflow-hidden bg-admin-overlay">
                 {location.pictures?.[0] ? (
-                  <img src={location.pictures[0]} alt={location.name} className="h-full w-full object-cover" />
+                  <img src={location.pictures[0]} alt={location.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-admin-30">No image</div>
+                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(255,45,143,0.16),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01))] text-admin-30">
+                    <MapPinned className="h-8 w-8" />
+                  </div>
                 )}
-                <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
-                  <span className="rounded-full border border-neon-pink/25 bg-neon-pink/15 px-2 py-0.5 text-[10px] font-medium text-neon-pink">
-                    Type: {venueTypeLabel(location.venueType)}
-                  </span>
-                  <span className={cn(
-                    'rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                    location.bookingEnabled ? 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300' : 'border-admin bg-black/45 text-admin-40',
-                  )}>
-                    Reservations: {location.bookingEnabled ? 'On' : 'Off'}
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/75 to-transparent" />
+                <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                  <span className="rounded-full border border-neon-pink/25 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-neon-pink backdrop-blur">
+                    {venueTypeLabel(location.venueType)}
                   </span>
                 </div>
+                <span className={cn(
+                  'absolute bottom-3 right-3 rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur',
+                  location.vendorId ? 'border-neon-pink/25 bg-neon-pink/15 text-neon-pink' : 'border-white/10 bg-black/45 text-white/75',
+                )}>
+                  {location.vendorId ? 'My Location' : 'Glee'}
+                </span>
               </div>
-              <div className="space-y-2 p-2.5">
+              <div className="space-y-3 p-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{location.name}</h3>
-                    <span className={cn(
-                      'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                      location.vendorId ? 'border-neon-pink/25 bg-neon-pink/10 text-neon-pink' : 'border-admin bg-admin-overlay text-admin-40',
-                    )}>
-                      {location.vendorId ? 'My Location' : 'Glee'}
-                    </span>
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-xs text-admin-40">{location.address}</p>
+                  <h3 className="line-clamp-1 font-heading text-base font-black text-foreground">{location.name}</h3>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-admin-40">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-neon-pink" />
+                    <span className="truncate">{location.address}</span>
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <div className="rounded-lg border border-admin bg-admin-overlay px-2 py-1.5">
-                    <p className="text-[10px] text-admin-30">Capacity</p>
-                    <p className="font-mono text-xs font-semibold text-admin-70">{location.capacity.toLocaleString()}</p>
-                  </div>
-                  <div className="rounded-lg border border-admin bg-admin-overlay px-2 py-1.5">
-                    <p className="text-[10px] text-admin-30">Photos</p>
-                    <p className="font-mono text-xs font-semibold text-admin-70">{(location.pictures?.length ?? 0).toLocaleString()}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {location.isParkingAvailable && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Parking</span>}
-                  {location.isIndoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Indoor</span>}
-                  {location.isOutdoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Outdoor</span>}
-                </div>
-                <Button size="sm" onClick={() => navigate(`/dashboard/locations/${location.id}`)} className="h-8 w-full bg-neon-pink text-white hover:bg-neon-pink/90">
-                  {location.bookingEnabled ? 'Manage Reservations' : 'Configure Location'}
+                <Button size="sm" onClick={() => navigate(`/dashboard/locations/${location.id}`)} className="h-9 w-full rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
+                  Open Location
                 </Button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
