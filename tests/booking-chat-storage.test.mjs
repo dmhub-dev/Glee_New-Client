@@ -42,6 +42,36 @@ const reservation = {
   location: { id: 'loc-1', name: 'Glee Lounge', address: 'Westlands' },
 }
 
+function storedThread(overrides = {}) {
+  return {
+    id: 'booking-chat:reservation-1',
+    reservationId: 'reservation-1',
+    reference: 'RSV-1',
+    title: 'Glee Lounge',
+    customerName: 'Amina Guest',
+    status: 'OPEN',
+    unreadForCustomer: 0,
+    unreadForStaff: 0,
+    createdAt: '2026-06-15T10:00:00.000Z',
+    updatedAt: '2026-06-15T10:00:00.000Z',
+    resolvedAt: null,
+    ...overrides,
+  }
+}
+
+function storedMessage(overrides = {}) {
+  return {
+    id: 'message-1',
+    threadId: 'booking-chat:reservation-1',
+    reservationId: 'reservation-1',
+    senderType: 'CUSTOMER',
+    senderName: 'Amina Guest',
+    body: 'Hello',
+    createdAt: '2026-06-15T10:00:00.000Z',
+    ...overrides,
+  }
+}
+
 test('booking chat eligibility requires confirmed paid reservations', async () => {
   const { canOpenBookingChat } = await loadBookingChatStorage()
 
@@ -81,6 +111,32 @@ test('booking chat eligibility uses the current payment status before historical
   }), false)
 })
 
+test('booking chat eligibility rejects failed or pending top-level payment status before successful nested payments', async () => {
+  const { canOpenBookingChat } = await loadBookingChatStorage()
+
+  for (const paymentStatus of ['FAILED', 'PENDING']) {
+    assert.equal(canOpenBookingChat({
+      ...reservation,
+      paymentStatus,
+      payment: { status: 'SUCCESS' },
+      payments: [{ status: 'SUCCESS' }],
+    }), false)
+  }
+})
+
+test('booking chat eligibility rejects failed or pending current payment before successful historical payments', async () => {
+  const { canOpenBookingChat } = await loadBookingChatStorage()
+
+  for (const status of ['FAILED', 'PENDING']) {
+    assert.equal(canOpenBookingChat({
+      ...reservation,
+      paymentStatus: undefined,
+      payment: { status },
+      payments: [{ status: 'SUCCESS' }],
+    }), false)
+  }
+})
+
 test('ensureBookingChatThread creates one deterministic thread per reservation', async () => {
   const { ensureBookingChatThread, getBookingChatThreadsFromStorage } = await loadBookingChatStorage()
   const storage = memoryStorage()
@@ -94,6 +150,53 @@ test('ensureBookingChatThread creates one deterministic thread per reservation',
   assert.equal(second.createdAt, first.createdAt)
   assert.equal(second.updatedAt, first.updatedAt)
   assert.equal(getBookingChatThreadsFromStorage(storage).length, 1)
+})
+
+test('ensureBookingChatThread ignores stored threads with non-deterministic ids', async () => {
+  const { BOOKING_CHAT_STORAGE_KEY, ensureBookingChatThread, getBookingChatThreadsFromStorage } = await loadBookingChatStorage()
+  const storage = memoryStorage()
+
+  storage.setItem(BOOKING_CHAT_STORAGE_KEY, JSON.stringify({
+    threads: [storedThread({ id: 'legacy-thread' })],
+    messages: [],
+  }))
+
+  const thread = ensureBookingChatThread(storage, reservation, () => new Date('2026-06-15T11:00:00.000Z'))
+  const threads = getBookingChatThreadsFromStorage(storage)
+
+  assert.equal(thread.id, 'booking-chat:reservation-1')
+  assert.equal(thread.createdAt, '2026-06-15T11:00:00.000Z')
+  assert.equal(threads.length, 1)
+  assert.equal(threads[0].id, 'booking-chat:reservation-1')
+})
+
+test('booking chat storage collapses duplicate stored threads for one reservation to the newest update', async () => {
+  const { BOOKING_CHAT_STORAGE_KEY, getBookingChatThreadFromStorage, getBookingChatThreadsFromStorage } = await loadBookingChatStorage()
+  const storage = memoryStorage()
+
+  storage.setItem(BOOKING_CHAT_STORAGE_KEY, JSON.stringify({
+    threads: [
+      storedThread({
+        customerName: 'Older Thread',
+        unreadForStaff: 1,
+        updatedAt: '2026-06-15T10:00:00.000Z',
+      }),
+      storedThread({
+        customerName: 'Newest Thread',
+        unreadForStaff: 3,
+        updatedAt: '2026-06-15T12:00:00.000Z',
+      }),
+    ],
+    messages: [],
+  }))
+
+  const threads = getBookingChatThreadsFromStorage(storage)
+  const thread = getBookingChatThreadFromStorage(storage, reservation.id)
+
+  assert.equal(threads.length, 1)
+  assert.equal(threads[0].customerName, 'Newest Thread')
+  assert.equal(thread.customerName, 'Newest Thread')
+  assert.equal(thread.unreadForStaff, 3)
 })
 
 test('sendBookingChatMessage appends messages and updates unread counts', async () => {
@@ -255,6 +358,24 @@ test('booking chat storage ignores malformed stored date records', async () => {
 
   assert.deepEqual(getBookingChatThreadsFromStorage(storage), [])
   assert.deepEqual(getBookingChatMessagesFromStorage(storage, reservation.id), [])
+})
+
+test('booking chat storage ignores messages with non-deterministic thread ids', async () => {
+  const { BOOKING_CHAT_STORAGE_KEY, getBookingChatMessagesFromStorage } = await loadBookingChatStorage()
+  const storage = memoryStorage()
+
+  storage.setItem(BOOKING_CHAT_STORAGE_KEY, JSON.stringify({
+    threads: [storedThread()],
+    messages: [
+      storedMessage({ id: 'message-legacy', threadId: 'legacy-thread' }),
+      storedMessage({ id: 'message-deterministic', body: 'Deterministic message' }),
+    ],
+  }))
+
+  const messages = getBookingChatMessagesFromStorage(storage, reservation.id)
+
+  assert.equal(messages.length, 1)
+  assert.equal(messages[0].id, 'message-deterministic')
 })
 
 test('booking chat storage ignores malformed unread counters', async () => {

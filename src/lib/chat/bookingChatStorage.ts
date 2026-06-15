@@ -87,6 +87,7 @@ function isThread(value: unknown): value is BookingChatThread {
   return (
     typeof item.id === 'string' &&
     typeof item.reservationId === 'string' &&
+    item.id === bookingChatThreadId(item.reservationId) &&
     typeof item.reference === 'string' &&
     typeof item.title === 'string' &&
     typeof item.customerName === 'string' &&
@@ -113,6 +114,7 @@ function isMessage(value: unknown): value is BookingChatMessage {
     typeof item.id === 'string' &&
     typeof item.threadId === 'string' &&
     typeof item.reservationId === 'string' &&
+    item.threadId === bookingChatThreadId(item.reservationId) &&
     (item.senderType === 'CUSTOMER' || item.senderType === 'STAFF' || item.senderType === 'SYSTEM') &&
     typeof item.senderName === 'string' &&
     typeof item.body === 'string' &&
@@ -125,6 +127,21 @@ function emptyState(): BookingChatState {
   return { threads: [], messages: [] }
 }
 
+function normalizeThreads(threads: unknown[]): BookingChatThread[] {
+  const threadByReservationId = new Map<string, BookingChatThread>()
+
+  for (const thread of threads) {
+    if (!isThread(thread)) continue
+
+    const existing = threadByReservationId.get(thread.reservationId)
+    if (!existing || new Date(thread.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
+      threadByReservationId.set(thread.reservationId, thread)
+    }
+  }
+
+  return [...threadByReservationId.values()]
+}
+
 function readState(storage: BookingChatStorageLike | null | undefined): BookingChatState {
   if (!storage) return emptyState()
 
@@ -134,7 +151,7 @@ function readState(storage: BookingChatStorageLike | null | undefined): BookingC
 
     const parsed = JSON.parse(raw) as Partial<BookingChatState>
     return {
-      threads: Array.isArray(parsed.threads) ? parsed.threads.filter(isThread) : [],
+      threads: Array.isArray(parsed.threads) ? normalizeThreads(parsed.threads) : [],
       messages: Array.isArray(parsed.messages) ? parsed.messages.filter(isMessage) : [],
     }
   } catch {
