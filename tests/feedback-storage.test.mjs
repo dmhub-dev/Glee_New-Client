@@ -81,6 +81,48 @@ test('upsertFeedback trims empty comments and rejects invalid ratings', async ()
   }, /Rating must be between 1 and 5/)
 })
 
+test('upsertFeedback trims target IDs before storing and lookup keying', async () => {
+  const { getAllFeedbackFromStorage, getFeedbackForTargetFromStorage, upsertFeedbackInStorage } = await loadFeedbackStorage()
+  const storage = memoryStorage()
+
+  const feedback = upsertFeedbackInStorage(storage, {
+    targetType: 'RESERVATION',
+    targetId: 'reservation-1 ',
+    rating: 4,
+  }, () => new Date('2026-06-15T10:00:00.000Z'))
+
+  assert.equal(feedback.targetId, 'reservation-1')
+  const stored = getFeedbackForTargetFromStorage(storage, 'RESERVATION', 'reservation-1')
+  assert.equal(stored?.id, feedback.id)
+  assert.equal(stored?.targetId, 'reservation-1')
+  assert.equal(stored?.rating, 4)
+  const allFeedback = getAllFeedbackFromStorage(storage)
+  assert.equal(allFeedback.length, 1)
+  assert.equal(allFeedback[0].id, feedback.id)
+  assert.equal(allFeedback[0].targetId, 'reservation-1')
+})
+
+test('feedback storage recovers from malformed JSON on next write', async () => {
+  const { FEEDBACK_STORAGE_KEY, getAllFeedbackFromStorage, upsertFeedbackInStorage } = await loadFeedbackStorage()
+  const storage = memoryStorage()
+
+  storage.setItem(FEEDBACK_STORAGE_KEY, '{not valid json')
+
+  assert.deepEqual(getAllFeedbackFromStorage(storage), [])
+
+  const feedback = upsertFeedbackInStorage(storage, {
+    targetType: 'RESERVATION',
+    targetId: 'reservation-1',
+    rating: 5,
+  }, () => new Date('2026-06-15T10:00:00.000Z'))
+
+  const stored = getAllFeedbackFromStorage(storage)
+  assert.equal(stored.length, 1)
+  assert.equal(stored[0].id, feedback.id)
+  assert.equal(stored[0].targetId, 'reservation-1')
+  assert.equal(stored[0].rating, 5)
+})
+
 test('getFeedbackMapForTargets returns keyed feedback for admin lists', async () => {
   const { feedbackTargetKey, getFeedbackMapForTargetsFromStorage, upsertFeedbackInStorage } = await loadFeedbackStorage()
   const storage = memoryStorage()

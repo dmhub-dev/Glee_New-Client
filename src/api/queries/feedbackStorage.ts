@@ -97,18 +97,20 @@ export function upsertFeedbackInStorage(
   draft: FeedbackDraft,
   now: () => Date = () => new Date(),
 ) {
-  if (!draft.targetId.trim()) throw new Error('Feedback target is required')
+  const targetId = draft.targetId.trim()
+  if (!targetId) throw new Error('Feedback target is required')
   if (!isFeedbackRating(draft.rating)) throw new Error('Rating must be between 1 and 5')
 
   const submittedAt = now().toISOString()
   const list = getAllFeedbackFromStorage(storage)
-  const key = feedbackTargetKey(draft.targetType, draft.targetId)
+  const key = feedbackTargetKey(draft.targetType, targetId)
   const comment = draft.comment?.trim() || undefined
   const existingIndex = list.findIndex(item => feedbackTargetKey(item.targetType, item.targetId) === key)
 
   const feedback: Feedback = existingIndex >= 0
     ? {
         ...list[existingIndex],
+        targetId,
         rating: draft.rating,
         comment,
         authorName: draft.authorName?.trim() || list[existingIndex].authorName,
@@ -117,7 +119,7 @@ export function upsertFeedbackInStorage(
     : {
         id: `${key}:${submittedAt}`,
         targetType: draft.targetType,
-        targetId: draft.targetId,
+        targetId,
         rating: draft.rating,
         comment,
         submittedAt,
