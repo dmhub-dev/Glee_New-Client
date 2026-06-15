@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAdminReservations, type Reservation, type ReservationSource, type ReservationStatus } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
+import { FeedbackReadOnly, reservationFeedbackTargetId } from '../../components/feedback'
 
 const STATUSES: Array<{ label: string; value?: ReservationStatus }> = [
   { label: 'All' },
@@ -281,7 +282,7 @@ function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
 
   return (
     <div className="mt-5 overflow-x-auto rounded-xl border border-admin">
-      <table className="w-full min-w-[980px] text-sm">
+      <table className="w-full min-w-[1080px] text-sm">
         <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
           <tr>
             <th className="px-4 py-3 font-medium">Full name</th>
@@ -289,6 +290,7 @@ function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
             <th className="px-4 py-3 font-medium">Phone</th>
             <th className="px-4 py-3 font-medium">Guests</th>
             <th className="px-4 py-3 font-medium">Table / category</th>
+            <th className="px-4 py-3 font-medium">Feedback</th>
             <th className="px-4 py-3 font-medium">Payment method</th>
             <th className="px-4 py-3 font-medium">Paid status</th>
             <th className="px-4 py-3 font-medium">Deposit paid</th>
@@ -320,6 +322,9 @@ function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
                 <td className="px-4 py-3 text-admin-60">
                   <p className="font-medium text-admin-80">{reservation.table?.name ?? reservation.tableCategory}</p>
                   <p className="mt-1 text-xs text-admin-40">{reservation.tableCategory}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <FeedbackReadOnly targetType="RESERVATION" targetId={reservationFeedbackTargetId(reservation.id)} compact />
                 </td>
                 <td className="px-4 py-3">
                   <Badge className="border-admin bg-admin-input text-admin-60">{paymentMethodLabel(reservation).replaceAll('_', ' ')}</Badge>

@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarClock, CreditCard, MapPin, Table2, UserRound } from 
 import { useAdminReservation, useUpdateAdminReservationStatus, type ReservationStatus } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
+import { FeedbackReadOnly, reservationFeedbackTargetId } from '../../components/feedback'
 
 const TRANSITIONS: Partial<Record<ReservationStatus, ReservationStatus[]>> = {
   CONFIRMED: ['SEATED', 'NO_SHOW', 'CANCELLED'],
@@ -168,6 +169,15 @@ export default function AdminReservationDetailPage() {
             </div>
           </section>
         </div>
+
+        {reservation.status === 'COMPLETED' ? (
+          <section className="rounded-xl border border-admin bg-admin-surface p-5">
+            <h2 className="font-heading text-base font-black text-foreground">Customer Feedback</h2>
+            <div className="mt-4">
+              <FeedbackReadOnly targetType="RESERVATION" targetId={reservationFeedbackTargetId(reservation.id)} />
+            </div>
+          </section>
+        ) : null}
 
         {reservation.cancellationReason && (
           <section className="rounded-xl border border-admin bg-admin-surface p-5">

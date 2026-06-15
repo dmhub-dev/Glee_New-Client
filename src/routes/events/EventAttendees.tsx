@@ -6,6 +6,7 @@ import { useAdminUser } from '../../app/providers'
 import { Badge, Button, Input, Skeleton } from '@glee/ui'
 import { ArrowLeft, ArrowUpDown, ChevronLeft, ChevronRight, Search, Table2, Users } from 'lucide-react'
 import { adminTicketTableBooking } from '../../components/events/eventCheckoutTableBookingUtils'
+import { FeedbackReadOnly, eventFeedbackTargetId } from '../../components/feedback'
 import EventDetailTabs from './EventDetailTabs'
 
 type SortKey = 'name' | 'email' | 'phone' | 'quantity' | 'paymentMethod' | 'paymentStatus' | 'createdAt'
@@ -184,6 +185,7 @@ export default function EventAttendeesPage() {
                   <SortableTh label="Phone" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
                   <SortableTh label="Tickets" sortKey="quantity" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
                   <th className="px-4 py-3 font-medium">Ticket tier</th>
+                  <th className="px-4 py-3 font-medium">Feedback</th>
                   <th className="px-4 py-3 font-medium">Table booking</th>
                   <SortableTh label="Payment method" sortKey="paymentMethod" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
                   <SortableTh label="Paid status" sortKey="paymentStatus" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
@@ -195,12 +197,12 @@ export default function EventAttendeesPage() {
                 {isLoading ? (
                   Array.from({ length: 6 }).map((_, index) => (
                     <tr key={index}>
-                      <td colSpan={10} className="px-4 py-3"><Skeleton className="h-8 rounded-lg" /></td>
+                      <td colSpan={11} className="px-4 py-3"><Skeleton className="h-8 rounded-lg" /></td>
                     </tr>
                   ))
                 ) : pagedTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center">
+                    <td colSpan={11} className="px-4 py-12 text-center">
                       <Users className="mx-auto h-8 w-8 text-admin-30" />
                       <p className="mt-3 text-sm font-medium text-admin-70">No attendees found</p>
                     </td>
@@ -212,6 +214,13 @@ export default function EventAttendeesPage() {
                     <td className="px-4 py-3 text-admin-50">{ticket.user?.phone ?? '-'}</td>
                     <td className="px-4 py-3 font-mono text-neon-pink">{ticket.quantity}</td>
                     <td className="px-4 py-3 text-admin-60">{ticket.ticketCategory?.name ?? 'General'}</td>
+                    <td className="px-4 py-3">
+                      <FeedbackReadOnly
+                        targetType="EVENT_TICKET"
+                        targetId={eventFeedbackTargetId(ticket.eventId, ticket.userId ?? ticket.user?.id ?? ticket.guestEmail ?? ticket.guestPhone ?? 'me')}
+                        compact
+                      />
+                    </td>
                     <td className="px-4 py-3">{adminTicketTableBooking(ticket) ? <TableBookingBadge ticket={ticket} /> : '-'}</td>
                     <td className="px-4 py-3">
                       <Badge className="border-admin bg-admin-input text-admin-60">{paymentMethod(ticket).replace('_', ' ')}</Badge>
