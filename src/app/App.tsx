@@ -40,6 +40,7 @@ const BookingsPage       = lazy(() => import('../routes/bookings/index'))
 const BookingEventPage   = lazy(() => import('../routes/bookings/$eventId'))
 const ReservationsPage   = lazy(() => import('../routes/reservations/index'))
 const ReservationDetailPage = lazy(() => import('../routes/reservations/$reservationId'))
+const BookingChatsPage = lazy(() => import('../routes/booking-chats/index'))
 const MenuPricingPage    = lazy(() => import('../routes/menu-pricing/index'))
 const SalesReportsPage   = lazy(() => import('../routes/sales-reports/index'))
 const FinancialsPage     = lazy(() => import('../routes/financials/index'))
@@ -155,6 +156,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={RESERVATION_ROLES}>
               <ReservationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/booking-chats"
+          element={
+            <ProtectedRoute roles={RESERVATION_ROLES}>
+              <BookingChatsPage />
             </ProtectedRoute>
           }
         />
