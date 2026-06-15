@@ -27,6 +27,7 @@ import type { Event } from '@glee/types'
 import EventDetailTabs from './EventDetailTabs'
 import { EventChatPanel } from '../../components/chat/EventChatPanel'
 import EventReservationSlotsPanel from './EventReservationSlotsPanel'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
 
@@ -139,6 +140,7 @@ export default function EventDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
     const state = location.state as { tab?: EventDetailTab } | null
+    if (state?.tab === 'reservations' && !ENABLE_RESERVATIONS) return 'details'
     return state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' || state?.tab === 'reservations' ? state.tab : 'details'
   })
 
@@ -387,7 +389,7 @@ export default function EventDetailPage() {
             </div>
             <EventChatPanel eventId={event.id} eventTitle={event.title} tone="admin" />
           </section>
-        ) : activeTab === 'reservations' ? (
+        ) : ENABLE_RESERVATIONS && activeTab === 'reservations' ? (
           <EventReservationSlotsPanel event={event} />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

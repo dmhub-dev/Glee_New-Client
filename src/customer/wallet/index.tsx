@@ -60,7 +60,7 @@ export default function CustomerWalletPage() {
         <section className="min-w-0 rounded-3xl bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.22)] sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neon-pink">Glee wallet</p>
           <h1 className="mt-3 font-heading text-3xl font-black leading-none text-white">Wallet</h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-white/58">Top up once. Pay for tickets, deposits, and eligible reservations faster.</p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-white/58">Top up once. Pay for tickets and eligible ticket deposits faster.</p>
         </section>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(320px,420px)_1fr]">
@@ -100,7 +100,7 @@ export default function CustomerWalletPage() {
           <div className="flex min-w-0 items-center justify-between gap-3">
             <div className="min-w-0">
               <h2 className="font-heading text-xl font-black text-white">Transactions</h2>
-              <p className="mt-1 text-sm text-white/58">Wallet credits, ticket payments, and reservations.</p>
+              <p className="mt-1 text-sm text-white/58">Wallet credits and ticket payments.</p>
             </div>
             <Badge className="shrink-0 border-transparent bg-white/[0.08] text-white/70">{transactions?.length ?? 0} total</Badge>
           </div>

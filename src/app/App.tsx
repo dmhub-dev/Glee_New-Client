@@ -6,6 +6,7 @@ import type { UserRole } from '../types'
 import { Skeleton } from '../ui'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import { useAuth } from '../lib/auth/AuthContext'
+import { ENABLE_RESERVATIONS } from '../config/features'
 
 function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth()
@@ -101,9 +102,21 @@ export default function App() {
         <Route path="/events/:eventId" element={<PublicEventPage />} />
         <Route path="/checkout" element={<Navigate to="/events" replace />} />
         <Route path="/payment/event-ticket/confirm" element={<EventTicketConfirmPage />} />
-        <Route path="/reservation/callback" element={<ReservationCallbackPage />} />
-        <Route path="/reservation/:token" element={<PublicReservationDetailPage />} />
-        <Route path="/reservations" element={<CustomerReservationsPage />} />
+        {ENABLE_RESERVATIONS ? (
+          <>
+            <Route path="/reservation/callback" element={<ReservationCallbackPage />} />
+            <Route path="/reservation/:token" element={<PublicReservationDetailPage />} />
+            <Route path="/reservations" element={<CustomerReservationsPage />} />
+            <Route path="/reservations/:locationId" element={<CustomerReservationVenuePage />} />
+          </>
+        ) : (
+          <>
+            <Route path="/reservation/callback" element={<Navigate to="/events" replace />} />
+            <Route path="/reservation/:token" element={<Navigate to="/events" replace />} />
+            <Route path="/reservations" element={<Navigate to="/events" replace />} />
+            <Route path="/reservations/:locationId" element={<Navigate to="/events" replace />} />
+          </>
+        )}
         <Route path="/ticket-attendant/access" element={<TicketAttendantAccessPage />} />
         <Route path="/t/:token" element={<PublicTicketPassPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -123,11 +136,16 @@ export default function App() {
         <Route path="/app/wallet" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerWalletPage /></ProtectedRoute>} />
         <Route path="/app/wallet/callback" element={<ProtectedRoute roles={CUSTOMER_ROLES}><WalletCallbackPage /></ProtectedRoute>} />
         <Route path="/app/profile" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerProfilePage /></ProtectedRoute>} />
-        <Route path="/app/reservations" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationsPage /></ProtectedRoute>} />
-        <Route path="/app/reservations/my" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerMyReservationsPage /></ProtectedRoute>} />
-        <Route path="/reservations/:locationId" element={<CustomerReservationVenuePage />} />
-        <Route path="/app/reservations/:locationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationVenuePage /></ProtectedRoute>} />
-        <Route path="/app/reservations/detail/:reservationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationDetailPage /></ProtectedRoute>} />
+        {ENABLE_RESERVATIONS ? (
+          <>
+            <Route path="/app/reservations" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationsPage /></ProtectedRoute>} />
+            <Route path="/app/reservations/my" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerMyReservationsPage /></ProtectedRoute>} />
+            <Route path="/app/reservations/:locationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationVenuePage /></ProtectedRoute>} />
+            <Route path="/app/reservations/detail/:reservationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationDetailPage /></ProtectedRoute>} />
+          </>
+        ) : (
+          <Route path="/app/reservations/*" element={<Navigate to="/app/events" replace />} />
+        )}
         <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/events" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventsListPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/new" element={<ProtectedRoute roles={EVENT_CREATE_ROLES}><EventFormPage /></ProtectedRoute>} />
@@ -150,22 +168,28 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/dashboard/reservations"
-          element={
-            <ProtectedRoute roles={RESERVATION_ROLES}>
-              <ReservationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard/reservations/:reservationId"
-          element={
-            <ProtectedRoute roles={RESERVATION_ROLES}>
-              <ReservationDetailPage />
-            </ProtectedRoute>
-          }
-        />
+        {ENABLE_RESERVATIONS ? (
+          <>
+            <Route
+              path="/dashboard/reservations"
+              element={
+                <ProtectedRoute roles={RESERVATION_ROLES}>
+                  <ReservationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/reservations/:reservationId"
+              element={
+                <ProtectedRoute roles={RESERVATION_ROLES}>
+                  <ReservationDetailPage />
+                </ProtectedRoute>
+              }
+            />
+          </>
+        ) : (
+          <Route path="/dashboard/reservations/*" element={<Navigate to="/dashboard/events" replace />} />
+        )}
         <Route
           path="/dashboard/menu-pricing"
           element={

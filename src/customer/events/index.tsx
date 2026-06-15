@@ -9,6 +9,7 @@ import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search } from '
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 import { VenueCarouselSection, VenueListSection, isClubOrRestaurantVenue } from '../../components/reservations/VenueShowcase'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 type StatusFilter = 'active' | 'live' | 'sold_out' | 'cancelled'
 type ExploreContentType = 'events' | 'venues'
@@ -63,13 +64,16 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const statusFilterRef = useRef<HTMLDivElement>(null)
   const isExplore = mode === 'explore'
-  const contentType: ExploreContentType = isExplore && searchParams.get('type') === 'venues' ? 'venues' : 'events'
+  const contentType: ExploreContentType = ENABLE_RESERVATIONS && isExplore && searchParams.get('type') === 'venues' ? 'venues' : 'events'
   const isVenueExplore = isExplore && contentType === 'venues'
   const selectedCategoryId = activeCategory === 'All' ? undefined : activeCategory
   const query = searchQuery.trim()
   const { data: carouselSourceEvents = [], isLoading: isCarouselLoading } = useEvents({ page: 1, limit: 5, status: 'active' })
   const { data: categorySourceEvents = [] } = useEvents({ page: 1, limit: 100, status: activeStatus })
-  const { data: reservationVenuesData, isLoading: isReservationVenuesLoading } = useReservationVenues({ page: 1, limit: 100, search: query || undefined })
+  const { data: reservationVenuesData, isLoading: isReservationVenuesLoading } = useReservationVenues(
+    { page: 1, limit: 100, search: query || undefined },
+    { enabled: ENABLE_RESERVATIONS },
+  )
   const { data: events = [], isLoading } = useEvents({
     page: 1,
     limit: isExplore ? 100 : 12,
@@ -189,7 +193,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           </h1>
         </div>
 
-        {isExplore && (
+        {ENABLE_RESERVATIONS && isExplore && (
           <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
               { key: 'events' as const, label: 'Events' },
@@ -219,7 +223,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           <div className="group relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45 transition-colors group-focus-within:text-neon-pink" />
             <Input
-              placeholder="Search events, clubs, restaurants..."
+              placeholder={ENABLE_RESERVATIONS ? 'Search events, clubs, restaurants...' : 'Search events...'}
               className="h-11 rounded-xl border-white/10 bg-white/5 pl-9 pr-12 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50 sm:pr-4"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
@@ -360,7 +364,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           )}
         </div>
 
-        {!isExplore && !query && (
+        {ENABLE_RESERVATIONS && !isExplore && !query && (
           <VenueCarouselSection
             venues={reservationVenues}
             isLoading={isReservationVenuesLoading}
@@ -369,7 +373,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           />
         )}
 
-        {!isExplore && query && (
+        {ENABLE_RESERVATIONS && !isExplore && query && (
           <VenueListSection
             venues={reservationVenues}
             isLoading={isReservationVenuesLoading}
@@ -398,7 +402,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           </div>
         )}
 
-        {!isExplore && !query && (
+        {ENABLE_RESERVATIONS && !isExplore && !query && (
           <VenueListSection
             venues={reservationVenues}
             isLoading={isReservationVenuesLoading}

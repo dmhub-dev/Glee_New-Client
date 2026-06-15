@@ -7,6 +7,7 @@ import PageWrapper from '../components/layout/PageWrapper'
 import FeaturedCarousel from '../components/events/FeaturedCarousel'
 import EventGrid from '../components/events/EventGrid'
 import { VenueCarouselSection, VenueListSection } from '../../components/reservations/VenueShowcase'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 const PAGE_SIZE = 12
 type PublicStatusFilter = Extract<Event['status'], 'active' | 'live' | 'cancelled' | 'sold_out'>
@@ -28,7 +29,10 @@ export default function LandingPage() {
   const statusFilterRef = useRef<HTMLDivElement>(null)
   const { data: featuredEvents = [], isLoading: isFeaturedLoading } = useEvents({ page: 1, limit: 5, status: 'active' })
   const { data: categorySourceEvents = [] } = useEvents({ page: 1, limit: 100, status: statusFilter })
-  const { data: reservationVenuesData, isLoading: isReservationVenuesLoading } = useReservationVenues({ page: 1, limit: 100, search: search || undefined })
+  const { data: reservationVenuesData, isLoading: isReservationVenuesLoading } = useReservationVenues(
+    { page: 1, limit: 100, search: search || undefined },
+    { enabled: ENABLE_RESERVATIONS },
+  )
   const { data: events = [], isLoading } = useEvents({
     page: 1,
     limit: PAGE_SIZE,
@@ -134,7 +138,7 @@ export default function LandingPage() {
                   <input
                     value={searchInput}
                     onChange={event => setSearchInput(event.target.value)}
-                    placeholder="Search events, clubs, restaurants..."
+                    placeholder={ENABLE_RESERVATIONS ? 'Search events, clubs, restaurants...' : 'Search events...'}
                     className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/45"
                   />
                   <button
@@ -222,7 +226,7 @@ export default function LandingPage() {
               </section>
             )}
 
-            {!search && (
+            {ENABLE_RESERVATIONS && !search && (
               <VenueCarouselSection
                 venues={reservationVenues}
                 isLoading={isReservationVenuesLoading}
@@ -242,7 +246,7 @@ export default function LandingPage() {
               </div>
               <EventGrid events={listedEvents} isLoading={isLoading} />
 
-              {search && (
+              {ENABLE_RESERVATIONS && search && (
                 <VenueListSection
                   venues={reservationVenues}
                   isLoading={isReservationVenuesLoading}
@@ -251,7 +255,7 @@ export default function LandingPage() {
                 />
               )}
 
-              {!search && (
+              {ENABLE_RESERVATIONS && !search && (
                 <VenueListSection
                   venues={reservationVenues}
                   isLoading={isReservationVenuesLoading}

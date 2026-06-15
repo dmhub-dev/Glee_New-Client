@@ -15,6 +15,7 @@ import {
 import { useLocation, useUpdateLocation, useDeleteLocation, type Location } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import ReservationSetupPanel from './ReservationSetupPanel'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 import {
   ArrowLeft, Pencil, Trash2, MapPin, Users, Building2, Wind, ParkingCircle,
   CalendarCheck, Image, ImagePlus, Save, X as XIcon,
@@ -104,7 +105,11 @@ function EditLocationPage({
 
   async function handleSubmit(values: LocationFormValues) {
     try {
-      await updateMutation.mutateAsync({ id: location.id, dto: values, pictures: newPics.map(n => n.file) })
+      await updateMutation.mutateAsync({
+        id: location.id,
+        dto: { ...values, bookingEnabled: ENABLE_RESERVATIONS && values.bookingEnabled },
+        pictures: newPics.map(n => n.file),
+      })
       toast({ title: 'Location updated' })
       onClose()
     } catch {
@@ -140,7 +145,7 @@ function EditLocationPage({
               <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
                 <div>
                   <h2 className="font-heading text-sm font-bold text-foreground">Basic Info</h2>
-                  <p className="mt-1 text-xs text-admin-40">Core information shown on event pages and reservation screens.</p>
+                  <p className="mt-1 text-xs text-admin-40">Core information shown on event pages.</p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -186,7 +191,7 @@ function EditLocationPage({
               <section className="space-y-5 rounded-2xl border border-admin bg-admin-surface p-5">
                 <div>
                   <h2 className="font-heading text-sm font-bold text-foreground">Venue Profile</h2>
-                  <p className="mt-1 text-xs text-admin-40">Match the create-location flow: space type, venue category, parking, and reservations.</p>
+                  <p className="mt-1 text-xs text-admin-40">{ENABLE_RESERVATIONS ? 'Match the create-location flow: space type, venue category, parking, and reservations.' : 'Match the create-location flow: space type, venue category, and parking.'}</p>
                 </div>
 
                 <div>
@@ -261,12 +266,12 @@ function EditLocationPage({
                         <ParkingCircle className="h-5 w-5 shrink-0 text-neon-pink" />
                         <span>
                           <span className="block text-sm font-semibold text-foreground">Secure, ample parking</span>
-                          <span className="mt-1 block text-xs text-admin-40">Show this to guests before booking.</span>
+                          <span className="mt-1 block text-xs text-admin-40">Show this on the venue profile.</span>
                         </span>
                       </span>
                     </button>
                   )} />
-                  <FormField control={form.control} name="bookingEnabled" render={({ field }) => (
+                  {ENABLE_RESERVATIONS && <FormField control={form.control} name="bookingEnabled" render={({ field }) => (
                     <div className={[
                       'flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors',
                       field.value ? 'border-neon-pink/45 bg-neon-pink/10' : 'border-admin bg-admin-overlay',
@@ -282,7 +287,7 @@ function EditLocationPage({
                       </span>
                       <Switch checked={field.value} onCheckedChange={field.onChange} className="data-[state=checked]:!bg-neon-pink" />
                     </div>
-                  )} />
+                  )} />}
                 </div>
               </section>
 
@@ -362,7 +367,7 @@ function EditLocationPage({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <PreviewStat label="Capacity" value={Number(values.capacity || 0).toLocaleString()} />
-                  <PreviewStat label="Reservations" value={values.bookingEnabled ? 'On' : 'Off'} />
+                  {ENABLE_RESERVATIONS && <PreviewStat label="Reservations" value={values.bookingEnabled ? 'On' : 'Off'} />}
                 </div>
               </div>
             </div>
@@ -539,7 +544,7 @@ export default function LocationDetailPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <DetailMetric icon={Users} label="Max capacity" value={loc.capacity.toLocaleString()} />
-              <DetailMetric icon={CalendarCheck} label="Reservations" value={loc.bookingEnabled ? 'Enabled' : 'Off'} />
+              {ENABLE_RESERVATIONS && <DetailMetric icon={CalendarCheck} label="Reservations" value={loc.bookingEnabled ? 'Enabled' : 'Off'} />}
               <DetailMetric icon={loc.isOutdoors && !loc.isIndoors ? Wind : Building2} label="Space" value={loc.isIndoors && loc.isOutdoors ? 'Indoor + Outdoor' : loc.isIndoors ? 'Indoor' : loc.isOutdoors ? 'Outdoor' : 'Not set'} />
               <DetailMetric icon={ParkingCircle} label="Parking" value={loc.isParkingAvailable ? 'Available' : 'Not set'} />
             </div>
@@ -570,7 +575,7 @@ export default function LocationDetailPage() {
           </aside>
         </section>
 
-        <ReservationSetupPanel location={loc} />
+        {ENABLE_RESERVATIONS && <ReservationSetupPanel location={loc} />}
       </div>
     </AdminLayout>
   )

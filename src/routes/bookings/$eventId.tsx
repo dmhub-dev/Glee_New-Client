@@ -6,6 +6,7 @@ import { ApiError, type AdminEventTicket, useAdminEvent, useAdminEventTickets, u
 import { Badge, Button, Input, Progress, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
 import { ArrowLeft, CalendarClock, CheckCircle2, MapPin, QrCode, Search, Table2, Ticket, UserCheck, Users } from 'lucide-react'
 import { adminTicketTableBooking } from '../../components/events/eventCheckoutTableBookingUtils'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 type CheckInTab = 'remaining' | 'checked-in'
 
@@ -118,7 +119,7 @@ export default function BookingEventPage() {
           className="inline-flex items-center gap-2 rounded-full border border-admin bg-admin-surface px-4 py-2 text-sm font-semibold text-admin-50 hover:text-neon-pink"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to bookings
+          Back to check-ins
         </button>
 
         <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
@@ -206,7 +207,7 @@ export default function BookingEventPage() {
                           <th className="px-4 py-3 font-medium">QR Ref</th>
                           <th className="px-4 py-3 font-medium">Attendee</th>
                           <th className="px-4 py-3 font-medium">Ticket type</th>
-                          <th className="px-4 py-3 font-medium">Table</th>
+                          {ENABLE_RESERVATIONS && <th className="px-4 py-3 font-medium">Table</th>}
                           <th className="px-4 py-3 font-medium">Payment</th>
                           <th className="px-4 py-3 font-medium">Status</th>
                         </tr>
@@ -220,7 +221,7 @@ export default function BookingEventPage() {
                               <p className="text-xs text-admin-40">{unit.ticket.user?.email ?? unit.ticket.guestEmail ?? '-'}</p>
                             </td>
                             <td className="px-4 py-3 text-admin-60">{unit.ticket.ticketCategory?.name ?? 'Event ticket'} #{unit.ticketNumber}</td>
-                            <td className="px-4 py-3">{adminTicketTableBooking(unit.ticket) ? <CheckInTableBookingBadge ticket={unit.ticket} /> : '-'}</td>
+                            {ENABLE_RESERVATIONS && <td className="px-4 py-3">{adminTicketTableBooking(unit.ticket) ? <CheckInTableBookingBadge ticket={unit.ticket} /> : '-'}</td>}
                             <td className="px-4 py-3">
                               <Badge className={paymentStatus(unit.ticket) === 'Paid' ? 'border-green-500/25 bg-green-500/10 text-green-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-400'}>
                                 {paymentStatus(unit.ticket)}

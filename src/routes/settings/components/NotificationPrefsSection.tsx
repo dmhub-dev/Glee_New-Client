@@ -14,8 +14,8 @@ interface PrefItem {
 const PREFS: PrefItem[] = [
   {
     key:         'bookingAlerts',
-    label:       'Booking alerts',
-    description: 'New reservations, cancellations, and status changes',
+    label:       'Ticket alerts',
+    description: 'Ticket purchases, check-ins, and customer status changes',
     icon:        Calendar,
   },
   {
@@ -33,7 +33,7 @@ const PREFS: PrefItem[] = [
   {
     key:         'weeklyReport',
     label:       'Weekly digest',
-    description: 'Summary of bookings, revenue, and platform activity',
+    description: 'Summary of ticket sales, revenue, and platform activity',
     icon:        BarChart2,
   },
 ]

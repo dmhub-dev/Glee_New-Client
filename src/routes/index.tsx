@@ -225,7 +225,7 @@ export default function DashboardPage() {
     return (
       <AdminLayout
         title={isVendorStaff ? 'Vendor Staff Dashboard' : 'Vendor Dashboard'}
-        subtitle={isVendorStaff ? `Welcome ${user.name.split(' ')[0]}, handle scoped vendor operations, bookings, and check-ins.` : `Welcome ${user.name.split(' ')[0]}, manage your event business on Glee.`}
+        subtitle={isVendorStaff ? `Welcome ${user.name.split(' ')[0]}, handle scoped vendor operations, ticket support, and check-ins.` : `Welcome ${user.name.split(' ')[0]}, manage your event business on Glee.`}
       >
         <div className="space-y-5">
           <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
@@ -371,7 +371,7 @@ export default function DashboardPage() {
                   <ReportMetric label="Sell-through" value={`${sellThrough}%`} detail={`${tickets.sold.toLocaleString()} of ${tickets.total.toLocaleString()} tickets sold`} />
                   <ReportMetric label="Available" value={tickets.remaining.toLocaleString()} detail="Tickets customers can still buy" />
                   <ReportMetric label="Gross ticket sales" value={`KSh ${grossRevenue.toLocaleString()}`} detail="Before platform fees and settlement adjustments" />
-                  <ReportMetric label="Scoped bookings" value={tickets.sold.toLocaleString()} detail="Only your vendor events are included" />
+                  <ReportMetric label="Scoped ticket sales" value={tickets.sold.toLocaleString()} detail="Only your vendor events are included" />
                   <ReportMetric label="Approval control" value="Glee reviewed" detail="Vendors submit events; Glee admins approve them" />
                 </div>
               </section>
@@ -386,7 +386,7 @@ export default function DashboardPage() {
                     <>
                       <DataTile label="Today check-ins" value={tickets.sold} detail="Open ticket and guest entry tools" onClick={() => navigate('/dashboard/bookings')} />
                       <DataTile label="Event updates" value={eventList.length} detail="Review assigned vendor events" onClick={() => navigate('/dashboard/events')} />
-                      <DataTile label="Ticket support" value={tickets.sold} detail="Help guests with booking status" onClick={() => navigate('/dashboard/bookings')} />
+                      <DataTile label="Ticket support" value={tickets.sold} detail="Help guests with ticket status" onClick={() => navigate('/dashboard/bookings')} />
                       <DataTile label="Profile security" value={1} detail="Keep staff account secure" onClick={() => navigate('/dashboard/profile')} />
                     </>
                   ) : (
@@ -442,7 +442,7 @@ export default function DashboardPage() {
                   onClick={() => navigate('/dashboard/events?section=locations')}
                 />
                 <StatCard
-                  label="Ticket Bookings"
+                  label="Tickets Sold"
                   value={tickets.sold}
                   detail={`${tickets.remaining.toLocaleString()} ticket capacity remaining`}
                   icon={Ticket}

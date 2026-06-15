@@ -24,8 +24,8 @@ const PERMISSION_GROUPS: { label: string; description: string; keys: FeatureKey[
     keys: ['manage_events', 'manage_venues', 'manage_menus'],
   },
   {
-    label: 'Bookings',
-    description: 'Read, update and override customer bookings',
+    label: 'Ticket Operations',
+    description: 'Read ticket activity, support customers, and check attendees in',
     keys: ['manage_bookings', 'override_bookings', 'check_in_customers'],
   },
   {

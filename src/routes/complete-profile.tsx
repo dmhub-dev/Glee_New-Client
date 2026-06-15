@@ -77,7 +77,7 @@ export default function CompleteProfilePage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neon-pink">Account setup</p>
                 <h1 className="mt-3 font-heading text-4xl font-black leading-none text-white">Complete your profile</h1>
                 <p className="mt-3 max-w-sm text-sm leading-6 text-white/58">
-                  Add required details before continuing. This keeps bookings, tickets, and account activity attached to correct person.
+                  Add required details before continuing. This keeps tickets and account activity attached to the correct person.
                 </p>
               </div>
             </div>

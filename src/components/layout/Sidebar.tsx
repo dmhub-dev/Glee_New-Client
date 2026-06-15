@@ -20,6 +20,7 @@ import { cn } from '@glee/ui'
 import { useAdminUser } from '../../app/providers'
 import { useAuth } from '../../lib/auth/AuthContext'
 import type { UserRole } from '@glee/types'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 type NavItem = {
   label: string
@@ -59,7 +60,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   const user = useAdminUser()
   const { logout } = useAuth()
   const navigate = useNavigate()
-  const visibleNavItems = NAV_ITEMS.filter(item => !item.roles || item.roles.includes(user.role))
+  const visibleNavItems = NAV_ITEMS
+    .filter(item => ENABLE_RESERVATIONS || item.to !== '/dashboard/reservations')
+    .filter(item => !item.roles || item.roles.includes(user.role))
   const visibleAccountItems = ACCOUNT_NAV_ITEMS.filter(item => !item.roles || item.roles.includes(user.role))
 
   async function handleLogout() {

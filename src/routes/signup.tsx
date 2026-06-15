@@ -101,7 +101,7 @@ export default function SignupPage() {
             </Link>
             <div className="text-center">
               <h1 className="font-heading text-2xl font-black text-white">Create your Glee account</h1>
-              <p className="mt-1 text-sm text-white/55">Sign up, confirm your email, then start booking events.</p>
+              <p className="mt-1 text-sm text-white/55">Sign up, confirm your email, then start buying event tickets.</p>
             </div>
           </div>
 

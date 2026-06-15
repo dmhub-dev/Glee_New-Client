@@ -459,8 +459,16 @@ export async function updateAdminEventReservationSlot(eventId: string, slotId: s
   return response.data
 }
 
-export function useReservationVenues(filters: ReservationVenuesFilters = {}) {
-  return useQuery({ queryKey: reservationKeys.venues(filters), queryFn: () => getReservationVenues(filters) })
+type ReservationQueryOptions = {
+  enabled?: boolean
+}
+
+export function useReservationVenues(filters: ReservationVenuesFilters = {}, options: ReservationQueryOptions = {}) {
+  return useQuery({
+    queryKey: reservationKeys.venues(filters),
+    queryFn: () => getReservationVenues(filters),
+    enabled: options.enabled ?? true,
+  })
 }
 
 export function useReservationVenue(id: string) {
@@ -507,8 +515,12 @@ export function useCreateEventReservation() {
   })
 }
 
-export function useMyReservations(filters: ReservationListFilters = {}) {
-  return useQuery({ queryKey: reservationKeys.my(filters), queryFn: () => getMyReservations(filters) })
+export function useMyReservations(filters: ReservationListFilters = {}, options: ReservationQueryOptions = {}) {
+  return useQuery({
+    queryKey: reservationKeys.my(filters),
+    queryFn: () => getMyReservations(filters),
+    enabled: options.enabled ?? true,
+  })
 }
 
 export function useReservation(id: string) {

@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import { cn } from '@glee/ui'
+import { ENABLE_RESERVATIONS } from '../../../config/features'
 
 const navLinks = [
   { label: 'Events', to: '/events' },
@@ -8,6 +9,8 @@ const navLinks = [
 ]
 
 export default function Navbar() {
+  const visibleNavLinks = navLinks.filter(link => ENABLE_RESERVATIONS || link.to !== '/reservations')
+
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border bg-glee-bg/80 px-6 backdrop-blur-md">
       <Link to="/">
@@ -15,7 +18,7 @@ export default function Navbar() {
       </Link>
 
       <div className="hidden items-center gap-1 lg:flex">
-        {navLinks.map(link => (
+        {visibleNavLinks.map(link => (
           <NavLink
             key={link.to}
             to={link.to}

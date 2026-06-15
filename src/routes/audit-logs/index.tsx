@@ -12,6 +12,7 @@ import {
   Skeleton,
 } from '@glee/ui'
 import { useAuditLogs, useUsers } from '@glee/api'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 const ENTITY_OPTIONS = [
   'User',
@@ -25,6 +26,8 @@ const ENTITY_OPTIONS = [
   'Payment',
   'Wallet',
 ]
+
+const visibleEntityOptions = ENTITY_OPTIONS.filter(option => ENABLE_RESERVATIONS || option !== 'Booking')
 
 const ACTION_OPTIONS = [
   'users.invite',
@@ -111,7 +114,7 @@ export default function AuditLogsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All entities</SelectItem>
-                {ENTITY_OPTIONS.map(option => (
+                {visibleEntityOptions.map(option => (
                   <SelectItem key={option} value={option}>{option}</SelectItem>
                 ))}
               </SelectContent>

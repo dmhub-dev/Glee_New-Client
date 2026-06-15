@@ -36,6 +36,7 @@ import {
 } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 const MAX_PHOTOS = 6
 
@@ -199,7 +200,7 @@ export default function NewLocationPage() {
 
   const values = watch()
   const selectedVenueType = values.venueType as CanonicalVenueType | undefined
-  const isSaving = isSubmitting || createLocation.isPending || createTable.isPending || createSlot.isPending
+  const isSaving = isSubmitting || createLocation.isPending || (ENABLE_RESERVATIONS && (createTable.isPending || createSlot.isPending))
   const tableQuantity = tables.reduce((sum, table) => sum + Number(table.quantity || 0), 0)
   const activeDays = Array.from(new Set(slots.flatMap(slot => slot.daysOfWeek))).sort()
   const selectedSpace: SpaceType | undefined = values.isIndoors ? 'indoor' : values.isOutdoors ? 'outdoor' : undefined
@@ -219,14 +220,15 @@ export default function NewLocationPage() {
 
   function handleVenueTypeChange(value: CanonicalVenueType) {
     setValue('venueType', value, { shouldDirty: true, shouldValidate: true })
-    if (value === 'OTHER') setValue('bookingEnabled', false, { shouldDirty: true, shouldValidate: true })
-    if (value !== 'OTHER') {
+    if (!ENABLE_RESERVATIONS || value === 'OTHER') setValue('bookingEnabled', false, { shouldDirty: true, shouldValidate: true })
+    if (ENABLE_RESERVATIONS && value !== 'OTHER') {
       setValue('bookingEnabled', true, { shouldDirty: true, shouldValidate: true })
       ensureReservationDrafts(value)
     }
   }
 
   function handleBookingEnabledChange(value: boolean) {
+    if (!ENABLE_RESERVATIONS) return
     setValue('bookingEnabled', value, { shouldDirty: true, shouldValidate: true })
     if (value) ensureReservationDrafts(selectedVenueType ?? 'OTHER')
   }
@@ -265,6 +267,7 @@ export default function NewLocationPage() {
   }
 
   function validateReservationSetup() {
+    if (!ENABLE_RESERVATIONS) return true
     if (!values.bookingEnabled) return true
     if (tables.length === 0 || slots.length === 0) {
       toast({ title: 'Reservation setup required', description: 'Add at least one table and one booking slot.', variant: 'destructive' })
@@ -296,6 +299,7 @@ export default function NewLocationPage() {
 
   async function onSubmit(formValues: LocationFormValues) {
     if (!validateReservationSetup()) return
+    const bookingEnabled = ENABLE_RESERVATIONS && formValues.bookingEnabled
     try {
       const created = await createLocation.mutateAsync({
         dto: {
@@ -309,15 +313,15 @@ export default function NewLocationPage() {
           latitude: 0,
           longitude: 0,
           venueType: formValues.venueType,
-          bookingEnabled: formValues.bookingEnabled,
-          bookingRules: formValues.bookingRules,
-          cancellationCutoffHours: formValues.cancellationCutoffHours ?? 24,
-          timezone: formValues.timezone || 'Africa/Nairobi',
+          bookingEnabled,
+          bookingRules: bookingEnabled ? formValues.bookingRules : '',
+          cancellationCutoffHours: bookingEnabled ? formValues.cancellationCutoffHours ?? 24 : undefined,
+          timezone: bookingEnabled ? formValues.timezone || 'Africa/Nairobi' : undefined,
         },
         pictures: photos.map(photo => photo.file),
       })
 
-      if (formValues.bookingEnabled) {
+      if (bookingEnabled) {
         for (const table of tables) {
           for (let index = 0; index < Number(table.quantity); index += 1) {
             await createTable.mutateAsync({
@@ -350,7 +354,7 @@ export default function NewLocationPage() {
         }
       }
 
-      toast({ title: 'Location created', description: formValues.bookingEnabled ? 'Reservation setup was added too.' : 'Event location is ready.' })
+      toast({ title: 'Location created', description: bookingEnabled ? 'Reservation setup was added too.' : 'Event location is ready.' })
       navigate(`/dashboard/locations/${created.id}`)
     } catch (error) {
       toast({ title: 'Could not create location', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
@@ -358,7 +362,7 @@ export default function NewLocationPage() {
   }
 
   return (
-    <AdminLayout title="Create Location" subtitle="Add venue details, reservation rules, table inventory, and booking slots in one flow.">
+    <AdminLayout title="Create Location" subtitle={ENABLE_RESERVATIONS ? 'Add venue details, reservation rules, table inventory, and booking slots in one flow.' : 'Add venue details for event ticketing and venue management.'}>
       <div className="flex gap-8">
         <div className="min-w-0 flex-1 space-y-6">
           <button
@@ -374,7 +378,7 @@ export default function NewLocationPage() {
             <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
               <div>
                 <h2 className="font-heading text-sm font-bold text-foreground">Basic Info</h2>
-                <p className="mt-1 text-xs text-admin-40">Core information shown on event pages and reservation screens.</p>
+                <p className="mt-1 text-xs text-admin-40">Core information shown on event pages.</p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <FieldError label="Venue Name" htmlFor="location-name" error={errors.name?.message} required>
@@ -467,7 +471,7 @@ export default function NewLocationPage() {
                       <ParkingCircle className={cn('h-5 w-5 shrink-0', values.isParkingAvailable ? 'text-neon-pink' : 'text-admin-40')} />
                       <span>
                         <span className="block text-sm font-semibold text-foreground">Does this venue have secure, ample parking?</span>
-                        <span className="mt-1 block text-xs text-admin-40">This helps guests decide transport and arrival plans before booking.</span>
+                        <span className="mt-1 block text-xs text-admin-40">This helps guests decide transport and arrival plans.</span>
                       </span>
                     </span>
                     <span className={cn('ml-4 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border', values.isParkingAvailable ? 'border-neon-pink bg-neon-pink text-white' : 'border-admin-md text-admin-30')}>
@@ -508,7 +512,8 @@ export default function NewLocationPage() {
               </div>
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
+            {ENABLE_RESERVATIONS && (
+              <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="font-heading text-sm font-bold text-foreground">Reservation Setup</h2>
@@ -531,9 +536,10 @@ export default function NewLocationPage() {
                   <Textarea id="location-booking-rules" disabled={!values.bookingEnabled} rows={4} {...register('bookingRules')} className="resize-none border-admin-md bg-admin-input" />
                 </FieldError>
               </div>
-            </section>
+              </section>
+            )}
 
-            {values.bookingEnabled && (
+            {ENABLE_RESERVATIONS && values.bookingEnabled && (
               <>
                 <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
                   <div className="flex items-center justify-between gap-4">
@@ -711,11 +717,15 @@ export default function NewLocationPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <MiniStat label="Capacity" value={Number(values.capacity || 0).toLocaleString()} />
-                  <MiniStat label="Reservations" value={values.bookingEnabled ? 'On' : 'Off'} />
-                  <MiniStat label="Tables" value={values.bookingEnabled ? tableQuantity.toLocaleString() : '-'} />
-                  <MiniStat label="Slots" value={values.bookingEnabled ? slots.length.toLocaleString() : '-'} />
+                  {ENABLE_RESERVATIONS && (
+                    <>
+                      <MiniStat label="Reservations" value={values.bookingEnabled ? 'On' : 'Off'} />
+                      <MiniStat label="Tables" value={values.bookingEnabled ? tableQuantity.toLocaleString() : '-'} />
+                      <MiniStat label="Slots" value={values.bookingEnabled ? slots.length.toLocaleString() : '-'} />
+                    </>
+                  )}
                 </div>
-                {values.bookingEnabled && (
+                {ENABLE_RESERVATIONS && values.bookingEnabled && (
                   <div className="rounded-xl border border-admin bg-admin-overlay p-3 text-xs text-admin-40">
                     <p className="font-semibold text-admin-70">Next setup</p>
                     <p className="mt-1">{tables[0]?.category ?? 'Table category'} · {money(tables[0]?.minimumSpend ?? 0)} minimum spend</p>

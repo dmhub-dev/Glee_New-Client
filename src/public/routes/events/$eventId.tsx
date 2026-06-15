@@ -17,6 +17,7 @@ import {
   type CheckoutTableBookingSelection,
 } from '../../../components/events/eventCheckoutTableBookingUtils'
 import EventReservationPanel from '../../../customer/events/EventReservationPanel'
+import { ENABLE_RESERVATIONS } from '../../../config/features'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
 const PUBLIC_DETAIL_STATUSES = ['active', 'live', 'cancelled', 'sold_out']
@@ -62,8 +63,8 @@ export default function EventDetailPage() {
     : []
   const ticketTotal = selectedItems.reduce((sum, { tier, quantity }) => sum + tier.price * quantity, 0)
   const menuTotal = selectedMenuItems.reduce((sum, { item, quantity }) => sum + item.price * quantity, 0)
-  const totalPrice = combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking })
-  const tableBookingPayload = selectedTableBookingPayload(tableBooking)
+  const totalPrice = ENABLE_RESERVATIONS ? combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking }) : ticketTotal + menuTotal
+  const tableBookingPayload = ENABLE_RESERVATIONS ? selectedTableBookingPayload(tableBooking) : undefined
 
   if (isLoading) {
     return (
@@ -451,7 +452,7 @@ export default function EventDetailPage() {
           )}
         </section>
 
-        <EventReservationPanel eventId={event.id} />
+        {ENABLE_RESERVATIONS && <EventReservationPanel eventId={event.id} />}
       </div>
 
       {/* Sticky bottom action bar */}
@@ -547,7 +548,7 @@ export default function EventDetailPage() {
                     <span className="font-mono text-white">KSh {(item.price * quantity).toLocaleString()}</span>
                   </div>
                 ))}
-                {tableBooking?.enabled && (
+                {ENABLE_RESERVATIONS && tableBooking?.enabled && (
                   <div className="flex flex-col gap-0.5 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
@@ -569,7 +570,7 @@ export default function EventDetailPage() {
               </div>
             </div>
 
-            <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
+            {ENABLE_RESERVATIONS && <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />}
 
             {/* Buyer form */}
             <Form {...form}>

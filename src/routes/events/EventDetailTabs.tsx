@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@glee/ui'
 import type { UserRole } from '@glee/types'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'attendees' | 'chat' | 'reservations'
 
@@ -44,7 +45,7 @@ export default function EventDetailTabs({ eventId, activeTab, userRole, onSelect
           <EventDetailTabButton active={activeTab === 'attendees'} onClick={() => navigate(`/dashboard/events/${eventId}/attendees`)}>
             Attendees
           </EventDetailTabButton>
-          {canIssueComplimentaryTickets && (
+          {ENABLE_RESERVATIONS && canIssueComplimentaryTickets && (
             <EventDetailTabButton active={activeTab === 'reservations'} onClick={() => selectLocal('reservations')}>
               Reservations
             </EventDetailTabButton>

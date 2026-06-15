@@ -5,6 +5,7 @@ import { Badge, Button, Input, Skeleton, cn } from '@glee/ui'
 import { Calendar, CalendarCheck, Clock, MapPin, MessageCircle, QrCode, Search, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import ReservationBookingsList from '../reservations/ReservationBookingsList'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 const PLACEHOLDER = 'https://placehold.co/900x600/141419/FF2D8F?text=Glee'
 
@@ -24,10 +25,10 @@ function formatTime(value?: string | null) {
 
 export default function CustomerTicketsPage() {
   const { data: groups, isLoading } = useMyTickets()
-  const { data: reservationsData } = useMyReservations({ page: 1, limit: 100 })
+  const { data: reservationsData } = useMyReservations({ page: 1, limit: 100 }, { enabled: ENABLE_RESERVATIONS })
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') === 'reservations' ? 'reservations' : 'tickets'
+  const activeTab = ENABLE_RESERVATIONS && searchParams.get('tab') === 'reservations' ? 'reservations' : 'tickets'
   const [searchQuery, setSearchQuery] = useState('')
   const totalTickets = (groups ?? []).reduce((sum, group) => sum + group.noOfTicketsPurchased, 0)
   const paidReservationCount = useMemo(() => {
@@ -43,9 +44,9 @@ export default function CustomerTicketsPage() {
   }, [reservationsData?.items])
   const totalReservations = paidReservationCount
   const tabs = [
-    { key: 'tickets', label: `Tickets (${totalTickets})`, icon: Ticket },
-    { key: 'reservations', label: `Reservations / Bookings (${totalReservations})`, icon: CalendarCheck },
-  ] as const
+    { key: 'tickets' as const, label: `Tickets (${totalTickets})`, icon: Ticket },
+    ...(ENABLE_RESERVATIONS ? [{ key: 'reservations' as const, label: `Reservations / Bookings (${totalReservations})`, icon: CalendarCheck }] : []),
+  ]
   const filteredGroups = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
     if (!query) return groups ?? []
@@ -143,21 +144,25 @@ export default function CustomerTicketsPage() {
       <div className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-32 pt-6 lg:px-8">
         <section className="space-y-5">
           <div>
-            <h1 className="font-heading text-2xl font-black text-white">Tickets & Bookings</h1>
-            <p className="mt-2 text-sm leading-6 text-white/58">Your tickets and reservations/bookings in one place.</p>
+            <h1 className="font-heading text-2xl font-black text-white">{ENABLE_RESERVATIONS ? 'Tickets & Bookings' : 'Tickets'}</h1>
+            <p className="mt-2 text-sm leading-6 text-white/58">
+              {ENABLE_RESERVATIONS ? 'Your tickets and reservations/bookings in one place.' : 'Your event passes, QR codes, and purchase history.'}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={ENABLE_RESERVATIONS ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 gap-3 sm:max-w-xs'}>
             <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
               <Ticket className="mx-auto mb-2 h-6 w-6 text-neon-pink" />
               <p className="text-2xl font-bold text-white">{totalTickets}</p>
               <p className="text-xs text-white/50">Total Tickets</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-              <CalendarCheck className="mx-auto mb-2 h-6 w-6 text-purple-400" />
-              <p className="text-2xl font-bold text-white">{totalReservations}</p>
-              <p className="text-xs text-white/50">Reservations / Bookings</p>
-            </div>
+            {ENABLE_RESERVATIONS && (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+                <CalendarCheck className="mx-auto mb-2 h-6 w-6 text-purple-400" />
+                <p className="text-2xl font-bold text-white">{totalReservations}</p>
+                <p className="text-xs text-white/50">Reservations / Bookings</p>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3" aria-label="Tickets and bookings tabs">
@@ -198,7 +203,7 @@ export default function CustomerTicketsPage() {
           )}
         </section>
 
-        {activeTab === 'reservations' ? (
+        {ENABLE_RESERVATIONS && activeTab === 'reservations' ? (
           <ReservationBookingsList />
         ) : isLoading ? (
           <div className="grid gap-4 md:grid-cols-2">

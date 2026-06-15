@@ -13,6 +13,7 @@ import {
   tableBookingDeposit,
   type CheckoutTableBookingSelection,
 } from '../../components/events/eventCheckoutTableBookingUtils'
+import { ENABLE_RESERVATIONS } from '../../config/features'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
 type FeeType = 'PERCENTAGE' | 'FIXED'
@@ -145,9 +146,9 @@ export default function CustomerEventDetailPage() {
     [activeWaveTiers, tierQtys],
   )
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
-  const tableDeposit = tableBookingDeposit(tableBooking)
-  const total = combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking })
-  const tableBookingPayload = selectedTableBookingPayload(tableBooking)
+  const tableDeposit = ENABLE_RESERVATIONS ? tableBookingDeposit(tableBooking) : 0
+  const total = ENABLE_RESERVATIONS ? combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking }) : ticketTotal + menuTotal
+  const tableBookingPayload = ENABLE_RESERVATIONS ? selectedTableBookingPayload(tableBooking) : undefined
   const depositType = checkoutSettings?.walletInstallmentDepositType ?? 'PERCENTAGE'
   const depositPercent = checkoutSettings?.walletInstallmentDepositPercent ?? 30
   const depositAmount = checkoutSettings?.walletInstallmentDepositAmount ?? 0
@@ -227,7 +228,7 @@ export default function CustomerEventDetailPage() {
       setInstallmentModalOpen(false)
       setPurchaseCompleteOpen(true)
       toast({
-        title: paymentType === 'INSTALLMENT' ? 'Ticket reserved' : 'Ticket purchased',
+        title: paymentType === 'INSTALLMENT' ? 'Ticket deposit started' : 'Ticket purchased',
         description: paymentType === 'INSTALLMENT'
           ? 'Your ticket is in My Tickets. We will remind you about your remaining payments.'
           : 'Your ticket is now in My Tickets.',
@@ -444,9 +445,9 @@ export default function CustomerEventDetailPage() {
               )}
             </section>
 
-            <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
+            {ENABLE_RESERVATIONS && <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />}
 
-            <EventReservationPanel eventId={event.id} />
+            {ENABLE_RESERVATIONS && <EventReservationPanel eventId={event.id} />}
 
             {/* Menu add-on items — public style */}
             {showMenuAddons && (event.menuItems ?? []).length > 0 && (
@@ -612,7 +613,7 @@ export default function CustomerEventDetailPage() {
               </div>
             </div>
 
-            {tableBooking?.enabled && (
+            {ENABLE_RESERVATIONS && tableBooking?.enabled && (
               <div className="rounded-2xl border border-neon-pink/20 bg-neon-pink/[0.08] p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
@@ -661,7 +662,7 @@ export default function CustomerEventDetailPage() {
             >
               <p className="font-semibold text-white">Pay in Installments</p>
               <p className="mt-1 text-sm text-white/55">
-                {installmentOptions.length ? `Reserve now from ${money(installmentDueNow)} due today.` : 'Installments are closed for this event.'}
+                {installmentOptions.length ? `Start from ${money(installmentDueNow)} due today.` : 'Installments are closed for this event.'}
               </p>
             </button>
 
@@ -697,7 +698,7 @@ export default function CustomerEventDetailPage() {
                 <span className="text-white/55">Order total</span>
                 <span className="font-mono font-semibold text-neon-pink">{money(total)}</span>
               </div>
-              {tableBooking?.enabled && (
+              {ENABLE_RESERVATIONS && tableBooking?.enabled && (
                 <div className="mt-3 rounded-xl border border-neon-pink/20 bg-neon-pink/[0.08] p-3 text-sm">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
@@ -731,7 +732,7 @@ export default function CustomerEventDetailPage() {
           <DialogHeader>
             <DialogTitle className="text-white">Pay in Installments</DialogTitle>
             <DialogDescription className="text-white/60">
-              Reserve your ticket now, then complete the remaining payments before the event.
+              Start your ticket payment now, then complete the remaining payments before the event.
             </DialogDescription>
           </DialogHeader>
 
@@ -751,7 +752,7 @@ export default function CustomerEventDetailPage() {
               </div>
             </div>
 
-            {tableBooking?.enabled && (
+            {ENABLE_RESERVATIONS && tableBooking?.enabled && (
               <div className="rounded-xl border border-neon-pink/20 bg-neon-pink/[0.08] p-4 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
@@ -766,10 +767,10 @@ export default function CustomerEventDetailPage() {
             <div className="rounded-xl border border-neon-pink/25 bg-neon-pink/10 p-4">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-neon-pink" />
-                <p className="font-semibold text-white">Installment reservation</p>
+                <p className="font-semibold text-white">Ticket installment</p>
               </div>
               <p className="mt-2 text-sm text-white/60">
-                Reserve with {formatSettingLabel(depositType, depositPercent, depositAmount)} of ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{tableDeposit > 0 ? ' plus table booking deposit' : ''}{(securityFeeType === 'FIXED' ? securityFeeAmount > 0 : securityFeePercent > 0) ? ` and a ${formatSettingLabel(securityFeeType, securityFeePercent, securityFeeAmount)} security fee` : ''}.
+                Pay {formatSettingLabel(depositType, depositPercent, depositAmount)} of ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{tableDeposit > 0 ? ' plus table booking deposit' : ''}{(securityFeeType === 'FIXED' ? securityFeeAmount > 0 : securityFeePercent > 0) ? ` and a ${formatSettingLabel(securityFeeType, securityFeePercent, securityFeeAmount)} security fee` : ''}.
               </p>
             </div>
 
@@ -777,7 +778,7 @@ export default function CustomerEventDetailPage() {
               <div className="rounded-xl border border-neon-pink/25 bg-neon-pink/10 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="font-semibold text-white">Reservation deposit</p>
+                    <p className="font-semibold text-white">Ticket deposit</p>
                     <p className="mt-1 text-sm text-white/60">
                       Pay {money(selectedInstallmentPlan.dueNow)} now. Remaining balance: {money(selectedInstallmentPlan.remaining)}.
                     </p>
@@ -786,7 +787,7 @@ export default function CustomerEventDetailPage() {
                     </p>
                   </div>
                   <Badge className="w-fit border-neon-pink/30 bg-neon-pink/10 text-neon-pink">
-                    {formatSettingLabel(depositType, depositPercent, depositAmount)} reserve
+                    {formatSettingLabel(depositType, depositPercent, depositAmount)} deposit
                   </Badge>
                 </div>
 
@@ -878,7 +879,7 @@ export default function CustomerEventDetailPage() {
                 onClick={() => handlePurchase(true, 'INSTALLMENT')}
                 className="bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50"
               >
-                {purchase.isPending ? 'Processing...' : 'Confirm Reservation'}
+                {purchase.isPending ? 'Processing...' : 'Confirm Ticket Deposit'}
               </Button>
             </div>
           </div>
