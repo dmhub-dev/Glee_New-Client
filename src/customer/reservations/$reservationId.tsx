@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useCancelReservation, useReservation, type ReservationStatus } from '@glee/api'
 import { Badge, Button, Skeleton, Textarea, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, ChevronLeft, Clock, MapPin, QrCode, ReceiptText, ShieldCheck, Users, XCircle } from 'lucide-react'
+import { FeedbackCard, canReviewReservationByStatus, reservationFeedbackTargetId } from '../../components/feedback'
 import CustomerLayout from '../CustomerLayout'
 
 function money(value: string | number | undefined) {
@@ -49,6 +50,7 @@ export default function CustomerReservationDetailPage() {
   const [reason, setReason] = useState('')
   const cancellable = canCancel(reservation?.status, reservation?.cancelBefore)
   const venue = reservation?.location
+  const canReview = canReviewReservationByStatus(reservation?.status)
   const qrPayload = reservation
     ? reservation.publicAccessToken
       ? `${window.location.origin}/reservation/${reservation.publicAccessToken}`
@@ -158,6 +160,14 @@ export default function CustomerReservationDetailPage() {
                 <p className="mt-1 font-mono font-bold text-neon-pink">{money(reservation.depositAmount)}</p>
               </div>
             </div>
+            {canReview ? (
+              <FeedbackCard
+                targetType="RESERVATION"
+                targetId={reservationFeedbackTargetId(reservation.id)}
+                title="How was this booking?"
+                description="Rate the table booking experience. Your comment is optional."
+              />
+            ) : null}
             {reservation.payments?.length ? (
               <div>
                 <h3 className="mb-2 flex items-center gap-2 font-heading text-lg font-black text-white"><ReceiptText className="h-4 w-4 text-neon-pink" />Payments</h3>

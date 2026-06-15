@@ -4,6 +4,7 @@ import type { AdminEventTicket } from '@glee/api'
 import { useMyTickets } from '@glee/api'
 import { Badge, Button, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from '@glee/ui'
 import { ArrowLeft, Calendar, MapPin, MessageCircle, Ticket } from 'lucide-react'
+import { FeedbackCard, canReviewEventByDate, eventFeedbackTargetId } from '../../components/feedback'
 import CustomerLayout from '../CustomerLayout'
 
 function money(value: number) {
@@ -75,6 +76,9 @@ export default function CustomerTicketDetailPage() {
   const event = ticketGroup.event
   const location = event.location?.name ?? event.location?.address ?? 'Location TBA'
   const category = event.category?.name ?? 'Event'
+  const firstTicket = ticketGroup.tickets[0]
+  const attendeeId = firstTicket?.userId ?? firstTicket?.user?.id ?? firstTicket?.guestEmail ?? firstTicket?.guestPhone ?? 'me'
+  const canReview = canReviewEventByDate(event.startDate)
 
   return (
     <CustomerLayout title={event.name} subtitle="Toggle ticket types and show QR codes for check-in." hidePageHeader>
@@ -162,6 +166,15 @@ export default function CustomerTicketDetailPage() {
         </section>
 
         <aside className="space-y-4">
+          {canReview ? (
+            <FeedbackCard
+              targetType="EVENT_TICKET"
+              targetId={eventFeedbackTargetId(event.id, attendeeId)}
+              title="How was this event?"
+              description="Leave one editable review for this event."
+            />
+          ) : null}
+
           <section className="rounded-2xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_16px_50px_rgba(0,0,0,0.18)]">
             <h3 className="font-heading text-lg font-black text-white">Event Details</h3>
             <p className="mt-3 text-sm leading-6 text-white/62">{event.description ?? 'No event description provided.'}</p>

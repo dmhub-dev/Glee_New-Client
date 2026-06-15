@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMyReservations, useMyTickets } from '@glee/api'
 import { Badge, Button, Input, Skeleton, cn } from '@glee/ui'
 import { Calendar, CalendarCheck, Clock, MapPin, MessageCircle, QrCode, Search, Ticket } from 'lucide-react'
+import { FeedbackCard, canReviewEventByDate, eventFeedbackTargetId } from '../../components/feedback'
 import CustomerLayout from '../CustomerLayout'
 import ReservationBookingsList from '../reservations/ReservationBookingsList'
 
@@ -68,73 +69,85 @@ export default function CustomerTicketsPage() {
     const category = event.category?.name ?? 'Event'
     const location = event.location?.name ?? event.location?.address ?? 'Location TBA'
     const firstTicket = group.tickets[0]
+    const canReview = status === 'past' && canReviewEventByDate(event.startDate)
+    const attendeeId = firstTicket?.userId ?? firstTicket?.user?.id ?? firstTicket?.guestEmail ?? firstTicket?.guestPhone ?? 'me'
 
     return (
-      <article key={event.id} className={cn('w-full overflow-hidden rounded-2xl bg-white text-black shadow-xl', status === 'past' && 'opacity-60')}>
-        <div className="relative h-36 w-full">
-          <img
-            src={poster}
-            alt={event.name}
-            className="h-full w-full object-cover"
-            onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-          />
-          <div className="absolute inset-0 bg-black/45" />
-          <Badge className="absolute right-3 top-3 border-0 bg-neon-pink px-3 text-sm text-white">
-            {group.noOfTicketsPurchased}x {category}
-          </Badge>
-          <div className="absolute bottom-3 left-4 right-4 text-white">
-            <h2 className="line-clamp-2 font-heading text-xl font-black leading-tight">{event.name}</h2>
-            <p className="mt-1 flex items-center gap-1 text-xs text-white/90">
-              <MapPin className="h-3.5 w-3.5" />
-              <span className="truncate">{location}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="relative flex h-6 items-center bg-white px-2">
-          <div className="absolute -left-2 h-4 w-4 rounded-full bg-[#050017]" />
-          <div className="mx-2 w-full border-t-2 border-dashed border-gray-300" />
-          <div className="absolute -right-2 h-4 w-4 rounded-full bg-[#050017]" />
-        </div>
-
-        <div className="flex items-center justify-between gap-4 bg-white p-4 pt-2">
-          <div className="min-w-0 space-y-1">
-            <p className="flex items-center gap-2 text-sm font-semibold text-gray-600">
-              <Calendar className="h-4 w-4 text-neon-pink" />
-              {formatDate(event.startDate)}
-            </p>
-            <p className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock className="h-4 w-4 text-neon-pink" />
-              {formatTime(event.startDate)}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className="rounded bg-gray-100 px-2 py-1 font-mono text-xs uppercase tracking-wider text-gray-500">{group.tickets.length} order{group.tickets.length === 1 ? '' : 's'}</span>
-              <span className="rounded bg-neon-pink/10 px-2 py-1 text-xs font-semibold text-neon-pink">{money(Number(group.totalPrice ?? 0))}</span>
+      <div key={event.id} className="space-y-3">
+        <article className={cn('w-full overflow-hidden rounded-2xl bg-white text-black shadow-xl', status === 'past' && 'opacity-70')}>
+          <div className="relative h-36 w-full">
+            <img
+              src={poster}
+              alt={event.name}
+              className="h-full w-full object-cover"
+              onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
+            />
+            <div className="absolute inset-0 bg-black/45" />
+            <Badge className="absolute right-3 top-3 border-0 bg-neon-pink px-3 text-sm text-white">
+              {group.noOfTicketsPurchased}x {category}
+            </Badge>
+            <div className="absolute bottom-3 left-4 right-4 text-white">
+              <h2 className="line-clamp-2 font-heading text-xl font-black leading-tight">{event.name}</h2>
+              <p className="mt-1 flex items-center gap-1 text-xs text-white/90">
+                <MapPin className="h-3.5 w-3.5" />
+                <span className="truncate">{location}</span>
+              </p>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              type="button"
-              onClick={() => navigate(`/app/events/${event.id}/chat`)}
-              disabled={!firstTicket}
-              className="h-12 w-12 rounded-xl bg-neon-pink p-0 text-white hover:bg-neon-pink/90 disabled:opacity-40"
-              aria-label={`Open chat for ${event.name}`}
-            >
-              <MessageCircle className="h-5 w-5" />
-            </Button>
-            <Button
-              type="button"
-              onClick={() => navigate(`/app/tickets/${event.id}`)}
-              disabled={!firstTicket}
-              className="h-16 w-16 rounded-xl bg-gray-100 p-0 text-slate-900 hover:bg-gray-200 disabled:opacity-40"
-              aria-label={`View QR for ${event.name}`}
-            >
-              <QrCode className="h-8 w-8" />
-            </Button>
+          <div className="relative flex h-6 items-center bg-white px-2">
+            <div className="absolute -left-2 h-4 w-4 rounded-full bg-[#050017]" />
+            <div className="mx-2 w-full border-t-2 border-dashed border-gray-300" />
+            <div className="absolute -right-2 h-4 w-4 rounded-full bg-[#050017]" />
           </div>
-        </div>
-      </article>
+
+          <div className="flex items-center justify-between gap-4 bg-white p-4 pt-2">
+            <div className="min-w-0 space-y-1">
+              <p className="flex items-center gap-2 text-sm font-semibold text-gray-600">
+                <Calendar className="h-4 w-4 text-neon-pink" />
+                {formatDate(event.startDate)}
+              </p>
+              <p className="flex items-center gap-2 text-sm text-gray-600">
+                <Clock className="h-4 w-4 text-neon-pink" />
+                {formatTime(event.startDate)}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded bg-gray-100 px-2 py-1 font-mono text-xs uppercase tracking-wider text-gray-500">{group.tickets.length} order{group.tickets.length === 1 ? '' : 's'}</span>
+                <span className="rounded bg-neon-pink/10 px-2 py-1 text-xs font-semibold text-neon-pink">{money(Number(group.totalPrice ?? 0))}</span>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                onClick={() => navigate(`/app/events/${event.id}/chat`)}
+                disabled={!firstTicket}
+                className="h-12 w-12 rounded-xl bg-neon-pink p-0 text-white hover:bg-neon-pink/90 disabled:opacity-40"
+                aria-label={`Open chat for ${event.name}`}
+              >
+                <MessageCircle className="h-5 w-5" />
+              </Button>
+              <Button
+                type="button"
+                onClick={() => navigate(`/app/tickets/${event.id}`)}
+                disabled={!firstTicket}
+                className="h-16 w-16 rounded-xl bg-gray-100 p-0 text-slate-900 hover:bg-gray-200 disabled:opacity-40"
+                aria-label={`View QR for ${event.name}`}
+              >
+                <QrCode className="h-8 w-8" />
+              </Button>
+            </div>
+          </div>
+        </article>
+        {canReview ? (
+          <FeedbackCard
+            targetType="EVENT_TICKET"
+            targetId={eventFeedbackTargetId(event.id, attendeeId)}
+            title="How was this event?"
+            description="Rate your experience. Your comment is optional."
+          />
+        ) : null}
+      </div>
     )
   }
 
