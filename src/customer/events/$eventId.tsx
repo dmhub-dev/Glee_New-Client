@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
+import { formatDateOnly, formatTimeOnly, splitBackendDateTime } from '@glee/utils'
 import { Calendar, CheckCircle2, MapPin, Share2, ShoppingBag, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import EventReservationPanel from './EventReservationPanel'
@@ -14,13 +15,10 @@ function money(value: number) {
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('en-KE', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const { date, time } = splitBackendDateTime(value)
+  const dateLabel = formatDateOnly(date, { weekday: 'short', day: 'numeric', month: 'short' })
+  const timeLabel = formatTimeOnly(time, { hour: '2-digit', minute: '2-digit' })
+  return [dateLabel, timeLabel].filter(Boolean).join(', ')
 }
 
 function formatDate(value: Date) {
@@ -347,8 +345,16 @@ export default function CustomerEventDetailPage() {
                   return (
                     <div
                       key={tier.id}
+                      role="button"
+                      tabIndex={soldOut ? -1 : 0}
+                      aria-disabled={soldOut}
                       onClick={() => {
                         if (soldOut) return
+                        if (qty === 0) setTierQtys(prev => ({ ...prev, [tier.id]: 1 }))
+                      }}
+                      onKeyDown={event => {
+                        if (soldOut || (event.key !== 'Enter' && event.key !== ' ')) return
+                        event.preventDefault()
                         if (qty === 0) setTierQtys(prev => ({ ...prev, [tier.id]: 1 }))
                       }}
                       className={[
@@ -374,7 +380,7 @@ export default function CustomerEventDetailPage() {
                       )}
                       <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-auto">
                         <p className="font-mono font-bold text-white">{money(tier.price)}</p>
-                        <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
                             disabled={qty <= 0 || soldOut}

@@ -356,7 +356,7 @@ export default function AdminReservationsPage() {
   const [activeVenueTab, setActiveVenueTab] = useState<BookingVenueTab>('all')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const { data, isLoading } = useAdminReservations({ status, source, date: date || undefined, page: 1, limit: 100 })
-  const reservations = data?.items ?? []
+  const reservations = useMemo(() => data?.items ?? [], [data?.items])
 
   const visibleReservations = useMemo(() => {
     const query = search.trim().toLowerCase()

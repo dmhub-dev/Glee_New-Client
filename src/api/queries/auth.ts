@@ -1,5 +1,6 @@
 import type { UserRole } from '../../types'
 import { apiFetch } from '../client'
+import { tokens } from '../../utils'
 
 export interface AuthUser {
   id: string
@@ -189,7 +190,11 @@ export function apiAcceptInvitation(token: string, password: string): Promise<vo
 }
 
 export function apiLogout(): Promise<void> {
-  return Promise.resolve()
+  const refreshToken = tokens.getRefresh()
+  return apiFetch<void>('/api/v1/logout', {
+    method: 'POST',
+    body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+  })
 }
 
 export function apiMe(): Promise<AuthUser> {

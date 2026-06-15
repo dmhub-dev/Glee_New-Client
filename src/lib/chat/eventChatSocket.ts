@@ -4,7 +4,6 @@ import { tokens } from '../../utils'
 export type EventChatSocket = Socket
 
 function socketBaseUrl() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const configured = ((import.meta as any).env?.VITE_API_BASE_URL ?? '') as string
   return configured.replace(/\/$/, '')
 }

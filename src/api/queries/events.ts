@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Event, EventMenuItem, EventSchedule } from '../../types'
+import { splitBackendDateTime } from '../../utils'
 import { apiFetch } from '../client'
 
 // ── Backend shapes ─────────────────────────────────────────────────────────────
@@ -104,8 +105,8 @@ const WAVE_STATUS_TO_CLIENT: Record<string, 'upcoming' | 'active' | 'completed' 
 // ── Mapper ─────────────────────────────────────────────────────────────────────
 
 function mapBackendToEvent(raw: BackendEvent): Event {
-  const start    = raw.startDate ? new Date(raw.startDate) : null
-  const end      = raw.endDate   ? new Date(raw.endDate)   : null
+  const start = splitBackendDateTime(raw.startDate)
+  const end   = splitBackendDateTime(raw.endDate)
   const locationStr = (raw.location?.name
     ?? raw.locationName
     ?? [raw.city, raw.state, raw.country].filter(Boolean).join(', '))
@@ -152,10 +153,10 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     venueId:          locationStr ?? raw.location?.id ?? '',
     title:            raw.name,
     description:      raw.description ?? '',
-    startDate:        start ? start.toISOString().split('T')[0] : '',
-    endDate:          end   ? end.toISOString().split('T')[0]   : (start ? start.toISOString().split('T')[0] : ''),
-    startTime:        start ? start.toTimeString().slice(0, 5) : '',
-    endTime:          end   ? end.toTimeString().slice(0, 5)   : undefined,
+    startDate:        start.date,
+    endDate:          end.date || start.date,
+    startTime:        start.time,
+    endTime:          end.time || undefined,
     ticketTiers,
     menuItems: raw.menuItems?.map((m): EventMenuItem => ({
       id:          m.id,

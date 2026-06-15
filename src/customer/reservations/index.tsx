@@ -42,7 +42,8 @@ function ReservationCard({
   onOpen: () => void
 }) {
   return (
-    <div
+    <button
+      type="button"
       className="group flex overflow-hidden rounded-2xl border border-white/15 bg-white/[0.10] p-3 text-left transition-all duration-300 hover:border-neon-pink/50 hover:bg-white/[0.14] hover:shadow-neon sm:h-[318px] sm:flex-col sm:p-0 lg:h-[300px]"
       onClick={onOpen}
     >
@@ -90,7 +91,7 @@ function ReservationCard({
           </Button>
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 

@@ -7,6 +7,7 @@ import { useAdminUser } from '../../app/providers'
 import { Skeleton, Input, Progress, Button } from '@glee/ui'
 import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2, Tags, MapPinned } from 'lucide-react'
 import { cn } from '@glee/ui'
+import { formatDateRange, formatTimeOnly } from '@glee/utils'
 import type { Event } from '@glee/types'
 import type { Location } from '@glee/api'
 import CategoriesTab from '../settings/CategoriesTab'
@@ -65,13 +66,15 @@ function venueTypeLabel(value?: string | null) {
 }
 
 function formatListDate(startDate: string, startTime: string, endDate?: string): string {
-  const d = new Date(`${startDate}T${startTime}`)
-  const datePart = endDate && endDate !== startDate
-    ? new Date(startDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) +
-      ' – ' +
-      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
-    : d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
-  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const datePart = formatDateRange(
+    startDate,
+    endDate,
+    { day: 'numeric', month: 'short', year: 'numeric' },
+    { day: 'numeric', month: 'short' },
+    { day: 'numeric', month: 'short', year: 'numeric' },
+  )
+  const timePart = formatTimeOnly(startTime)
+  return timePart ? `${datePart} · ${timePart}` : datePart
 }
 
 function ticketsSoldPercent(event: Event): number {

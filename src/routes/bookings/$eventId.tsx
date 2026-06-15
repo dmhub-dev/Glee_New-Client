@@ -52,7 +52,7 @@ export default function BookingEventPage() {
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<CheckInTab>('remaining')
 
-  const tickets = ticketData?.tickets ?? []
+  const tickets = useMemo(() => ticketData?.tickets ?? [], [ticketData?.tickets])
   const units = useMemo(() => ticketUnits(tickets), [tickets])
   const checkedInUnits = units.filter(unit => unit.checkedIn)
   const remainingUnits = units.filter(unit => !unit.checkedIn)
@@ -166,7 +166,6 @@ export default function BookingEventPage() {
               onChange={changeEvent => setTicketRef(changeEvent.target.value)}
               placeholder="Scan QR code"
               className="h-12 border-admin bg-admin-input font-mono"
-              autoFocus
             />
             <Button type="submit" disabled={checkInQr.isPending || !ticketRef.trim()} className="w-full gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
               <CheckCircle2 className="h-4 w-4" />

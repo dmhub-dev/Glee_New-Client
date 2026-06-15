@@ -160,7 +160,7 @@ function LocationFormPanel({
     })
     setExistingPics(initial.pictures ?? [])
     setNewPics([])
-  }, [initial?.id])
+  }, [form, initial])
 
   const totalPhotos = existingPics.length + newPics.length
 
@@ -464,7 +464,7 @@ export default function LocationsTab() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {(locations ?? []).map(loc => (
-            <article
+            <div
               key={loc.id}
               data-testid="location-card"
               role="button"
@@ -546,7 +546,7 @@ export default function LocationsTab() {
                   </Button>
                 </div>
               </div>
-            </article>
+            </div>
           ))}
         </div>
       )}

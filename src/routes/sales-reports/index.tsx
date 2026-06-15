@@ -62,7 +62,7 @@ export default function SalesReportsPage() {
   const user = useAdminUser()
   const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
   const { data: events, isLoading } = useAdminEvents({ vendorScoped: isVendorRole })
-  const eventList = events ?? []
+  const eventList = useMemo(() => events ?? [], [events])
 
   const totals = useMemo(() => {
     const revenue = eventList.reduce((sum, event) => sum + eventRevenue(event), 0)

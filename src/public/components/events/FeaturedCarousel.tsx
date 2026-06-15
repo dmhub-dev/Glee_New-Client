@@ -3,17 +3,20 @@ import { MapPin } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Event } from '@glee/types'
 import { Button, Skeleton } from '@glee/ui'
+import { formatDateRange, formatTimeOnly } from '@glee/utils'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/0B0B10/FF2D8F?text=Glee'
 
 function formatCarouselDate(startDate: string, endDate: string, startTime: string): string {
-  const d = new Date(`${startDate}T${startTime}`)
-  const datePart = endDate !== startDate
-    ? new Date(startDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' }) +
-      ' – ' +
-      new Date(endDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
-    : d.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const datePart = formatDateRange(
+    startDate,
+    endDate,
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' },
+    { weekday: 'short', day: 'numeric', month: 'short' },
+    { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' },
+  )
+  const timePart = formatTimeOnly(startTime)
+  return timePart ? `${datePart} · ${timePart}` : datePart
 }
 
 interface FeaturedCarouselProps {
@@ -54,7 +57,16 @@ export default function FeaturedCarousel({ events, isLoading }: FeaturedCarousel
             return (
               <div
                 key={e.id}
+                role="button"
+                tabIndex={active ? 0 : -1}
+                aria-label={`View details for ${e.title}`}
                 onClick={() => {
+                  setCurrent(i)
+                  navigate(`/events/${e.id}`)
+                }}
+                onKeyDown={event => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
                   setCurrent(i)
                   navigate(`/events/${e.id}`)
                 }}

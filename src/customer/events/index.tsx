@@ -4,6 +4,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import type { Event } from '@glee/types'
 import { useEvents, useReservationVenues } from '@glee/api'
 import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, cn } from '@glee/ui'
+import { formatDateOnly, formatTimeOnly, parseDateOnly } from '@glee/utils'
 import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
@@ -34,7 +35,10 @@ function eventImage(event: Event) {
 }
 
 function eventDate(event: Event) {
-  return new Date(`${event.startDate}T${event.startTime || '00:00'}`)
+  const date = parseDateOnly(event.startDate)
+  const [hour = 0, minute = 0] = (event.startTime || '00:00').split(':').map(Number)
+  date.setHours(hour, minute, 0, 0)
+  return date
 }
 
 function categoryLabel(event: Event) {
@@ -447,7 +451,7 @@ function EventList({ events, showCategory = true }: { events: Event[]; showCateg
             <div>
               <div className="flex items-start justify-between">
                 <span className="text-xs font-bold uppercase text-neon-pink">
-                  {eventDate(event).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {eventDate(event).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {formatDateOnly(event.startDate, { month: 'short', day: 'numeric' }, 'en-US')} • {formatTimeOnly(event.startTime || '00:00', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
               <h3 className="mt-1 line-clamp-1 text-base font-bold text-white">{event.title}</h3>
@@ -511,7 +515,7 @@ function AutoCarousel({ events }: { events: Event[] }) {
                 </div>
                 <div className="absolute bottom-0 left-0 z-20 w-full space-y-1 p-4">
                   <p className="text-xs font-bold uppercase tracking-wider text-neon-pink">
-                    {eventDate(event).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    {formatDateOnly(event.startDate, { weekday: 'short', month: 'short', day: 'numeric' }, 'en-US')}
                   </p>
                   <h3 className="text-xl font-bold leading-tight text-white">{event.title}</h3>
                   <div className="mt-1 flex items-center text-xs text-gray-300">

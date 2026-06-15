@@ -41,7 +41,7 @@ export default function ReservationBookingsList() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const { data, isLoading } = useMyReservations({ page: 1, limit: 100 })
-  const allReservations = data?.items ?? []
+  const allReservations = useMemo(() => data?.items ?? [], [data?.items])
   const reservations = useMemo(() => {
     return allReservations.filter(reservation => {
       if (!PAID_RESERVATION_STATUSES.includes(reservation.status)) return false

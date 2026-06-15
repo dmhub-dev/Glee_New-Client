@@ -1,12 +1,38 @@
 import { tokens } from '../utils'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const BASE: string = (import.meta as any).env?.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) {
     super(message)
     this.name = 'ApiError'
+  }
+}
+
+async function parseResponseBody<T>(res: Response): Promise<T> {
+  if (res.status === 204 || res.status === 205) return undefined as T
+
+  const text = await res.text()
+  if (!text.trim()) return undefined as T
+
+  const contentType = res.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    return JSON.parse(text) as T
+  }
+
+  return text as T
+}
+
+async function errorMessageFromResponse(res: Response): Promise<string> {
+  const fallback = res.statusText || 'Request failed'
+  const text = await res.text().catch(() => '')
+  if (!text.trim()) return fallback
+
+  try {
+    const body = JSON.parse(text) as { message?: string; error?: string }
+    return body.message ?? body.error ?? fallback
+  } catch {
+    return text
   }
 }
 
@@ -64,10 +90,8 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ message: res.statusText })) as { message?: string }
-    throw new ApiError(res.status, body.message ?? res.statusText)
+    throw new ApiError(res.status, await errorMessageFromResponse(res))
   }
 
-  if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+  return parseResponseBody<T>(res)
 }

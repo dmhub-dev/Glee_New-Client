@@ -9,7 +9,6 @@ export type AdminUser = AuthUser
 
 export function useAdminUser(): AdminUser {
   const { user } = useAuth()
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return user!
 }
 

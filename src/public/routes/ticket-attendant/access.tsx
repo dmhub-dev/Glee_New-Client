@@ -209,8 +209,7 @@ export default function TicketAttendantAccessPage() {
                 placeholder="Paste or scan ticket QR reference"
                 disabled={!desk?.canCheckIn}
                 className="ticket-attendant-input ticket-attendant-scan-input"
-                autoFocus
-              />
+                />
               <Button type="submit" disabled={checkingIn || !desk?.canCheckIn || !ticketRef.trim()} className="ticket-attendant-primary-button">
                 {checkingIn ? 'Checking...' : 'Check In Ticket'}
               </Button>

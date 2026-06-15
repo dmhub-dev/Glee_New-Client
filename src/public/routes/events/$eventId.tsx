@@ -7,6 +7,7 @@ import {
   Button, Skeleton, useToast, Separator,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@glee/ui'
+import { formatDateOnly, formatTimeOnly, parseDateOnly } from '@glee/utils'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
 import { initiateGuestPurchase, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 import EventReservationPanel from '../../../customer/events/EventReservationPanel'
@@ -79,7 +80,8 @@ export default function EventDetailPage() {
   const toggleDesc = (tierId: string) => {
     setExpandedDescs(prev => {
       const next = new Set(prev)
-      next.has(tierId) ? next.delete(tierId) : next.add(tierId)
+      if (next.has(tierId)) next.delete(tierId)
+      else next.add(tierId)
       return next
     })
   }
@@ -126,9 +128,11 @@ export default function EventDetailPage() {
     }
   }
 
-  const eventDate = new Date(event.startDate)
-  const startDt = new Date(`${event.startDate}T${event.startTime}`)
-  const endDt = event.endTime ? new Date(`${event.endDate}T${event.endTime}`) : null
+  const eventDate = parseDateOnly(event.startDate)
+  const eventDateLong = formatDateOnly(event.startDate, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const eventDateShort = formatDateOnly(event.startDate, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  const eventStartTime = formatTimeOnly(event.startTime, { hour: '2-digit', minute: '2-digit', hour12: true })
+  const eventEndTime = event.endTime ? formatTimeOnly(event.endTime, { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
   const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
   const posterSrc = event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
   const activeWaveTiers = (() => {
@@ -192,7 +196,7 @@ export default function EventDetailPage() {
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 flex-col overflow-hidden rounded-xl border border-neon-pink/40 text-center">
                 <div className="bg-neon-pink py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
-                  {eventDate.toLocaleDateString('en-KE', { month: 'short' })}
+                  {formatDateOnly(event.startDate, { month: 'short' })}
                 </div>
                 <div className="flex flex-1 items-center justify-center text-base font-black text-white">
                   {eventDate.getDate()}
@@ -200,11 +204,11 @@ export default function EventDetailPage() {
               </div>
               <div>
                 <p className="font-heading text-sm font-black leading-tight text-white">
-                  {startDt.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  {eventDateLong}
                 </p>
                 <p className="mt-1 font-mono text-xs text-white/75">
-                  {startDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                  {endDt && ` – ${endDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}`}
+                  {eventStartTime}
+                  {eventEndTime && ` – ${eventEndTime}`}
                 </p>
               </div>
             </div>
@@ -464,10 +468,14 @@ export default function EventDetailPage() {
 
       {/* Checkout overlay */}
       {checkoutOpen && (
-        <div
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={e => { if (e.target === e.currentTarget && !isProcessing) setCheckoutOpen(false) }}
-        >
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close checkout"
+            className="absolute inset-0"
+            disabled={isProcessing}
+            onClick={() => setCheckoutOpen(false)}
+          />
           <div className="bg-[#0f0f15] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto p-8 flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="font-heading font-bold text-2xl text-white">Complete Your Order</h2>
@@ -497,9 +505,9 @@ export default function EventDetailPage() {
                     📍 {locationLabel}
                   </p>
                   <p className="text-xs text-white/45 font-mono mt-0.5">
-                    {startDt.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    {eventDateShort}
                     {' · '}
-                    {startDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    {eventStartTime}
                   </p>
                 </div>
               </div>
@@ -618,7 +626,7 @@ export default function EventDetailPage() {
           {/* Social icons — brand colours */}
           <div className="flex items-center gap-4">
             {/* Instagram — gradient purple→pink */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram"
+            <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"
               className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
               style={{ background: 'linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" className="w-5 h-5">
@@ -628,21 +636,21 @@ export default function EventDetailPage() {
               </svg>
             </a>
             {/* X / Twitter — black */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="X"
+            <a href="https://x.com/" target="_blank" rel="noopener noreferrer" aria-label="X"
               className="group w-11 h-11 rounded-full bg-black border border-white/20 flex items-center justify-center transition-all hover:scale-110 hover:border-white/50 active:scale-95">
               <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
             </a>
             {/* Facebook — blue */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook"
+            <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook"
               className="group w-11 h-11 rounded-full bg-[#1877F2] flex items-center justify-center transition-all hover:scale-110 hover:bg-[#0e65d9] active:scale-95">
               <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
               </svg>
             </a>
             {/* TikTok — white on black */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="TikTok"
+            <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer" aria-label="TikTok"
               className="group w-11 h-11 rounded-full bg-black border border-white/20 flex items-center justify-center transition-all hover:scale-110 hover:border-white/50 active:scale-95">
               <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
                 <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.2 8.2 0 004.79 1.54V6.78a4.85 4.85 0 01-1.02-.09z" />

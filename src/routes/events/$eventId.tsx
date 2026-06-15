@@ -11,6 +11,7 @@ import { Button, Input, Textarea, Label, Skeleton, useToast } from '@glee/ui'
 import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
 import type { Location } from '@glee/api'
+import { splitBackendDateTime, toDateTimeLocalInputValue } from '@glee/utils'
 
 const tierSchema = z.object({
   id: z.string(),
@@ -279,7 +280,7 @@ function LocationPicker({
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <button type="button" aria-label="Close location menu" className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
           <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin-card">
             <div className="border-b border-admin p-2">
               <Input
@@ -287,7 +288,6 @@ function LocationPicker({
                 onChange={event => setQuery(event.target.value)}
                 placeholder="Search locations..."
                 className="h-9 bg-admin-input border-admin text-sm"
-                autoFocus
               />
             </div>
             <div className="max-h-72 overflow-y-auto p-1">
@@ -487,8 +487,8 @@ export default function EventFormPage() {
             id: wave.id,
             name: wave.name,
             description: wave.description ?? '',
-            startsAt: new Date(wave.startsAt).toISOString().slice(0, 16),
-            endsAt: new Date(wave.endsAt).toISOString().slice(0, 16),
+            startsAt: toDateTimeLocalInputValue(wave.startsAt),
+            endsAt: toDateTimeLocalInputValue(wave.endsAt),
             ticketTiers: wave.ticketTiers.map(t => ({
               id:                t.id,
               name:              t.name,
@@ -519,15 +519,15 @@ export default function EventFormPage() {
       })),
       schedules: existingEvent.schedules?.length
         ? existingEvent.schedules.map(s => {
-            const start = new Date(s.startDate)
-            const end = new Date(s.endDate)
+            const start = splitBackendDateTime(s.startDate)
+            const end = splitBackendDateTime(s.endDate)
             return {
               name: s.name,
               description: s.description,
-              startDate: start.toISOString().split('T')[0],
-              endDate: end.toISOString().split('T')[0],
-              startTime: start.toTimeString().slice(0, 5),
-              endTime: end.toTimeString().slice(0, 5),
+              startDate: start.date,
+              endDate: end.date || start.date,
+              startTime: start.time,
+              endTime: end.time || start.time,
             }
           })
         : [newSchedule()],
@@ -941,13 +941,14 @@ export default function EventFormPage() {
                         </div>
                       ))}
                       {list.length < 2 && (
-                        <div
+                        <button
+                          type="button"
                           className="h-14 flex-1 rounded-lg border border-dashed border-admin-md hover:border-neon-pink/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-admin-overlay gap-0.5"
                           onClick={() => triggerPosterPick(key)}
                         >
                           <Upload className="w-3.5 h-3.5 text-admin-20" />
                           <span className="text-[9px] text-admin-20 leading-tight text-center">{dim}</span>
-                        </div>
+                        </button>
                       )}
                     </div>
                   </div>

@@ -140,10 +140,10 @@ export default function DashboardPage() {
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const { data: auditLogs, isLoading: auditLoading } = useAuditLogs({ limit: 4 }, { enabled: isSuperAdmin })
 
-  const eventList = events ?? []
-  const userList = users ?? []
-  const locationList = locations ?? []
-  const categoryList = categories ?? []
+  const eventList = useMemo(() => events ?? [], [events])
+  const userList = useMemo(() => users ?? [], [users])
+  const locationList = useMemo(() => locations ?? [], [locations])
+  const categoryList = useMemo(() => categories ?? [], [categories])
   const tickets = ticketTotals(eventList)
 
   const activeEvents = eventList.filter(event => event.status === 'active')

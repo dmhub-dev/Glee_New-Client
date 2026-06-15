@@ -23,7 +23,6 @@ const CompleteProfilePage  = lazy(() => import('../routes/complete-profile'))
 const PublicHomePage     = lazy(() => import('../public/routes/index'))
 const PublicEventsPage   = lazy(() => import('../public/routes/events/index'))
 const PublicEventPage    = lazy(() => import('../public/routes/events/$eventId'))
-const PublicCheckoutPage = lazy(() => import('../public/routes/checkout/index'))
 const EventTicketConfirmPage = lazy(() => import('../public/routes/payment/EventTicketConfirm'))
 const ReservationCallbackPage = lazy(() => import('../public/routes/reservations/ReservationCallback'))
 const PublicReservationDetailPage = lazy(() => import('../public/routes/reservations/$token'))
@@ -87,6 +86,12 @@ function PageSkeleton() {
   )
 }
 
+function NotFoundRoute() {
+  const { isAuthenticated, isLoading, user } = useAuth()
+  if (isLoading) return <PageSkeleton />
+  return <Navigate to={isAuthenticated && user ? (user.role === 'user' ? '/app' : '/dashboard') : '/'} replace />
+}
+
 export default function App() {
   return (
     <Suspense fallback={<PageSkeleton />}>
@@ -94,7 +99,7 @@ export default function App() {
         <Route path="/" element={<PublicOnlyRoute><PublicHomePage /></PublicOnlyRoute>} />
         <Route path="/events" element={<PublicEventsPage />} />
         <Route path="/events/:eventId" element={<PublicEventPage />} />
-        <Route path="/checkout" element={<PublicCheckoutPage />} />
+        <Route path="/checkout" element={<Navigate to="/events" replace />} />
         <Route path="/payment/event-ticket/confirm" element={<EventTicketConfirmPage />} />
         <Route path="/reservation/callback" element={<ReservationCallbackPage />} />
         <Route path="/reservation/:token" element={<PublicReservationDetailPage />} />
@@ -249,6 +254,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={<NotFoundRoute />} />
       </Routes>
     </Suspense>
   )

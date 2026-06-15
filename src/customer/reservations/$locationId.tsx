@@ -97,7 +97,10 @@ export default function CustomerReservationVenuePage() {
 
   const { data: venue, isLoading } = useReservationVenue(locationId)
   const createReservation = useCreateReservation()
-  const slots = venue?.reservationSlots ?? []
+  const slots = useMemo(
+    () => venue?.reservationSlots ?? [],
+    [venue?.reservationSlots],
+  )
   const availableSlots = useMemo(() => {
     const day = selectedDayOfWeek(date)
     return slots.filter(slot => slot.daysOfWeek.length === 0 || slot.daysOfWeek.includes(day))
@@ -105,7 +108,10 @@ export default function CustomerReservationVenuePage() {
   const selectedSlotId = slotId || availableSlots[0]?.id || ''
   const availabilityParams = useMemo(() => ({ date, slotId: selectedSlotId, guestCount }), [date, selectedSlotId, guestCount])
   const availability = useReservationAvailability(locationId, availabilityParams, Boolean(locationId && selectedSlotId && date && guestCount > 0))
-  const categories = availability.data?.categories ?? []
+  const categories = useMemo(
+    () => availability.data?.categories ?? [],
+    [availability.data?.categories],
+  )
   const selectedCategory = useMemo<AvailabilityCategory | undefined>(
     () => categories.find(category => category.category === tableCategory),
     [categories, tableCategory],
@@ -385,12 +391,14 @@ export default function CustomerReservationVenuePage() {
       </div>
 
       {checkoutOpen && selectedCategory && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          onClick={event => {
-            if (event.target === event.currentTarget && !createReservation.isPending) setCheckoutOpen(false)
-          }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close checkout"
+            className="absolute inset-0"
+            disabled={createReservation.isPending}
+            onClick={() => setCheckoutOpen(false)}
+          />
           <div className="flex max-h-[92vh] w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-white/15 bg-[#0f0f15] p-6 text-white shadow-[0_26px_90px_rgba(0,0,0,0.5)] sm:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>

@@ -22,6 +22,7 @@ import { useAdminUser } from '../../app/providers'
 import { Button, Input, Label, Skeleton, Progress, Textarea, useToast } from '@glee/ui'
 import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck, CheckCircle2, XCircle, ShieldCheck, UserPlus, Copy, RotateCcw, Ban, Play, Square } from 'lucide-react'
 import { cn } from '@glee/ui'
+import { formatDateOnly, formatDateRange, formatTimeOnly, splitBackendDateTime } from '@glee/utils'
 import type { Event } from '@glee/types'
 import EventDetailTabs from './EventDetailTabs'
 import { EventChatPanel } from '../../components/chat/EventChatPanel'
@@ -55,50 +56,46 @@ const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF
 type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'chat' | 'reservations'
 
 function formatEventDate(startDate: string, endDate: string): string {
-  if (endDate === startDate) {
-    return new Date(startDate).toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  }
-  const start = new Date(startDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })
-  const end   = new Date(endDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
-  return `${start} – ${end}`
+  return formatDateRange(
+    startDate,
+    endDate,
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' },
+    { weekday: 'short', day: 'numeric', month: 'short' },
+    { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' },
+  )
 }
 
 function formatTime(time: string): string {
-  const [h, m] = time.split(':').map(Number)
-  const d = new Date()
-  d.setHours(h, m)
-  return d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return formatTimeOnly(time)
 }
 
 function formatDateTimeRange(startValue: string, endValue: string): string {
-  const start = new Date(startValue)
-  const end = new Date(endValue)
-  const sameDay = start.toDateString() === end.toDateString()
-  const startDate = start.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-  const endDate = end.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-  const startTime = start.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const endTime = end.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
-  return sameDay ? `${startDate} · ${startTime} - ${endTime}` : `${startDate} ${startTime} - ${endDate} ${endTime}`
+  const start = splitBackendDateTime(startValue)
+  const end = splitBackendDateTime(endValue)
+  const startDate = formatDateOnly(start.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  const endDate = formatDateOnly(end.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  const startTime = formatTimeOnly(start.time)
+  const endTime = formatTimeOnly(end.time)
+  return start.date === end.date ? `${startDate} · ${startTime} - ${endTime}` : `${startDate} ${startTime} - ${endDate} ${endTime}`
 }
 
 function formatScheduleDay(value: string): string {
-  return new Date(value).toLocaleDateString('en-KE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  return formatDateOnly(splitBackendDateTime(value).date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function formatScheduleTime(value: string): string {
-  return new Date(value).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return formatTimeOnly(splitBackendDateTime(value).time)
 }
 
 function getScheduleGroups(schedules: NonNullable<Event['schedules']>) {
   return [...schedules]
-    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+    .sort((a, b) => {
+      const aParts = splitBackendDateTime(a.startDate)
+      const bParts = splitBackendDateTime(b.startDate)
+      return `${aParts.date}T${aParts.time}`.localeCompare(`${bParts.date}T${bParts.time}`)
+    })
     .reduce<Array<{ key: string; label: string; items: NonNullable<Event['schedules']> }>>((groups, schedule) => {
-      const key = new Date(schedule.startDate).toISOString().slice(0, 10)
+      const key = splitBackendDateTime(schedule.startDate).date
       const existing = groups.find(group => group.key === key)
       if (existing) {
         existing.items.push(schedule)
@@ -160,15 +157,15 @@ export default function EventDetailPage() {
       locationId:  event.locationId ?? event.venueId,
       ticketTiers: event.ticketTiers,
       schedules: (event.schedules ?? []).map(s => {
-        const start = new Date(s.startDate)
-        const end = new Date(s.endDate)
+        const start = splitBackendDateTime(s.startDate)
+        const end = splitBackendDateTime(s.endDate)
         return {
           name: s.name,
           description: s.description,
-          startDate: start.toISOString().split('T')[0],
-          endDate: end.toISOString().split('T')[0],
-          startTime: start.toTimeString().slice(0, 5),
-          endTime: end.toTimeString().slice(0, 5),
+          startDate: start.date,
+          endDate: end.date || start.date,
+          startTime: start.time,
+          endTime: end.time || start.time,
         }
       }),
     }
@@ -302,7 +299,7 @@ export default function EventDetailPage() {
               </button>
               {statusOpen && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
+                  <button type="button" aria-label="Close status menu" className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
                   <div className="absolute right-0 top-full mt-1 z-20 bg-admin-surface border border-admin rounded-xl shadow-admin-card overflow-hidden min-w-[180px]">
                     {STATUS_OPTIONS.filter(o => o.value !== event.status).map(opt => (
                       <button
@@ -482,8 +479,9 @@ export default function EventDetailPage() {
                       </div>
                       <div className="relative ml-5 space-y-0 border-l border-dashed border-admin-md pl-6">
                         {group.items.map((schedule, index) => {
-                          const endDate = new Date(schedule.endDate)
-                          const crossesDay = new Date(schedule.startDate).toDateString() !== endDate.toDateString()
+                          const startParts = splitBackendDateTime(schedule.startDate)
+                          const endParts = splitBackendDateTime(schedule.endDate)
+                          const crossesDay = startParts.date !== endParts.date
                           return (
                             <div key={schedule.id ?? `${schedule.name}-${index}`} className="relative pb-5 last:pb-0">
                               <span className="absolute -left-[31px] top-2 flex h-3 w-3 rounded-full border-2 border-admin-body bg-neon-pink" />
@@ -494,7 +492,7 @@ export default function EventDetailPage() {
                                     <p className="mt-1 text-xs text-admin-40">to {formatScheduleTime(schedule.endDate)}</p>
                                     {crossesDay && (
                                       <p className="mt-2 text-[11px] text-admin-40">
-                                        Ends {endDate.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}
+                                        Ends {formatDateOnly(endParts.date, { day: 'numeric', month: 'short' })}
                                       </p>
                                     )}
                                   </div>
@@ -532,7 +530,7 @@ export default function EventDetailPage() {
                       <div>
                         <p className="text-sm font-semibold text-foreground">{wave.name}</p>
                         <p className="text-xs text-admin-40">
-                          {new Date(wave.startsAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })} - {new Date(wave.endsAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {formatDateOnly(splitBackendDateTime(wave.startsAt).date, { day: 'numeric', month: 'short' })} - {formatDateOnly(splitBackendDateTime(wave.endsAt).date, { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       </div>
                       <span className="w-fit rounded-full border border-admin bg-admin-surface px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-admin-50">{wave.status}</span>

@@ -33,6 +33,9 @@ export default function TicketTierList({
         return (
           <div
             key={tier.id}
+            role="button"
+            tabIndex={isSoldOut ? -1 : 0}
+            aria-disabled={isSoldOut}
             className={cn(
               'w-full rounded-lg border p-4 transition-all duration-150',
               isSoldOut && 'opacity-40',
@@ -40,6 +43,11 @@ export default function TicketTierList({
               isSelected && 'border-neon-pink bg-neon-pink/10 shadow-neon',
             )}
             onClick={() => !isSoldOut && onSelect(tier.id)}
+            onKeyDown={event => {
+              if (isSoldOut || (event.key !== 'Enter' && event.key !== ' ')) return
+              event.preventDefault()
+              onSelect(tier.id)
+            }}
           >
             <div className="flex items-center justify-between">
               <span className="font-heading font-bold text-foreground">{tier.name}</span>

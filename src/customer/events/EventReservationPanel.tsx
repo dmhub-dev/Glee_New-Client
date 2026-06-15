@@ -63,7 +63,10 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
     { eventSlotId: selectedSlotId, guestCount },
     Boolean(eventId && selectedSlotId && guestCount > 0),
   )
-  const categories = availability.data?.categories ?? []
+  const categories = useMemo(
+    () => availability.data?.categories ?? [],
+    [availability.data?.categories],
+  )
   const selectedCategory = useMemo<AvailabilityCategory | undefined>(
     () => categories.find(category => category.category === selectedCategoryName),
     [categories, selectedCategoryName],

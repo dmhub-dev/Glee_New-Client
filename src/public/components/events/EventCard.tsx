@@ -2,17 +2,20 @@ import { useNavigate } from 'react-router-dom'
 import { MapPin } from 'lucide-react'
 import type { Event } from '@glee/types'
 import { Button } from '@glee/ui'
+import { formatDateRange, formatTimeOnly } from '@glee/utils'
 
 const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
 
 function formatEventDate(startDate: string, endDate: string, startTime: string): string {
-  const d = new Date(`${startDate}T${startTime}`)
-  const datePart = endDate !== startDate
-    ? new Date(startDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) +
-      ' – ' +
-      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
-    : d.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' })
-  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const datePart = formatDateRange(
+    startDate,
+    endDate,
+    { weekday: 'short', day: 'numeric', month: 'short' },
+    { day: 'numeric', month: 'short' },
+    { day: 'numeric', month: 'short', year: 'numeric' },
+  )
+  const timePart = formatTimeOnly(startTime)
+  return timePart ? `${datePart} · ${timePart}` : datePart
 }
 
 function lowestAvailablePrice(event: Event): number {
@@ -32,8 +35,15 @@ export default function EventCard({ event }: EventCardProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className="group flex overflow-hidden rounded-2xl border border-white/15 bg-white/[0.10] p-3 text-left transition-all duration-300 hover:border-neon-pink/50 hover:bg-white/[0.14] hover:shadow-neon sm:h-[318px] sm:flex-col sm:p-0 lg:h-[300px]"
       onClick={() => navigate(`/events/${event.id}`)}
+      onKeyDown={keyEvent => {
+        if (keyEvent.key !== 'Enter' && keyEvent.key !== ' ') return
+        keyEvent.preventDefault()
+        navigate(`/events/${event.id}`)
+      }}
     >
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg sm:h-44 sm:w-full sm:rounded-none lg:h-40">
         <img

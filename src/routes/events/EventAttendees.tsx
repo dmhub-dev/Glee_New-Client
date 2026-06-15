@@ -67,7 +67,7 @@ export default function EventAttendeesPage() {
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  const tickets = data?.tickets ?? []
+  const tickets = useMemo(() => data?.tickets ?? [], [data?.tickets])
   const methods = useMemo(() => Array.from(new Set(tickets.map(paymentMethod))).sort(), [tickets])
 
   const filteredTickets = useMemo(() => {
