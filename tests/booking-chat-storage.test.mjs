@@ -290,6 +290,17 @@ test('booking chat storage exports browser-safe key constants', async () => {
   assert.equal(bookingChatThreadId('reservation-1'), 'booking-chat:reservation-1')
 })
 
+test('booking chat API exports query hooks through the api barrel', async () => {
+  const [apiIndex, bookingChatQueries] = await Promise.all([
+    readFile(new URL('../src/api/index.ts', import.meta.url), 'utf8'),
+    readFile(new URL('../src/api/queries/bookingChat.ts', import.meta.url), 'utf8').catch(() => ''),
+  ])
+
+  assert.match(apiIndex, /export \* from '\.\/queries\/bookingChat'/)
+  assert.match(bookingChatQueries, /export const bookingChatKeys/)
+  assert.match(bookingChatQueries, /useBookingChatMessages/)
+})
+
 test('sendBookingChatMessage trims text and rejects empty bodies', async () => {
   const { getBookingChatMessagesFromStorage, sendBookingChatMessage } = await loadBookingChatStorage()
   const storage = memoryStorage()
