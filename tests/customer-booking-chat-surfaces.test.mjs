@@ -42,6 +42,11 @@ test('customer reservation detail renders the customer booking chat panel', asyn
   const source = await readReservationDetailSource()
 
   assertTranspiles(source)
+  assert.match(source, /import\s+\{[^}]*useEffect[^}]*\}\s+from\s+['"]react['"]/s)
+  assert.match(source, /import\s+\{[^}]*useLocation[^}]*\}\s+from\s+['"]react-router-dom['"]/s)
+  assert.match(source, /location\.hash\s*===\s*['"]#chat['"]/)
+  assert.match(source, /document\.getElementById\(['"]chat['"]\)/)
+  assert.match(source, /\.scrollIntoView\(/)
   assert.match(source, /import\s+\{\s*BookingChatPanel\s*\}\s+from\s+['"]\.\.\/\.\.\/components\/chat\/BookingChatPanel['"]/)
   assert.match(source, /<div\s+id=['"]chat['"]>/)
   assert.match(source, /<BookingChatPanel[\s\S]*reservation=\{reservation\}[\s\S]*viewer=['"]CUSTOMER['"][\s\S]*viewerName=\{reservation\.user\?\.name\s*\?\?\s*reservation\.guestName\s*\?\?\s*['"]Customer['"]\}[\s\S]*tone=['"]customer['"][\s\S]*\/>/)

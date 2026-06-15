@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCancelReservation, useReservation, type ReservationStatus } from '@glee/api'
 import { Badge, Button, Skeleton, Textarea, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, ChevronLeft, Clock, MapPin, QrCode, ReceiptText, ShieldCheck, Users, XCircle } from 'lucide-react'
@@ -45,6 +45,7 @@ function qrImageSrc(value: string) {
 export default function CustomerReservationDetailPage() {
   const { reservationId = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { toast } = useToast()
   const { data: reservation, isLoading } = useReservation(reservationId)
   const cancelReservation = useCancelReservation()
@@ -57,6 +58,18 @@ export default function CustomerReservationDetailPage() {
       ? `${window.location.origin}/reservation/${reservation.publicAccessToken}`
       : reservation.reference || reservation.id
     : ''
+
+  useEffect(() => {
+    if (!reservation) return
+
+    if (location.hash === '#chat') {
+      const frame = window.requestAnimationFrame(() => {
+        document.getElementById('chat')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+
+      return () => window.cancelAnimationFrame(frame)
+    }
+  }, [location.hash, reservation])
 
   async function handleCancel() {
     if (!reservation || !cancellable) return
