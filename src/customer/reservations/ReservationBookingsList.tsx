@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMyReservations, type ReservationStatus } from '@glee/api'
+import { canOpenBookingChat, useBookingChatThreads, useMyReservations, type ReservationStatus } from '@glee/api'
 import { Badge, Button, Input, Skeleton, cn } from '@glee/ui'
-import { Calendar, CalendarCheck, Clock, MapPin, QrCode, Search, Users } from 'lucide-react'
+import { Calendar, CalendarCheck, Clock, MapPin, MessageCircle, QrCode, Search, Users } from 'lucide-react'
 
 const PLACEHOLDER = 'https://placehold.co/900x600/141419/FF2D8F?text=Glee'
 
@@ -41,6 +41,7 @@ export default function ReservationBookingsList() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const { data, isLoading } = useMyReservations({ page: 1, limit: 100 })
+  const { data: chatThreads = [] } = useBookingChatThreads()
   const allReservations = useMemo(() => data?.items ?? [], [data?.items])
   const reservations = useMemo(() => {
     return allReservations.filter(reservation => {
@@ -69,6 +70,10 @@ export default function ReservationBookingsList() {
 
   function renderReservationCard(reservation: typeof reservations[number], status: 'upcoming' | 'past') {
     const venue = reservation.location
+    const chatThread = chatThreads.find(thread => thread.reservationId === reservation.id)
+    const unread = chatThread?.unreadForCustomer ?? 0
+    const chatEnabled = canOpenBookingChat(reservation)
+
     return (
       <article key={reservation.id} className={cn('w-full overflow-hidden rounded-2xl bg-white text-black shadow-xl', status === 'past' && 'opacity-60')}>
         <div className="relative h-36 w-full">
@@ -117,13 +122,29 @@ export default function ReservationBookingsList() {
             </div>
           </div>
 
-          <Button
-            onClick={() => navigate(`/app/reservations/detail/${reservation.id}`)}
-            className="h-16 w-16 shrink-0 rounded-xl bg-gray-100 p-0 text-slate-900 hover:bg-gray-200"
-            aria-label={`View reservation for ${venue?.name ?? reservation.tableCategory}`}
-          >
-            <QrCode className="h-7 w-7" />
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {chatEnabled ? (
+              <Button
+                onClick={() => navigate(`/app/reservations/detail/${reservation.id}#chat`)}
+                className="relative h-12 w-12 shrink-0 rounded-xl bg-purple-100 p-0 text-purple-700 hover:bg-purple-200"
+                aria-label={`Open booking chat for ${venue?.name ?? reservation.tableCategory}`}
+              >
+                <MessageCircle className="h-5 w-5" />
+                {unread > 0 ? (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-neon-pink px-1 text-[10px] font-black leading-none text-white shadow-sm">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                ) : null}
+              </Button>
+            ) : null}
+            <Button
+              onClick={() => navigate(`/app/reservations/detail/${reservation.id}`)}
+              className="h-16 w-16 shrink-0 rounded-xl bg-gray-100 p-0 text-slate-900 hover:bg-gray-200"
+              aria-label={`View reservation for ${venue?.name ?? reservation.tableCategory}`}
+            >
+              <QrCode className="h-7 w-7" />
+            </Button>
+          </div>
         </div>
 
         <div className="border-t border-gray-100 bg-white px-4 pb-4">

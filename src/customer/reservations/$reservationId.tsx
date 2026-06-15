@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useCancelReservation, useReservation, type ReservationStatus } from '@glee/api'
 import { Badge, Button, Skeleton, Textarea, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, ChevronLeft, Clock, MapPin, QrCode, ReceiptText, ShieldCheck, Users, XCircle } from 'lucide-react'
+import { BookingChatPanel } from '../../components/chat/BookingChatPanel'
 import { FeedbackCard, canReviewReservationByStatus, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
 import CustomerLayout from '../CustomerLayout'
 
@@ -159,6 +160,14 @@ export default function CustomerReservationDetailPage() {
                 <p className="text-xs text-white/45">Deposit paid</p>
                 <p className="mt-1 font-mono font-bold text-neon-pink">{money(reservation.depositAmount)}</p>
               </div>
+            </div>
+            <div id="chat">
+              <BookingChatPanel
+                reservation={reservation}
+                viewer="CUSTOMER"
+                viewerName={reservation.user?.name ?? reservation.guestName ?? 'Customer'}
+                tone="customer"
+              />
             </div>
             {canReview ? (
               <FeedbackCard
