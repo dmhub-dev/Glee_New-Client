@@ -177,7 +177,7 @@ export default function EventAttendeesPage() {
           </div>
 
           <div className="mt-5 overflow-x-auto rounded-xl border border-admin">
-            <table className="w-full min-w-[980px] text-sm">
+            <table className="w-full min-w-[1080px] text-sm">
               <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
                 <tr>
                   <SortableTh label="Full name" sortKey="name" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
