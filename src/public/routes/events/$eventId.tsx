@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,6 +10,12 @@ import {
 import { formatDateOnly, formatTimeOnly, parseDateOnly } from '@glee/utils'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
 import { initiateGuestPurchase, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
+import EventCheckoutTableBooking from '../../../components/events/EventCheckoutTableBooking'
+import {
+  combinedCheckoutTotal,
+  selectedTableBookingPayload,
+  type CheckoutTableBookingSelection,
+} from '../../../components/events/eventCheckoutTableBookingUtils'
 import EventReservationPanel from '../../../customer/events/EventReservationPanel'
 
 const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
@@ -27,6 +33,7 @@ export default function EventDetailPage() {
   const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set())
   const [aboutExpanded, setAboutExpanded] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [tableBooking, setTableBooking] = useState<CheckoutTableBookingSelection | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
 
@@ -37,6 +44,11 @@ export default function EventDetailPage() {
   })
 
   const watchedValues = form.watch()
+
+  useEffect(() => {
+    setTableBooking(null)
+    setCheckoutOpen(false)
+  }, [event?.id])
 
   const selectedItems = event
     ? event.ticketTiers
@@ -50,7 +62,8 @@ export default function EventDetailPage() {
     : []
   const ticketTotal = selectedItems.reduce((sum, { tier, quantity }) => sum + tier.price * quantity, 0)
   const menuTotal = selectedMenuItems.reduce((sum, { item, quantity }) => sum + item.price * quantity, 0)
-  const totalPrice = ticketTotal + menuTotal
+  const totalPrice = combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking })
+  const tableBookingPayload = selectedTableBookingPayload(tableBooking)
 
   if (isLoading) {
     return (
@@ -106,6 +119,7 @@ export default function EventDetailPage() {
         menuItems: selectedMenuItems.length
           ? selectedMenuItems.map(({ item, quantity }) => ({ id: item.id, quantity }))
           : undefined,
+        tableBooking: tableBookingPayload,
       })
       if (!intent.authorization_url) {
         throw new Error('Paystack did not return a checkout URL')
@@ -533,6 +547,17 @@ export default function EventDetailPage() {
                     <span className="font-mono text-white">KSh {(item.price * quantity).toLocaleString()}</span>
                   </div>
                 ))}
+                {tableBooking?.enabled && (
+                  <div className="flex flex-col gap-0.5 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                      <span className="font-mono text-white">KSh {tableBooking.depositAmount.toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-white/35">
+                      {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend KSh {tableBooking.minimumSpend.toLocaleString()}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <Separator className="bg-white/10" />
@@ -543,6 +568,8 @@ export default function EventDetailPage() {
                 <span className="font-mono font-bold text-neon-pink text-lg">KSh {totalPrice.toLocaleString()}</span>
               </div>
             </div>
+
+            <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
 
             {/* Buyer form */}
             <Form {...form}>

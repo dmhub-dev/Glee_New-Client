@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
@@ -6,6 +6,13 @@ import { formatDateOnly, formatTimeOnly, splitBackendDateTime } from '@glee/util
 import { Calendar, CheckCircle2, MapPin, Share2, ShoppingBag, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import EventReservationPanel from './EventReservationPanel'
+import EventCheckoutTableBooking from '../../components/events/EventCheckoutTableBooking'
+import {
+  combinedCheckoutTotal,
+  selectedTableBookingPayload,
+  tableBookingDeposit,
+  type CheckoutTableBookingSelection,
+} from '../../components/events/eventCheckoutTableBookingUtils'
 
 const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
 type FeeType = 'PERCENTAGE' | 'FIXED'
@@ -51,6 +58,7 @@ function formatSettingLabel(type: FeeType, percent: number, amount: number) {
 function buildInstallmentPlan(
   ticketTotal: number,
   menuTotal: number,
+  tableDeposit: number,
   eventStartDate: string | undefined,
   count: number,
   depositType: FeeType,
@@ -64,8 +72,8 @@ function buildInstallmentPlan(
   if (!finalDueDate) return null
   const deposit = calculateFee(ticketTotal, depositType, depositPercent, depositAmount, true)
   const securityFee = calculateFee(ticketTotal, securityFeeType, securityFeePercent, securityFeeAmount)
-  const dueNow = Math.round((deposit + menuTotal + securityFee) * 100) / 100
-  const remaining = Math.round((ticketTotal + menuTotal - deposit) * 100) / 100
+  const dueNow = Math.round((deposit + menuTotal + tableDeposit + securityFee) * 100) / 100
+  const remaining = Math.round((ticketTotal - deposit) * 100) / 100
   const baseAmount = Math.round((remaining / count) * 100) / 100
   const today = new Date()
   const days = Math.max(1, Math.floor((finalDueDate.getTime() - today.getTime()) / 86400000))
@@ -103,6 +111,11 @@ export default function CustomerEventDetailPage() {
   const [installmentCount, setInstallmentCount] = useState(2)
   const [aboutExpanded, setAboutExpanded] = useState(false)
   const [showMenuAddons, setShowMenuAddons] = useState(false)
+  const [tableBooking, setTableBooking] = useState<CheckoutTableBookingSelection | null>(null)
+
+  useEffect(() => {
+    setTableBooking(null)
+  }, [eventId])
 
   // Get active wave tiers (fallback to ticketTiers if no waves defined)
   const activeWaveTiers = useMemo(() => {
@@ -132,7 +145,9 @@ export default function CustomerEventDetailPage() {
     [activeWaveTiers, tierQtys],
   )
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
-  const total = ticketTotal + menuTotal
+  const tableDeposit = tableBookingDeposit(tableBooking)
+  const total = combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking })
+  const tableBookingPayload = selectedTableBookingPayload(tableBooking)
   const depositType = checkoutSettings?.walletInstallmentDepositType ?? 'PERCENTAGE'
   const depositPercent = checkoutSettings?.walletInstallmentDepositPercent ?? 30
   const depositAmount = checkoutSettings?.walletInstallmentDepositAmount ?? 0
@@ -151,6 +166,7 @@ export default function CustomerEventDetailPage() {
     () => buildInstallmentPlan(
       ticketTotal,
       menuTotal,
+      tableDeposit,
       event?.startDate,
       installmentCount,
       depositType,
@@ -160,7 +176,7 @@ export default function CustomerEventDetailPage() {
       securityFeePercent,
       securityFeeAmount,
     ),
-    [ticketTotal, menuTotal, event?.startDate, installmentCount, depositType, depositPercent, depositAmount, securityFeeType, securityFeePercent, securityFeeAmount],
+    [ticketTotal, menuTotal, tableDeposit, event?.startDate, installmentCount, depositType, depositPercent, depositAmount, securityFeeType, securityFeePercent, securityFeeAmount],
   )
   const walletMinimumDue = walletPaymentType === 'INSTALLMENT' && selectedInstallmentPlan ? selectedInstallmentPlan.dueNow : total
   const walletCanPayFull = walletBalance >= total
@@ -186,6 +202,7 @@ export default function CustomerEventDetailPage() {
         ticketCategoryId: selectedTier.id,
         noOfTickets: quantity,
         preOrderMenu: selectedMenu.length ? selectedMenu.map(({ item, quantity }) => ({ id: item.id, quantity })) : undefined,
+        tableBooking: tableBookingPayload,
         useWallet,
         walletPaymentType: useWallet ? paymentType : undefined,
         installmentCount: paymentType === 'INSTALLMENT' ? installmentCount : undefined,
@@ -427,6 +444,8 @@ export default function CustomerEventDetailPage() {
               )}
             </section>
 
+            <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
+
             <EventReservationPanel eventId={event.id} />
 
             {/* Menu add-on items — public style */}
@@ -593,6 +612,18 @@ export default function CustomerEventDetailPage() {
               </div>
             </div>
 
+            {tableBooking?.enabled && (
+              <div className="rounded-2xl border border-neon-pink/20 bg-neon-pink/[0.08] p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                  <span className="font-mono font-semibold text-white">{money(tableDeposit)} due now</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-white/45">
+                  {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend {money(tableBooking.minimumSpend)}
+                </p>
+              </div>
+            )}
+
             {!walletCanPayFull && (
               <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
                 Wallet balance is not enough for full payment. You can pay directly or choose installments.
@@ -666,6 +697,17 @@ export default function CustomerEventDetailPage() {
                 <span className="text-white/55">Order total</span>
                 <span className="font-mono font-semibold text-neon-pink">{money(total)}</span>
               </div>
+              {tableBooking?.enabled && (
+                <div className="mt-3 rounded-xl border border-neon-pink/20 bg-neon-pink/[0.08] p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                    <span className="font-mono font-semibold text-white">{money(tableDeposit)} due now</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-white/45">
+                    {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend {money(tableBooking.minimumSpend)}
+                  </p>
+                </div>
+              )}
               <div className="mt-3 border-t border-white/10 pt-3 flex items-center justify-between text-sm">
                 <span className="text-white/55">Wallet after payment</span>
                 <span className="font-mono font-semibold text-white">{money(walletBalance - total)}</span>
@@ -709,13 +751,25 @@ export default function CustomerEventDetailPage() {
               </div>
             </div>
 
+            {tableBooking?.enabled && (
+              <div className="rounded-xl border border-neon-pink/20 bg-neon-pink/[0.08] p-4 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                  <span className="font-mono font-semibold text-white">{money(tableDeposit)} due now</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-white/45">
+                  {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend {money(tableBooking.minimumSpend)}
+                </p>
+              </div>
+            )}
+
             <div className="rounded-xl border border-neon-pink/25 bg-neon-pink/10 p-4">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-neon-pink" />
                 <p className="font-semibold text-white">Installment reservation</p>
               </div>
               <p className="mt-2 text-sm text-white/60">
-                Reserve with {formatSettingLabel(depositType, depositPercent, depositAmount)} of ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{(securityFeeType === 'FIXED' ? securityFeeAmount > 0 : securityFeePercent > 0) ? ` and a ${formatSettingLabel(securityFeeType, securityFeePercent, securityFeeAmount)} security fee` : ''}.
+                Reserve with {formatSettingLabel(depositType, depositPercent, depositAmount)} of ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{tableDeposit > 0 ? ' plus table booking deposit' : ''}{(securityFeeType === 'FIXED' ? securityFeeAmount > 0 : securityFeePercent > 0) ? ` and a ${formatSettingLabel(securityFeeType, securityFeePercent, securityFeeAmount)} security fee` : ''}.
               </p>
             </div>
 
@@ -736,7 +790,7 @@ export default function CustomerEventDetailPage() {
                   </Badge>
                 </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <div className={tableDeposit > 0 ? 'mt-4 grid gap-2 sm:grid-cols-4' : 'mt-4 grid gap-2 sm:grid-cols-3'}>
                   <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                     <p className="text-xs text-white/40">Deposit</p>
                     <p className="mt-1 font-mono text-sm font-semibold text-white">{money(selectedInstallmentPlan.deposit)}</p>
@@ -745,6 +799,12 @@ export default function CustomerEventDetailPage() {
                     <p className="text-xs text-white/40">Menu now</p>
                     <p className="mt-1 font-mono text-sm font-semibold text-white">{money(menuTotal)}</p>
                   </div>
+                  {tableDeposit > 0 && (
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">Table booking</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-white">{money(tableDeposit)}</p>
+                    </div>
+                  )}
                   <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                     <p className="text-xs text-white/40">Security fee</p>
                     <p className="mt-1 font-mono text-sm font-semibold text-white">{money(selectedInstallmentPlan.securityFee)}</p>
@@ -756,6 +816,7 @@ export default function CustomerEventDetailPage() {
                     const plan = buildInstallmentPlan(
                       ticketTotal,
                       menuTotal,
+                      tableDeposit,
                       event?.startDate,
                       option,
                       depositType,
