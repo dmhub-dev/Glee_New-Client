@@ -6,11 +6,20 @@ import {
   CalendarDays,
   ChevronRight,
   MapPin,
+  MessageCircle,
   Search,
   Table2,
   Users,
 } from 'lucide-react'
-import { useAdminReservations, type Reservation, type ReservationSource, type ReservationStatus } from '@glee/api'
+import {
+  canOpenBookingChat,
+  useAdminReservations,
+  useBookingChatThreads,
+  type BookingChatThread,
+  type Reservation,
+  type ReservationSource,
+  type ReservationStatus,
+} from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { FeedbackReadOnly, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
 
@@ -258,7 +267,7 @@ function VenueGroupCard({ group, selected, onSelect }: { group: BookingVenueGrou
   )
 }
 
-function DateGroupSection({ group }: { group: BookingDateGroup }) {
+function DateGroupSection({ group, chatThreads }: { group: BookingDateGroup; chatThreads: BookingChatThread[] }) {
   return (
     <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -272,17 +281,17 @@ function DateGroupSection({ group }: { group: BookingDateGroup }) {
           <SummaryCard label="Deposits" value={money(groupDepositTotal(group.reservations))} />
         </div>
       </div>
-      <BookingDateTable reservations={group.reservations} />
+      <BookingDateTable reservations={group.reservations} chatThreads={chatThreads} />
     </section>
   )
 }
 
-function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
+function BookingDateTable({ reservations, chatThreads }: { reservations: Reservation[]; chatThreads: BookingChatThread[] }) {
   const navigate = useNavigate()
 
   return (
     <div className="mt-5 overflow-x-auto rounded-xl border border-admin">
-      <table className="w-full min-w-[1080px] text-sm">
+      <table className="w-full min-w-[1180px] text-sm">
         <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
           <tr>
             <th className="px-4 py-3 font-medium">Full name</th>
@@ -290,6 +299,7 @@ function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
             <th className="px-4 py-3 font-medium">Phone</th>
             <th className="px-4 py-3 font-medium">Guests</th>
             <th className="px-4 py-3 font-medium">Table / category</th>
+            <th className="px-4 py-3 font-medium">Chat</th>
             <th className="px-4 py-3 font-medium">Feedback</th>
             <th className="px-4 py-3 font-medium">Payment method</th>
             <th className="px-4 py-3 font-medium">Paid status</th>
@@ -301,6 +311,8 @@ function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
         <tbody className="divide-y divide-admin">
           {reservations.map(reservation => {
             const paidStatus = paymentStatusLabel(reservation)
+            const thread = chatThreads.find(thread => thread.reservationId === reservation.id)
+            const unread = thread?.unreadForStaff ?? 0
             return (
               <tr key={reservation.id} className="hover:bg-admin-overlay/60">
                 <td className="px-4 py-3 font-medium text-admin-90">
@@ -322,6 +334,20 @@ function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
                 <td className="px-4 py-3 text-admin-60">
                   <p className="font-medium text-admin-80">{reservation.table?.name ?? reservation.tableCategory}</p>
                   <p className="mt-1 text-xs text-admin-40">{reservation.tableCategory}</p>
+                </td>
+                <td className="px-4 py-3">
+                  {canOpenBookingChat(reservation) ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/dashboard/booking-chats?reservationId=${reservation.id}`)}
+                      className="inline-flex items-center gap-2 rounded-full border border-neon-pink/30 bg-neon-pink/10 px-3 py-1.5 text-xs font-semibold text-neon-pink transition hover:border-neon-pink/60 hover:bg-neon-pink/15"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      {unread > 0 ? `${unread} unread` : thread ? statusLabel(thread.status) : 'Open'}
+                    </button>
+                  ) : (
+                    <span className="text-admin-30">-</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <FeedbackReadOnly
@@ -368,6 +394,7 @@ export default function AdminReservationsPage() {
   const [activeVenueTab, setActiveVenueTab] = useState<BookingVenueTab>('all')
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const { data, isLoading } = useAdminReservations({ status, source, date: date || undefined, page: 1, limit: 100 })
+  const { data: chatThreads = [] } = useBookingChatThreads()
   const reservations = useMemo(() => data?.items ?? [], [data?.items])
 
   const visibleReservations = useMemo(() => {
@@ -510,7 +537,7 @@ export default function AdminReservationsPage() {
             </section>
 
             <div className="space-y-5">
-              {selectedDateGroups.map(group => <DateGroupSection key={group.key} group={group} />)}
+              {selectedDateGroups.map(group => <DateGroupSection key={group.key} group={group} chatThreads={chatThreads} />)}
             </div>
           </div>
         ) : (

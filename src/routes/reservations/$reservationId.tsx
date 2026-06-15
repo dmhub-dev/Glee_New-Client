@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarClock, CreditCard, MapPin, Table2, UserRound } from 
 import { useAdminReservation, useUpdateAdminReservationStatus, type ReservationStatus } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
+import { BookingChatPanel } from '../../components/chat/BookingChatPanel'
 import { FeedbackReadOnly, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
 
 const TRANSITIONS: Partial<Record<ReservationStatus, ReservationStatus[]>> = {
@@ -169,6 +170,15 @@ export default function AdminReservationDetailPage() {
             </div>
           </section>
         </div>
+
+        <section className="rounded-xl border border-admin bg-admin-surface p-5">
+          <BookingChatPanel
+            reservation={reservation}
+            viewer="STAFF"
+            viewerName={user.name ?? 'Venue team'}
+            tone="admin"
+          />
+        </section>
 
         {reservation.status === 'COMPLETED' ? (
           <section className="rounded-xl border border-admin bg-admin-surface p-5">
