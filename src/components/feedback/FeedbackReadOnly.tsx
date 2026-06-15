@@ -1,18 +1,27 @@
 import { Badge, cn } from '@glee/ui'
-import { useFeedbackForTarget, type FeedbackTargetType } from '@glee/api'
+import { feedbackTargetKey, useFeedbackMapForTargets, type FeedbackTargetType } from '@glee/api'
 import FeedbackStars from './FeedbackStars'
 
 interface FeedbackReadOnlyProps {
   targetType: FeedbackTargetType
-  targetId: string
+  targetId?: string
+  targetIds?: string[]
   compact?: boolean
   className?: string
 }
 
-export default function FeedbackReadOnly({ targetType, targetId, compact = false, className }: FeedbackReadOnlyProps) {
-  const { data: feedback } = useFeedbackForTarget(targetType, targetId)
+function uniqueTargetIds(targetIds: string[]) {
+  return Array.from(new Set(targetIds.map(id => id.trim()).filter(Boolean)))
+}
 
-  if (feedback === undefined) {
+export default function FeedbackReadOnly({ targetType, targetId, targetIds, compact = false, className }: FeedbackReadOnlyProps) {
+  const targets = uniqueTargetIds(targetIds?.length ? targetIds : targetId ? [targetId] : [])
+  const { data: feedbackMap } = useFeedbackMapForTargets(targets.map(id => ({ targetType, targetId: id })))
+  const feedback = targets
+    .map(id => feedbackMap?.[feedbackTargetKey(targetType, id)])
+    .find(Boolean) ?? null
+
+  if (targets.length > 0 && feedbackMap === undefined) {
     return <Badge className={cn('border-admin bg-admin-input text-admin-40', className)}>Loading feedback</Badge>
   }
 

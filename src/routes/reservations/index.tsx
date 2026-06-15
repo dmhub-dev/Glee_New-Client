@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useAdminReservations, type Reservation, type ReservationSource, type ReservationStatus } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
-import { FeedbackReadOnly, reservationFeedbackTargetId } from '../../components/feedback'
+import { FeedbackReadOnly, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
 
 const STATUSES: Array<{ label: string; value?: ReservationStatus }> = [
   { label: 'All' },
@@ -324,7 +324,14 @@ function BookingDateTable({ reservations }: { reservations: Reservation[] }) {
                   <p className="mt-1 text-xs text-admin-40">{reservation.tableCategory}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <FeedbackReadOnly targetType="RESERVATION" targetId={reservationFeedbackTargetId(reservation.id)} compact />
+                  <FeedbackReadOnly
+                    targetType="RESERVATION"
+                    targetIds={[
+                      reservationFeedbackTargetId(reservation.id),
+                      ...(reservation.publicAccessToken ? [publicReservationFeedbackTargetId(reservation.publicAccessToken)] : []),
+                    ]}
+                    compact
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <Badge className="border-admin bg-admin-input text-admin-60">{paymentMethodLabel(reservation).replaceAll('_', ' ')}</Badge>

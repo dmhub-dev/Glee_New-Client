@@ -123,6 +123,33 @@ test('feedback storage recovers from malformed JSON on next write', async () => 
   assert.equal(stored[0].rating, 5)
 })
 
+test('feedback storage ignores entries with malformed optional display fields', async () => {
+  const { FEEDBACK_STORAGE_KEY, getAllFeedbackFromStorage } = await loadFeedbackStorage()
+  const storage = memoryStorage()
+
+  const validFeedback = {
+    id: 'feedback-1',
+    targetType: 'EVENT_TICKET',
+    targetId: 'event:event-1:attendee:guest@example.com',
+    rating: 5,
+    comment: 'Loved it',
+    authorName: 'Amina',
+    submittedAt: '2026-06-15T10:00:00.000Z',
+    updatedAt: '2026-06-15T11:00:00.000Z',
+  }
+
+  storage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify([
+    validFeedback,
+    { ...validFeedback, id: 'bad-comment', comment: 42 },
+    { ...validFeedback, id: 'bad-author', authorName: false },
+    { ...validFeedback, id: 'bad-updated-at', updatedAt: { value: 'now' } },
+    { ...validFeedback, id: 'bad-submitted-at-text', submittedAt: 'not-a-date' },
+    { ...validFeedback, id: 'bad-updated-at-text', updatedAt: 'not-a-date' },
+  ]))
+
+  assert.deepEqual(getAllFeedbackFromStorage(storage), [validFeedback])
+})
+
 test('getFeedbackMapForTargets returns keyed feedback for admin lists', async () => {
   const { feedbackTargetKey, getFeedbackMapForTargetsFromStorage, upsertFeedbackInStorage } = await loadFeedbackStorage()
   const storage = memoryStorage()

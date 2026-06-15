@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../../../api/client'
 import { usePublicTicketPass } from '../../../api/queries/tickets'
-import { FeedbackCard, canReviewEventByDate, publicTicketFeedbackTargetId } from '../../../components/feedback'
+import { FeedbackCard, canReviewEventByDate, eventTicketFeedbackTargetId, eventTicketFeedbackTargetIds } from '../../../components/feedback'
 
 function formatDateTime(value?: string | null) {
   if (!value) return 'Date to be confirmed'
@@ -101,7 +101,13 @@ export default function PublicTicketPassPage() {
   const venue = event.location?.name ?? event.location?.address ?? 'Venue to be confirmed'
   const status = String(ticket.status ?? 'ACTIVE').toUpperCase()
   const isQrEnabled = ticket.qrEnabled && status === 'ACTIVE'
-  const canReview = canReviewEventByDate(event.startDate)
+  const canReview = canReviewEventByDate(event.startDate, event.endDate)
+  const feedbackIdentity = {
+    attendeeEmail: attendee.email,
+    attendeePhone: attendee.phone,
+    ticketRef: ticket.ticketRef,
+    publicAccessToken: token,
+  }
 
   return (
     <main className="min-h-screen bg-[#090b0f] text-white">
@@ -174,7 +180,8 @@ export default function PublicTicketPassPage() {
             {token && canReview ? (
               <FeedbackCard
                 targetType="EVENT_TICKET"
-                targetId={publicTicketFeedbackTargetId(token)}
+                targetId={eventTicketFeedbackTargetId(event.id, feedbackIdentity)}
+                targetIds={eventTicketFeedbackTargetIds(event.id, feedbackIdentity)}
                 title="How was this event?"
                 description="Rate your event experience. Your comment is optional."
               />

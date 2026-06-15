@@ -41,6 +41,10 @@ export function isFeedbackRating(value: number): value is FeedbackRating {
   return Number.isInteger(value) && value >= 1 && value <= 5
 }
 
+function isValidDateString(value: string) {
+  return !Number.isNaN(new Date(value).getTime())
+}
+
 function isFeedback(value: unknown): value is Feedback {
   if (!value || typeof value !== 'object') return false
   const item = value as Partial<Feedback>
@@ -50,8 +54,12 @@ function isFeedback(value: unknown): value is Feedback {
     item.targetId.length > 0 &&
     typeof item.id === 'string' &&
     typeof item.submittedAt === 'string' &&
+    isValidDateString(item.submittedAt) &&
     typeof item.rating === 'number' &&
-    isFeedbackRating(item.rating)
+    isFeedbackRating(item.rating) &&
+    (item.comment === undefined || typeof item.comment === 'string') &&
+    (item.authorName === undefined || typeof item.authorName === 'string') &&
+    (item.updatedAt === undefined || (typeof item.updatedAt === 'string' && isValidDateString(item.updatedAt)))
   )
 }
 

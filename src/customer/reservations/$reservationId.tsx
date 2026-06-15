@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useCancelReservation, useReservation, type ReservationStatus } from '@glee/api'
 import { Badge, Button, Skeleton, Textarea, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, ChevronLeft, Clock, MapPin, QrCode, ReceiptText, ShieldCheck, Users, XCircle } from 'lucide-react'
-import { FeedbackCard, canReviewReservationByStatus, reservationFeedbackTargetId } from '../../components/feedback'
+import { FeedbackCard, canReviewReservationByStatus, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
 import CustomerLayout from '../CustomerLayout'
 
 function money(value: string | number | undefined) {
@@ -164,6 +164,10 @@ export default function CustomerReservationDetailPage() {
               <FeedbackCard
                 targetType="RESERVATION"
                 targetId={reservationFeedbackTargetId(reservation.id)}
+                targetIds={[
+                  reservationFeedbackTargetId(reservation.id),
+                  ...(reservation.publicAccessToken ? [publicReservationFeedbackTargetId(reservation.publicAccessToken)] : []),
+                ]}
                 title="How was this booking?"
                 description="Rate the table booking experience. Your comment is optional."
               />

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MessageSquare, Pencil, Send } from 'lucide-react'
 import { Button, Textarea, cn, useToast } from '@glee/ui'
-import { useFeedbackForTarget, useUpsertFeedback, type FeedbackRating, type FeedbackTargetType } from '@glee/api'
+import { feedbackTargetKey, useFeedbackMapForTargets, useUpsertFeedback, type FeedbackRating, type FeedbackTargetType } from '@glee/api'
 import FeedbackStars from './FeedbackStars'
 
 interface FeedbackFormState {
@@ -13,6 +13,7 @@ interface FeedbackFormState {
 interface FeedbackCardProps {
   targetType: FeedbackTargetType
   targetId: string
+  targetIds?: string[]
   title: string
   description?: string
   authorName?: string
@@ -20,14 +21,22 @@ interface FeedbackCardProps {
   surface?: 'dark' | 'light'
 }
 
-export default function FeedbackCard({ targetType, targetId, title, description, authorName, className, surface = 'dark' }: FeedbackCardProps) {
+function uniqueTargetIds(targetIds: string[]) {
+  return Array.from(new Set(targetIds.map(id => id.trim()).filter(Boolean)))
+}
+
+export default function FeedbackCard({ targetType, targetId, targetIds, title, description, authorName, className, surface = 'dark' }: FeedbackCardProps) {
   const { toast } = useToast()
-  const feedbackQuery = useFeedbackForTarget(targetType, targetId)
+  const targets = uniqueTargetIds([targetId, ...(targetIds ?? [])])
+  const feedbackQuery = useFeedbackMapForTargets(targets.map(id => ({ targetType, targetId: id })))
   const upsert = useUpsertFeedback()
   const targetKey = `${targetType}:${targetId}`
-  const loadedFeedback = feedbackQuery.data
-  const feedback = loadedFeedback && loadedFeedback.targetType === targetType && loadedFeedback.targetId === targetId ? loadedFeedback : null
-  const feedbackLoading = loadedFeedback === undefined || (Boolean(loadedFeedback) && !feedback)
+  const loadedFeedbackMap = feedbackQuery.data
+  const feedback = targets
+    .map(id => loadedFeedbackMap?.[feedbackTargetKey(targetType, id)])
+    .find(Boolean) ?? null
+  const activeTargetId = feedback?.targetId ?? targetId
+  const feedbackLoading = loadedFeedbackMap === undefined
   const [editing, setEditing] = useState(false)
   const [formState, setFormState] = useState<FeedbackFormState>(() => ({ targetKey, rating: 0, comment: '' }))
   const formMatchesTarget = formState.targetKey === targetKey
@@ -44,10 +53,9 @@ export default function FeedbackCard({ targetType, targetId, title, description,
   }, [targetKey])
 
   useEffect(() => {
-    if (loadedFeedback === undefined) return
-    if (loadedFeedback && (loadedFeedback.targetType !== targetType || loadedFeedback.targetId !== targetId)) return
-    setFormState({ targetKey, rating: loadedFeedback?.rating ?? 0, comment: loadedFeedback?.comment ?? '' })
-  }, [loadedFeedback, targetId, targetKey, targetType])
+    if (loadedFeedbackMap === undefined) return
+    setFormState({ targetKey, rating: feedback?.rating ?? 0, comment: feedback?.comment ?? '' })
+  }, [feedback, loadedFeedbackMap, targetKey])
 
   function handleRatingChange(value: FeedbackRating) {
     setFormState(current => ({ ...current, targetKey, rating: value }))
@@ -60,7 +68,7 @@ export default function FeedbackCard({ targetType, targetId, title, description,
   async function handleSubmit() {
     if (!rating) return
     try {
-      await upsert.mutateAsync({ targetType, targetId, rating, comment, authorName })
+      await upsert.mutateAsync({ targetType, targetId: activeTargetId, rating, comment, authorName })
       setEditing(false)
       toast({ title: feedback ? 'Feedback updated' : 'Feedback submitted', description: 'Thanks for sharing your experience.' })
     } catch (error) {

@@ -77,6 +77,7 @@ export function useUpsertFeedback() {
     mutationFn: upsertFeedback,
     onSuccess: feedback => {
       queryClient.invalidateQueries({ queryKey: feedbackKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['feedback', 'targets'] })
       queryClient.setQueryData(feedbackKeys.target(feedback.targetType, feedback.targetId), feedback)
     },
   })

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMyReservations, useMyTickets } from '@glee/api'
 import { Badge, Button, Input, Skeleton, cn } from '@glee/ui'
 import { Calendar, CalendarCheck, Clock, MapPin, MessageCircle, QrCode, Search, Ticket } from 'lucide-react'
-import { FeedbackCard, canReviewEventByDate, eventFeedbackTargetId } from '../../components/feedback'
+import { FeedbackCard, canReviewEventByDate, eventTicketFeedbackTargetId, eventTicketFeedbackTargetIds } from '../../components/feedback'
 import CustomerLayout from '../CustomerLayout'
 import ReservationBookingsList from '../reservations/ReservationBookingsList'
 
@@ -69,8 +69,7 @@ export default function CustomerTicketsPage() {
     const category = event.category?.name ?? 'Event'
     const location = event.location?.name ?? event.location?.address ?? 'Location TBA'
     const firstTicket = group.tickets[0]
-    const canReview = status === 'past' && canReviewEventByDate(event.startDate)
-    const attendeeId = firstTicket?.userId ?? firstTicket?.user?.id ?? firstTicket?.guestEmail ?? firstTicket?.guestPhone ?? 'me'
+    const canReview = status === 'past' && canReviewEventByDate(event.startDate, event.endDate)
 
     return (
       <div key={event.id} className="space-y-3">
@@ -142,7 +141,8 @@ export default function CustomerTicketsPage() {
         {canReview ? (
           <FeedbackCard
             targetType="EVENT_TICKET"
-            targetId={eventFeedbackTargetId(event.id, attendeeId)}
+            targetId={eventTicketFeedbackTargetId(event.id, firstTicket)}
+            targetIds={eventTicketFeedbackTargetIds(event.id, firstTicket)}
             title="How was this event?"
             description="Rate your experience. Your comment is optional."
           />

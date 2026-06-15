@@ -6,7 +6,7 @@ import { useAdminUser } from '../../app/providers'
 import { Badge, Button, Input, Skeleton } from '@glee/ui'
 import { ArrowLeft, ArrowUpDown, ChevronLeft, ChevronRight, Search, Table2, Users } from 'lucide-react'
 import { adminTicketTableBooking } from '../../components/events/eventCheckoutTableBookingUtils'
-import { FeedbackReadOnly, eventFeedbackTargetId } from '../../components/feedback'
+import { FeedbackReadOnly, eventTicketFeedbackTargetIds } from '../../components/feedback'
 import EventDetailTabs from './EventDetailTabs'
 
 type SortKey = 'name' | 'email' | 'phone' | 'quantity' | 'paymentMethod' | 'paymentStatus' | 'createdAt'
@@ -217,7 +217,7 @@ export default function EventAttendeesPage() {
                     <td className="px-4 py-3">
                       <FeedbackReadOnly
                         targetType="EVENT_TICKET"
-                        targetId={eventFeedbackTargetId(ticket.eventId, ticket.userId ?? ticket.user?.id ?? ticket.guestEmail ?? ticket.guestPhone ?? 'me')}
+                        targetIds={eventTicketFeedbackTargetIds(ticket.eventId, ticket)}
                         compact
                       />
                     </td>

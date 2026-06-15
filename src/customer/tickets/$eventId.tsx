@@ -4,7 +4,7 @@ import type { AdminEventTicket } from '@glee/api'
 import { useMyTickets } from '@glee/api'
 import { Badge, Button, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from '@glee/ui'
 import { ArrowLeft, Calendar, MapPin, MessageCircle, Ticket } from 'lucide-react'
-import { FeedbackCard, canReviewEventByDate, eventFeedbackTargetId } from '../../components/feedback'
+import { FeedbackCard, canReviewEventByDate, eventTicketFeedbackTargetId, eventTicketFeedbackTargetIds } from '../../components/feedback'
 import CustomerLayout from '../CustomerLayout'
 
 function money(value: number) {
@@ -77,8 +77,7 @@ export default function CustomerTicketDetailPage() {
   const location = event.location?.name ?? event.location?.address ?? 'Location TBA'
   const category = event.category?.name ?? 'Event'
   const firstTicket = ticketGroup.tickets[0]
-  const attendeeId = firstTicket?.userId ?? firstTicket?.user?.id ?? firstTicket?.guestEmail ?? firstTicket?.guestPhone ?? 'me'
-  const canReview = canReviewEventByDate(event.startDate)
+  const canReview = canReviewEventByDate(event.startDate, event.endDate)
 
   return (
     <CustomerLayout title={event.name} subtitle="Toggle ticket types and show QR codes for check-in." hidePageHeader>
@@ -169,7 +168,8 @@ export default function CustomerTicketDetailPage() {
           {canReview ? (
             <FeedbackCard
               targetType="EVENT_TICKET"
-              targetId={eventFeedbackTargetId(event.id, attendeeId)}
+              targetId={eventTicketFeedbackTargetId(event.id, firstTicket)}
+              targetIds={eventTicketFeedbackTargetIds(event.id, firstTicket)}
               title="How was this event?"
               description="Leave one editable review for this event."
             />
