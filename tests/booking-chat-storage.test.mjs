@@ -53,6 +53,34 @@ test('booking chat eligibility requires confirmed paid reservations', async () =
   assert.equal(canOpenBookingChat({ ...reservation, paymentStatus: 'PENDING' }), false)
 })
 
+test('booking chat eligibility uses the current payment status before historical payments', async () => {
+  const { canOpenBookingChat } = await loadBookingChatStorage()
+
+  assert.equal(canOpenBookingChat({
+    ...reservation,
+    paymentStatus: 'SUCCESS',
+    payments: [{ status: 'FAILED' }],
+  }), true)
+  assert.equal(canOpenBookingChat({
+    ...reservation,
+    paymentStatus: undefined,
+    payment: { status: 'SUCCESS' },
+    payments: [{ status: 'FAILED' }],
+  }), true)
+  assert.equal(canOpenBookingChat({
+    ...reservation,
+    paymentStatus: undefined,
+    payment: undefined,
+    payments: [{ status: 'FAILED' }, { status: 'SUCCESS' }],
+  }), true)
+  assert.equal(canOpenBookingChat({
+    ...reservation,
+    paymentStatus: undefined,
+    payment: undefined,
+    payments: [{ status: 'FAILED' }],
+  }), false)
+})
+
 test('ensureBookingChatThread creates one deterministic thread per reservation', async () => {
   const { ensureBookingChatThread, getBookingChatThreadsFromStorage } = await loadBookingChatStorage()
   const storage = memoryStorage()
@@ -227,4 +255,43 @@ test('booking chat storage ignores malformed stored date records', async () => {
 
   assert.deepEqual(getBookingChatThreadsFromStorage(storage), [])
   assert.deepEqual(getBookingChatMessagesFromStorage(storage, reservation.id), [])
+})
+
+test('booking chat storage ignores malformed unread counters', async () => {
+  const { BOOKING_CHAT_STORAGE_KEY, getBookingChatThreadsFromStorage } = await loadBookingChatStorage()
+  const storage = memoryStorage()
+
+  storage.setItem(BOOKING_CHAT_STORAGE_KEY, JSON.stringify({
+    threads: [
+      {
+        id: 'booking-chat:reservation-1',
+        reservationId: 'reservation-1',
+        reference: 'RSV-1',
+        title: 'Glee Lounge',
+        customerName: 'Amina Guest',
+        status: 'OPEN',
+        unreadForCustomer: -1,
+        unreadForStaff: 0,
+        createdAt: '2026-06-15T10:00:00.000Z',
+        updatedAt: '2026-06-15T10:00:00.000Z',
+        resolvedAt: null,
+      },
+      {
+        id: 'booking-chat:reservation-2',
+        reservationId: 'reservation-2',
+        reference: 'RSV-2',
+        title: 'Glee Lounge',
+        customerName: 'Amina Guest',
+        status: 'OPEN',
+        unreadForCustomer: 0,
+        unreadForStaff: 1.5,
+        createdAt: '2026-06-15T11:00:00.000Z',
+        updatedAt: '2026-06-15T11:00:00.000Z',
+        resolvedAt: null,
+      },
+    ],
+    messages: [],
+  }))
+
+  assert.deepEqual(getBookingChatThreadsFromStorage(storage), [])
 })

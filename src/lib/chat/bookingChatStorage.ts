@@ -76,6 +76,10 @@ function validDateString(value: string) {
   return Number.isFinite(new Date(value).getTime())
 }
 
+function validUnreadCounter(value: unknown) {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
 function isThread(value: unknown): value is BookingChatThread {
   if (!value || typeof value !== 'object') return false
 
@@ -89,10 +93,8 @@ function isThread(value: unknown): value is BookingChatThread {
     (item.customerEmail === undefined || item.customerEmail === null || typeof item.customerEmail === 'string') &&
     (item.customerPhone === undefined || item.customerPhone === null || typeof item.customerPhone === 'string') &&
     (item.status === 'OPEN' || item.status === 'RESOLVED') &&
-    typeof item.unreadForCustomer === 'number' &&
-    Number.isFinite(item.unreadForCustomer) &&
-    typeof item.unreadForStaff === 'number' &&
-    Number.isFinite(item.unreadForStaff) &&
+    validUnreadCounter(item.unreadForCustomer) &&
+    validUnreadCounter(item.unreadForStaff) &&
     typeof item.createdAt === 'string' &&
     validDateString(item.createdAt) &&
     typeof item.updatedAt === 'string' &&
@@ -144,20 +146,15 @@ function writeState(storage: BookingChatStorageLike, state: BookingChatState) {
   storage.setItem(BOOKING_CHAT_STORAGE_KEY, JSON.stringify(state))
 }
 
-function paymentStatuses(reservation: BookingChatReservationSummary) {
-  return [
-    reservation.paymentStatus,
-    reservation.payment?.status,
-    ...(reservation.payments?.map(payment => payment.status) ?? []),
-  ].filter((status): status is string => Boolean(status))
-}
-
 export function canOpenBookingChat(reservation?: BookingChatReservationSummary | null) {
   if (!reservation) return false
   if (!ELIGIBLE_STATUSES.has(reservation.status)) return false
 
-  const statuses = paymentStatuses(reservation)
-  return statuses.length === 0 || statuses.every(status => status === 'SUCCESS')
+  if (reservation.paymentStatus) return reservation.paymentStatus === 'SUCCESS'
+  if (reservation.payment?.status) return reservation.payment.status === 'SUCCESS'
+  if (reservation.payments) return reservation.payments.some(payment => payment.status === 'SUCCESS')
+
+  return true
 }
 
 function threadTitle(reservation: BookingChatReservationSummary) {
