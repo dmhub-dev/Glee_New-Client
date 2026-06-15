@@ -28,7 +28,7 @@ function memoryStorage() {
 }
 
 test('upsertFeedback stores one editable review per target', async () => {
-  const { getFeedbackForTargetFromStorage, upsertFeedbackInStorage } = await loadFeedbackStorage()
+  const { getAllFeedbackFromStorage, getFeedbackForTargetFromStorage, upsertFeedbackInStorage } = await loadFeedbackStorage()
   const storage = memoryStorage()
   const firstNow = () => new Date('2026-06-15T10:00:00.000Z')
   const secondNow = () => new Date('2026-06-15T11:00:00.000Z')
@@ -54,6 +54,8 @@ test('upsertFeedback stores one editable review per target', async () => {
   assert.equal(second.updatedAt, '2026-06-15T11:00:00.000Z')
   assert.equal(second.rating, 5)
   assert.equal(second.comment, 'Even better after thinking about it')
+  assert.equal(getAllFeedbackFromStorage(storage).length, 1)
+  assert.deepEqual(getAllFeedbackFromStorage(storage)[0], second)
   assert.deepEqual(getFeedbackForTargetFromStorage(storage, 'EVENT_TICKET', 'event:event-1:attendee:user-1'), second)
 })
 
@@ -89,6 +91,12 @@ test('getFeedbackMapForTargets returns keyed feedback for admin lists', async ()
     rating: 5,
   }, () => new Date('2026-06-15T10:00:00.000Z'))
 
+  upsertFeedbackInStorage(storage, {
+    targetType: 'RESERVATION',
+    targetId: 'reservation-hidden',
+    rating: 2,
+  }, () => new Date('2026-06-15T10:05:00.000Z'))
+
   const map = getFeedbackMapForTargetsFromStorage(storage, [
     { targetType: 'RESERVATION', targetId: 'reservation-1' },
     { targetType: 'RESERVATION', targetId: 'reservation-2' },
@@ -96,4 +104,6 @@ test('getFeedbackMapForTargets returns keyed feedback for admin lists', async ()
 
   assert.equal(map[feedbackTargetKey('RESERVATION', 'reservation-1')]?.rating, 5)
   assert.equal(map[feedbackTargetKey('RESERVATION', 'reservation-2')], undefined)
+  assert.equal(map[feedbackTargetKey('RESERVATION', 'reservation-hidden')], undefined)
+  assert.equal(Object.keys(map).length, 1)
 })
