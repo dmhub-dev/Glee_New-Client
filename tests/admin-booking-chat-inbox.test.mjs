@@ -48,3 +48,16 @@ test('admin booking chat inbox wires reservations, threads, filters, and staff p
   assert.match(source, /tone=['"]admin['"]/)
   assert.match(source, /navigate\(`\/dashboard\/reservations\/\$\{selected\.reservation\.id\}`\)/)
 })
+
+test('admin booking chat inbox preserves URL preselect outside active filters', async () => {
+  const source = await readInboxSource()
+
+  assertTranspiles(source)
+  assert.match(source, /const\s+requestedReservationId\s*=\s*searchParams\.get\(['"]reservationId['"]\)/)
+  assert.match(source, /const\s+selectedRow\s*=\s*selectedReservationId\s*\?\s*rows\.find\(row\s*=>\s*row\.reservation\.id\s*===\s*selectedReservationId\)\s*\?\?\s*null\s*:\s*null/)
+  assert.match(source, /const\s+fallbackSelectedRow\s*=\s*!selectedReservationId\s*\?\s*filteredRows\[0\]\s*\?\?\s*null\s*:\s*null/)
+  assert.match(source, /const\s+selected\s*=\s*selectedRow\s*\?\?\s*fallbackSelectedRow/)
+  assert.doesNotMatch(source, /const\s+selected\s*=\s*filteredRows\.find/)
+  assert.match(source, /if\s*\(\s*selectedRow\s*\)\s*return/)
+  assert.match(source, /filteredRows\.length\s*===\s*0\s*&&\s*!selected\s*\?/)
+})

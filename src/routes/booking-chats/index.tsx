@@ -80,9 +80,10 @@ export default function BookingChatsPage() {
   const user = useAdminUser()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [statusFilter, setStatusFilter] = useState<ChatStatusFilter>(() => searchParams.get('reservationId') ? 'ALL' : 'OPEN')
+  const requestedReservationId = searchParams.get('reservationId')
+  const [statusFilter, setStatusFilter] = useState<ChatStatusFilter>(() => requestedReservationId ? 'ALL' : 'OPEN')
   const [search, setSearch] = useState('')
-  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(() => searchParams.get('reservationId'))
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(() => requestedReservationId)
   const { data, isLoading } = useAdminReservations({ page: 1, limit: 100 })
   const { data: chatThreads = [], isLoading: isLoadingThreads } = useBookingChatThreads()
 
@@ -119,24 +120,28 @@ export default function BookingChatsPage() {
     })
   }, [rows, search, statusFilter])
 
-  const selected = filteredRows.find(row => row.reservation.id === selectedReservationId) ?? filteredRows[0] ?? null
+  const selectedRow = selectedReservationId ? rows.find(row => row.reservation.id === selectedReservationId) ?? null : null
+  const fallbackSelectedRow = !selectedReservationId ? filteredRows[0] ?? null : null
+  const selected = selectedRow ?? fallbackSelectedRow
   const openCount = rows.filter(row => row.status === 'OPEN').length
   const resolvedCount = rows.filter(row => row.status === 'RESOLVED').length
   const unreadCount = rows.reduce((sum, row) => sum + (row.thread?.unreadForStaff ?? 0), 0)
 
   useEffect(() => {
-    const requestedReservationId = searchParams.get('reservationId')
-    if (requestedReservationId && requestedReservationId !== selectedReservationId) {
+    if (requestedReservationId !== selectedReservationId) {
       setSelectedReservationId(requestedReservationId)
     }
-  }, [searchParams, selectedReservationId])
+  }, [requestedReservationId, selectedReservationId])
 
   useEffect(() => {
-    if (selected && selected.reservation.id !== selectedReservationId) {
-      setSelectedReservationId(selected.reservation.id)
-      setSearchParams({ reservationId: selected.reservation.id }, { replace: true })
+    if (selectedRow) return
+
+    const fallbackRow = filteredRows[0] ?? null
+    if (fallbackRow && fallbackRow.reservation.id !== selectedReservationId) {
+      setSelectedReservationId(fallbackRow.reservation.id)
+      setSearchParams({ reservationId: fallbackRow.reservation.id }, { replace: true })
     }
-  }, [selected, selectedReservationId, setSearchParams])
+  }, [filteredRows, selectedReservationId, selectedRow, setSearchParams])
 
   return (
     <AdminLayout title="Booking Chats" subtitle="Monitor reservation support conversations across venues, events, and table bookings.">
@@ -186,7 +191,7 @@ export default function BookingChatsPage() {
           </div>
         ) : rows.length === 0 ? (
           <EmptyState title="No booking chats available" description="Eligible confirmed and paid bookings will appear here once they can receive support messages." />
-        ) : filteredRows.length === 0 ? (
+        ) : filteredRows.length === 0 && !selected ? (
           <EmptyState title="No chats match these filters" description="Adjust the search term or choose another chat status." />
         ) : (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(440px,1.05fr)]">
