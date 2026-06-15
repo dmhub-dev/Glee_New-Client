@@ -59,6 +59,8 @@ export function BookingChatPanel({
   const latestMessageId = messages[messages.length - 1]?.id
   const isResolved = thread?.status === 'RESOLVED'
   const canUseComposer = Boolean(reservation && isEligible && thread) && (!isResolved || viewer === 'CUSTOMER')
+  const canManageThread = viewer === 'STAFF'
+  const currentUnreadCount = viewer === 'CUSTOMER' ? thread?.unreadForCustomer : thread?.unreadForStaff
   const isSending = sendMessage.isPending
 
   const shellClass = isCustomerTone
@@ -73,11 +75,17 @@ export function BookingChatPanel({
     : 'border-admin bg-admin-overlay text-admin-50'
 
   useEffect(() => {
+    setDraft('')
+  }, [reservationId])
+
+  useEffect(() => {
     if (!reservationId || !isEligible || !thread || !messagesQuery.isSuccess) return
-    markRead.mutate({ reservationId, viewer })
+    if ((currentUnreadCount ?? 0) > 0) {
+      markRead.mutate({ reservationId, viewer })
+    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEligible, latestMessageId, messages.length, messagesQuery.isSuccess, reservationId, thread?.id, viewer])
+  }, [currentUnreadCount, isEligible, latestMessageId, messages.length, messagesQuery.isSuccess, reservationId, thread?.id, viewer])
 
   async function handleSend() {
     const body = draft.trim()
@@ -230,6 +238,7 @@ export function BookingChatPanel({
       {resolvedNotice}
       <div className={cn('flex items-end gap-2 rounded-2xl border p-2', isCustomerTone ? 'border-white/10 bg-white/[0.06]' : 'border-admin bg-admin-overlay')}>
         <Textarea
+          aria-label="Booking chat message"
           value={draft}
           onChange={event => setDraft(event.target.value)}
           disabled={!canUseComposer}
@@ -263,7 +272,7 @@ export function BookingChatPanel({
         statusLabel={thread?.status === 'RESOLVED' ? 'Resolved' : 'Open'}
         mutedText={mutedText}
       >
-        {tone === 'admin' && thread && (
+        {canManageThread && thread && (
           thread.status === 'RESOLVED' ? (
             <Button
               type="button"

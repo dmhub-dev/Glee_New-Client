@@ -37,3 +37,34 @@ test('BookingChatPanel exposes the booking support chat API surface', async () =
     assert.match(source, new RegExp(requiredToken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
 })
+
+test('admin thread actions require a staff viewer', async () => {
+  const source = await readPanelSource()
+
+  assert.match(
+    source,
+    /const\s+canManageThread\s*=\s*viewer\s*===\s*['"]STAFF['"]/,
+    'expected a staff-only management guard',
+  )
+  assert.match(
+    source,
+    /\{canManageThread\s*&&\s*thread\s*&&/,
+    'expected resolve/reopen controls to use the staff-only guard',
+  )
+})
+
+test('draft is cleared when the reservation changes', async () => {
+  const source = await readPanelSource()
+
+  assert.match(
+    source,
+    /useEffect\(\(\)\s*=>\s*\{\s*setDraft\(['"]{2}\)\s*\},\s*\[reservationId\]\)/s,
+    'expected reservationId-keyed draft reset effect',
+  )
+})
+
+test('message textarea has an accessible label', async () => {
+  const source = await readPanelSource()
+
+  assert.match(source, /aria-label=['"]Booking chat message['"]/, 'expected textarea aria-label')
+})
