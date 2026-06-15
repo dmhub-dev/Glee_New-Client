@@ -47,5 +47,6 @@ test('admin reservation detail renders the staff booking chat panel before feedb
 
   assertTranspiles(source)
   assert.match(source, /import\s+\{\s*BookingChatPanel\s*\}\s+from\s+['"]\.\.\/\.\.\/components\/chat\/BookingChatPanel['"]/)
+  assert.doesNotMatch(source, /<section\s+className=['"]rounded-xl border border-admin bg-admin-surface p-5['"]>\s*<BookingChatPanel[\s\S]*?\/>\s*<\/section>\s*[\s\S]*Customer Feedback/)
   assert.match(source, /<BookingChatPanel[\s\S]*reservation=\{reservation\}[\s\S]*viewer=['"]STAFF['"][\s\S]*viewerName=\{user\.name\s*\?\?\s*['"]Venue team['"]\}[\s\S]*tone=['"]admin['"][\s\S]*\/>[\s\S]*Customer Feedback/)
 })

@@ -171,14 +171,12 @@ export default function AdminReservationDetailPage() {
           </section>
         </div>
 
-        <section className="rounded-xl border border-admin bg-admin-surface p-5">
-          <BookingChatPanel
-            reservation={reservation}
-            viewer="STAFF"
-            viewerName={user.name ?? 'Venue team'}
-            tone="admin"
-          />
-        </section>
+        <BookingChatPanel
+          reservation={reservation}
+          viewer="STAFF"
+          viewerName={user.name ?? 'Venue team'}
+          tone="admin"
+        />
 
         {reservation.status === 'COMPLETED' ? (
           <section className="rounded-xl border border-admin bg-admin-surface p-5">
