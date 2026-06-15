@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Badge, Button, Skeleton } from '@glee/ui'
 import { AlertTriangle, CalendarClock, CheckCircle2, CreditCard, MapPin, ReceiptText, Table2, Users, XCircle } from 'lucide-react'
 import { usePublicReservation, type Reservation, type ReservationStatus } from '@glee/api'
+import { FeedbackCard, canReviewReservationByStatus, publicReservationFeedbackTargetId } from '../../../components/feedback'
 
 function money(value: string | number | undefined | null) {
   return `KSh ${Math.max(0, Number(value ?? 0)).toLocaleString()}`
@@ -143,6 +144,7 @@ export default function PublicReservationDetailPage() {
   const guestPhone = reservation.guestPhone ?? reservation.user?.phone
   const notice = reservationNotice(reservation.status, paymentStatus)
   const NoticeIcon = notice.icon
+  const canReview = canReviewReservationByStatus(reservation.status)
 
   return (
     <main className="min-h-screen bg-[#050017] px-4 py-6 text-white sm:py-10">
@@ -232,6 +234,15 @@ export default function PublicReservationDetailPage() {
             </section>
           </aside>
         </section>
+
+        {token && canReview ? (
+          <FeedbackCard
+            targetType="RESERVATION"
+            targetId={publicReservationFeedbackTargetId(token)}
+            title="How was this booking?"
+            description="Rate the completed table booking. Your comment is optional."
+          />
+        ) : null}
 
         <section className={`rounded-3xl border p-5 text-sm leading-6 ${notice.className}`}>
           <div className="flex items-start gap-3">
