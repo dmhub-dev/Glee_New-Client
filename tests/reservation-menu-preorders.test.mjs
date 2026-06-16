@@ -38,6 +38,23 @@ function extractFunctionSource(source, name) {
   assert.fail(`${name} should have a complete body`)
 }
 
+function extractNamedFunctionSource(source, name) {
+  const start = source.indexOf(`function ${name}`)
+  assert.notEqual(start, -1, `${name} should exist`)
+
+  const bodyStart = source.indexOf('{', start)
+  assert.notEqual(bodyStart, -1, `${name} should have a body`)
+
+  let depth = 0
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1
+    if (source[index] === '}') depth -= 1
+    if (depth === 0) return source.slice(start, index + 1)
+  }
+
+  assert.fail(`${name} should have a complete body`)
+}
+
 test('selectedReservationMenuRows keeps only positive quantities', async () => {
   const { selectedReservationMenuRows } = await loadReservationMenuUtils()
   const rows = selectedReservationMenuRows(
@@ -160,11 +177,33 @@ test('menu pricing page blocks duplicate venue menu item creates in the handler'
   const source = await loadMenuPricingSource()
   const handler = extractFunctionSource(source, 'handleCreateLocationMenuItem')
 
-  assert.match(handler, /if\s*\(\s*createLocationMenuItem\.isPending\s*\)\s*return/)
+  assert.match(handler, /createLocationMenuItem\.isPending/)
+  assert.match(source, /useRef\(\s*false\s*\)/)
+  assert.match(handler, /if\s*\(\s*(?:createLocationMenuItem\.isPending\s*\|\|\s*)?[A-Za-z_$][\w$]*\.current\s*\)\s*return/)
+  assert.match(handler, /[A-Za-z_$][\w$]*\.current\s*=\s*true[\s\S]*createLocationMenuItem\.mutateAsync/)
+  assert.match(handler, /finally\s*\{[\s\S]*[A-Za-z_$][\w$]*\.current\s*=\s*false[\s\S]*\}/)
   assert.ok(
     handler.indexOf('createLocationMenuItem.isPending') < handler.indexOf('createLocationMenuItem.mutateAsync'),
     'pending guard should run before the create mutation',
   )
+  assert.ok(
+    handler.search(/[A-Za-z_$][\w$]*\.current\s*=\s*true/) < handler.indexOf('createLocationMenuItem.mutateAsync'),
+    'synchronous guard should be set before the create mutation',
+  )
+})
+
+test('menu pricing page gives venue menu toggle buttons item-specific accessible names', async () => {
+  const source = await loadMenuPricingSource()
+
+  assert.match(source, /aria-label=\{`\$\{item\.isActive \? 'Deactivate' : 'Activate'\}\s+\$\{item\.name\}`\}/)
+})
+
+test('menu pricing page renders malformed money values as zero', async () => {
+  const source = await loadMenuPricingSource()
+  const money = extractNamedFunctionSource(source, 'money')
+
+  assert.match(money, /Number\.isFinite\(/)
+  assert.match(money, /Math\.max\(\s*0\s*,/)
 })
 
 test('menu pricing page requires finite positive venue menu item prices', async () => {

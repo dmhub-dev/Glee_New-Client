@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
@@ -7,7 +7,8 @@ import { Badge, Button, Input, Skeleton, Textarea, useToast } from '@glee/ui'
 import { DollarSign, Pencil, Plus, Save, Search, Ticket, Utensils } from 'lucide-react'
 
 function money(value: number) {
-  return `KSh ${Math.max(0, value).toLocaleString()}`
+  const amount = Number.isFinite(value) ? value : 0
+  return `KSh ${Math.max(0, amount).toLocaleString()}`
 }
 
 export default function MenuPricingPage() {
@@ -26,6 +27,7 @@ export default function MenuPricingPage() {
   const locationMenu = useLocationMenuItems(selectedLocation?.id ?? '')
   const createLocationMenuItem = useCreateLocationMenuItem()
   const updateLocationMenuItem = useUpdateLocationMenuItem()
+  const isCreatingLocationMenuItemRef = useRef(false)
   const [menuForm, setMenuForm] = useState({ name: '', category: 'other', price: '', description: '' })
 
   const filteredEvents = useMemo(() => {
@@ -37,13 +39,14 @@ export default function MenuPricingPage() {
   }, [events, search])
 
   async function handleCreateLocationMenuItem() {
-    if (createLocationMenuItem.isPending) return
+    if (createLocationMenuItem.isPending || isCreatingLocationMenuItemRef.current) return
     if (!selectedLocation) return
     const price = Number(menuForm.price)
     if (!menuForm.name.trim() || !Number.isFinite(price) || price <= 0) {
       toast({ title: 'Menu item required', description: 'Add a name and price greater than zero.', variant: 'destructive' })
       return
     }
+    isCreatingLocationMenuItemRef.current = true
     try {
       await createLocationMenuItem.mutateAsync({
         locationId: selectedLocation.id,
@@ -59,6 +62,8 @@ export default function MenuPricingPage() {
       toast({ title: 'Menu item added', description: `${menuForm.name.trim()} is available for table bookings.` })
     } catch (error) {
       toast({ title: 'Could not save menu item', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
+    } finally {
+      isCreatingLocationMenuItemRef.current = false
     }
   }
 
@@ -135,7 +140,7 @@ export default function MenuPricingPage() {
                   <p className="font-mono text-sm font-semibold text-neon-pink">{money(Number(item.price))}</p>
                 </div>
                 {item.description && <p className="mt-2 line-clamp-2 text-xs text-admin-40">{item.description}</p>}
-                <Button size="sm" variant="ghost" disabled={updateLocationMenuItem.isPending} onClick={() => handleToggleLocationMenuItem(item.id, item.isActive)} className="mt-3 gap-1.5 text-xs text-admin-60 hover:bg-admin-input">
+                <Button size="sm" variant="ghost" aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.name}`} disabled={updateLocationMenuItem.isPending} onClick={() => handleToggleLocationMenuItem(item.id, item.isActive)} className="mt-3 gap-1.5 text-xs text-admin-60 hover:bg-admin-input">
                   <Save className="h-3.5 w-3.5" />
                   {item.isActive ? 'Deactivate' : 'Activate'}
                 </Button>
