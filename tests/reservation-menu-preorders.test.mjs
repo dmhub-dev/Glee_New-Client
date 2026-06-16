@@ -249,6 +249,31 @@ test('standalone venue booking wires menu preorder helpers and sends preOrderMen
   assert.doesNotMatch(handler, /menuItems:\s*[^,\n]+/)
 })
 
+test('standalone venue booking keeps only active menu items and sends preOrderMenu only', async () => {
+  const source = await loadStandaloneReservationSource()
+  const handler = extractFunctionSource(source, 'handleReserve')
+  const menuItemsDeclaration = source.slice(source.indexOf('const menuItems = useMemo'))
+
+  assert.match(menuItemsDeclaration, /\.filter\(\s*item\s*=>\s*item\.isActive\s*\)/)
+  assert.match(handler, /preOrderMenu:\s*selectedMenuRows\.length\s*\?\s*reservationMenuPayload\(selectedMenuRows\)\s*:\s*undefined/)
+  assert.doesNotMatch(handler, /\bmenuItems:\s*/)
+})
+
+test('standalone venue booking normalizes menu item prices with a finite guard', async () => {
+  const source = await loadStandaloneReservationSource()
+  const menuItemsDeclaration = source.slice(source.indexOf('const menuItems = useMemo'), source.indexOf('const selectedMenuRows = useMemo'))
+
+  assert.match(menuItemsDeclaration, /Number\.isFinite\(/)
+  assert.match(menuItemsDeclaration, /Math\.max\(\s*0\s*,/)
+})
+
+test('standalone venue booking menu quantity buttons have item-specific accessible names', async () => {
+  const source = await loadStandaloneReservationSource()
+
+  assert.match(source, /aria-label=\{`Decrease \$\{item\.name\} quantity`\}/)
+  assert.match(source, /aria-label=\{`Increase \$\{item\.name\} quantity`\}/)
+})
+
 test('event reservation panel accepts menu items and sends selected preOrderMenu', async () => {
   const source = await loadEventReservationPanelSource()
   const handler = extractNamedFunctionSource(source, 'EventReservationPanel')
@@ -264,6 +289,13 @@ test('event reservation panel accepts menu items and sends selected preOrderMenu
   assert.match(source, /Saved for the venue, not charged now/)
   assert.match(reserveTable, /preOrderMenu:\s*[^,\n]+/)
   assert.doesNotMatch(reserveTable, /menuItems:\s*[^,\n]+/)
+})
+
+test('event reservation panel menu quantity buttons have item-specific accessible names', async () => {
+  const source = await loadEventReservationPanelSource()
+
+  assert.match(source, /aria-label=\{`Decrease \$\{item\.name\} quantity`\}/)
+  assert.match(source, /aria-label=\{`Increase \$\{item\.name\} quantity`\}/)
 })
 
 test('customer and public event pages pass event menu items to reservation panel', async () => {

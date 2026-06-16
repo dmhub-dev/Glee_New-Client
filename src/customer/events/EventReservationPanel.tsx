@@ -252,9 +252,9 @@ export default function EventReservationPanel({ eventId, menuItems = [] }: Event
                           <p className="mt-1 text-xs text-white/40">{item.category} · {money(item.price)}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <button type="button" onClick={() => changeMenuQuantity(item.id, -1)} disabled={quantity === 0} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink disabled:cursor-not-allowed disabled:opacity-30">−</button>
+                          <button type="button" aria-label={`Decrease ${item.name} quantity`} onClick={() => changeMenuQuantity(item.id, -1)} disabled={quantity === 0} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink disabled:cursor-not-allowed disabled:opacity-30">−</button>
                           <span className="w-6 text-center font-mono text-sm font-bold text-white">{quantity}</span>
-                          <button type="button" onClick={() => changeMenuQuantity(item.id, 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink">+</button>
+                          <button type="button" aria-label={`Increase ${item.name} quantity`} onClick={() => changeMenuQuantity(item.id, 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink">+</button>
                         </div>
                       </div>
                       {item.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/42">{item.description}</p>}
