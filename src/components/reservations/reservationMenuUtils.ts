@@ -22,6 +22,15 @@ export interface ReservationPreOrderSnapshotItem {
   lineTotal: number
 }
 
+function finiteNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function nonNegativeFiniteNumber(value: unknown, fallback = 0) {
+  return Math.max(0, finiteNumber(value, fallback))
+}
+
 export function selectedReservationMenuRows(
   items: ReservationMenuSelectableItem[] | undefined | null,
   quantities: Record<string, number>,
@@ -50,7 +59,7 @@ export function reservationDueNow(input: {
   depositAmount: number | string | undefined
   selectedMenuRows: ReservationMenuSelectedRow[]
 }) {
-  return Math.max(0, Number(input.depositAmount ?? 0))
+  return nonNegativeFiniteNumber(input.depositAmount)
 }
 
 export function normalizedReservationPreOrderMenu(value: unknown): ReservationPreOrderSnapshotItem[] {
@@ -60,9 +69,11 @@ export function normalizedReservationPreOrderMenu(value: unknown): ReservationPr
       if (!item || typeof item !== 'object') return null
       const row = item as Record<string, unknown>
       const name = String(row.name ?? '').trim()
-      const quantity = Math.max(0, Math.trunc(Number(row.quantity ?? 0)))
-      const price = Math.max(0, Number(row.price ?? 0))
-      const lineTotal = Math.max(0, Number(row.lineTotal ?? price * quantity))
+      const parsedQuantity = Number(row.quantity ?? 0)
+      if (!Number.isFinite(parsedQuantity)) return null
+      const quantity = Math.max(0, Math.trunc(parsedQuantity))
+      const price = nonNegativeFiniteNumber(row.price)
+      const lineTotal = nonNegativeFiniteNumber(row.lineTotal ?? price * quantity)
       if (!name || quantity < 1) return null
       const normalized: ReservationPreOrderSnapshotItem = {
         name,

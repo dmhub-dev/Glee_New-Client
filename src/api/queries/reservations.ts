@@ -275,7 +275,8 @@ export interface UpsertEventReservationSlotPayload {
 
 export const reservationKeys = {
   all: ['reservations'] as const,
-  venues: (filters?: ReservationVenuesFilters) => ['reservations', 'venues', filters ?? {}] as const,
+  venuesRoot: ['reservations', 'venues'] as const,
+  venues: (filters?: ReservationVenuesFilters) => [...reservationKeys.venuesRoot, filters ?? {}] as const,
   venue: (id: string) => ['reservations', 'venue', id] as const,
   availability: (locationId: string, params: { date: string; slotId: string; guestCount: number }) =>
     ['reservations', 'availability', locationId, params] as const,
@@ -653,6 +654,7 @@ export function useCreateLocationMenuItem() {
     onSuccess: item => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.locationMenuItems(item.locationId) })
       queryClient.invalidateQueries({ queryKey: reservationKeys.venue(item.locationId) })
+      queryClient.invalidateQueries({ queryKey: reservationKeys.venuesRoot })
     },
   })
 }
@@ -665,6 +667,7 @@ export function useUpdateLocationMenuItem() {
     onSuccess: item => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.locationMenuItems(item.locationId) })
       queryClient.invalidateQueries({ queryKey: reservationKeys.venue(item.locationId) })
+      queryClient.invalidateQueries({ queryKey: reservationKeys.venuesRoot })
     },
   })
 }

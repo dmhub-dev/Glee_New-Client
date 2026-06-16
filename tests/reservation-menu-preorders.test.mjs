@@ -66,6 +66,21 @@ test('reservationMenuTotal is informational and separate from deposit due now', 
   assert.equal(reservationDueNow({ depositAmount: 5000, selectedMenuRows: rows }), 5000)
 })
 
+test('reservationDueNow treats invalid deposits as zero and ignores menu totals', async () => {
+  const { reservationDueNow } = await loadReservationMenuUtils()
+
+  const rows = [
+    {
+      item: { id: 'menu-1', name: 'Mocktail', category: 'drink', price: 800 },
+      quantity: 3,
+      lineTotal: 2400,
+    },
+  ]
+
+  assert.equal(reservationDueNow({ depositAmount: 'bad', selectedMenuRows: rows }), 0)
+  assert.equal(reservationDueNow({ depositAmount: -500, selectedMenuRows: rows }), 0)
+})
+
 test('normalizedReservationPreOrderMenu accepts stored snapshot arrays only', async () => {
   const { normalizedReservationPreOrderMenu } = await loadReservationMenuUtils()
 
@@ -76,4 +91,26 @@ test('normalizedReservationPreOrderMenu accepts stored snapshot arrays only', as
     [{ id: 'menu-1', name: 'Mocktail', category: 'drink', price: 800, quantity: 2, lineTotal: 1600 }],
   )
   assert.deepEqual(normalizedReservationPreOrderMenu(null), [])
+})
+
+test('normalizedReservationPreOrderMenu rejects invalid quantities and keeps finite money values', async () => {
+  const { normalizedReservationPreOrderMenu } = await loadReservationMenuUtils()
+
+  assert.deepEqual(
+    normalizedReservationPreOrderMenu([{ name: 'Mocktail', quantity: 'bad', price: 'bad', lineTotal: 'bad' }]),
+    [],
+  )
+
+  assert.deepEqual(
+    normalizedReservationPreOrderMenu([{ name: 'Mocktail', quantity: 2, price: 'bad', lineTotal: 'bad' }]),
+    [{ name: 'Mocktail', price: 0, quantity: 2, lineTotal: 0 }],
+  )
+})
+
+test('location menu mutations invalidate venue list caches', async () => {
+  const source = await readFile(new URL('../src/api/queries/reservations.ts', import.meta.url), 'utf8')
+
+  assert.match(source, /venuesRoot:\s*\['reservations',\s*'venues'\]\s+as const/)
+  assert.match(source, /venues:\s*\(filters\?: ReservationVenuesFilters\)\s*=>\s*\[\.\.\.reservationKeys\.venuesRoot,\s*filters \?\? \{\}\]\s+as const/)
+  assert.equal((source.match(/invalidateQueries\(\{\s*queryKey:\s*reservationKeys\.venuesRoot\s*\}\)/g) ?? []).length, 2)
 })
