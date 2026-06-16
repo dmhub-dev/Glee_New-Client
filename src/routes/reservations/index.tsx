@@ -22,6 +22,7 @@ import {
 } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { FeedbackReadOnly, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
+import { normalizedReservationPreOrderMenu } from '../../components/reservations/reservationMenuUtils'
 
 const STATUSES: Array<{ label: string; value?: ReservationStatus }> = [
   { label: 'All' },
@@ -291,7 +292,7 @@ function BookingDateTable({ reservations, chatThreads }: { reservations: Reserva
 
   return (
     <div className="mt-5 overflow-x-auto rounded-xl border border-admin">
-      <table className="w-full min-w-[1180px] text-sm">
+      <table className="w-full min-w-[1280px] text-sm">
         <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
           <tr>
             <th className="px-4 py-3 font-medium">Full name</th>
@@ -299,6 +300,7 @@ function BookingDateTable({ reservations, chatThreads }: { reservations: Reserva
             <th className="px-4 py-3 font-medium">Phone</th>
             <th className="px-4 py-3 font-medium">Guests</th>
             <th className="px-4 py-3 font-medium">Table / category</th>
+            <th className="px-4 py-3 font-medium">Pre-order</th>
             <th className="px-4 py-3 font-medium">Chat</th>
             <th className="px-4 py-3 font-medium">Feedback</th>
             <th className="px-4 py-3 font-medium">Payment method</th>
@@ -313,6 +315,9 @@ function BookingDateTable({ reservations, chatThreads }: { reservations: Reserva
             const paidStatus = paymentStatusLabel(reservation)
             const thread = chatThreads.find(thread => thread.reservationId === reservation.id)
             const unread = thread?.unreadForStaff ?? 0
+            const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
+            const preOrderCount = preOrderItems.reduce((sum, item) => sum + item.quantity, 0)
+            const preOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
             return (
               <tr key={reservation.id} className="hover:bg-admin-overlay/60">
                 <td className="px-4 py-3 font-medium text-admin-90">
@@ -334,6 +339,15 @@ function BookingDateTable({ reservations, chatThreads }: { reservations: Reserva
                 <td className="px-4 py-3 text-admin-60">
                   <p className="font-medium text-admin-80">{reservation.table?.name ?? reservation.tableCategory}</p>
                   <p className="mt-1 text-xs text-admin-40">{reservation.tableCategory}</p>
+                </td>
+                <td className="px-4 py-3">
+                  {preOrderItems.length ? (
+                    <Badge className="whitespace-nowrap border-neon-pink/25 bg-neon-pink/10 text-neon-pink">
+                      Pre-order · {preOrderCount} item{preOrderCount === 1 ? '' : 's'} · {money(preOrderTotal)}
+                    </Badge>
+                  ) : (
+                    <span className="text-admin-30">-</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {canOpenBookingChat(reservation) ? (

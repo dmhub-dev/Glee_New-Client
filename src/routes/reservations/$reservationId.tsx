@@ -7,6 +7,7 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel'
 import { FeedbackReadOnly, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
+import { normalizedReservationPreOrderMenu } from '../../components/reservations/reservationMenuUtils'
 
 const TRANSITIONS: Partial<Record<ReservationStatus, ReservationStatus[]>> = {
   CONFIRMED: ['SEATED', 'NO_SHOW', 'CANCELLED'],
@@ -98,6 +99,8 @@ export default function AdminReservationDetailPage() {
   const payment = reservation.payment ?? reservation.payments?.[0]
   const paymentMethod = reservation.paymentMethod ?? payment?.method ?? 'WALLET'
   const paymentStatus = reservation.paymentStatus ?? payment?.status ?? 'SUCCESS'
+  const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
+  const preOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
 
   return (
     <AdminLayout title="Booking Detail" subtitle={reservation.reference}>
@@ -146,6 +149,41 @@ export default function AdminReservationDetailPage() {
             <p className="mt-1 text-sm text-admin-40">{reservation.tableCategory}</p>
           </InfoCard>
         </div>
+
+        {preOrderItems.length ? (
+          <section className="rounded-xl border border-admin bg-admin-surface p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-heading text-base font-black text-foreground">Venue pre-order</h2>
+                <p className="mt-1 text-sm text-admin-40">Saved for the venue team, not charged during table checkout.</p>
+              </div>
+              <Badge className="border-neon-pink/25 bg-neon-pink/10 text-neon-pink">{money(preOrderTotal)}</Badge>
+            </div>
+            <div className="mt-4 overflow-hidden rounded-lg border border-admin">
+              <table className="w-full text-sm">
+                <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Item</th>
+                    <th className="px-3 py-2 text-right font-medium">Qty</th>
+                    <th className="px-3 py-2 text-right font-medium">Line total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-admin">
+                  {preOrderItems.map((item, index) => (
+                    <tr key={`${item.id ?? item.name}-${index}`} className="bg-admin-overlay/40">
+                      <td className="px-3 py-3">
+                        <p className="font-semibold text-foreground">{item.name}</p>
+                        {item.category ? <p className="mt-1 text-xs text-admin-40">{item.category}</p> : null}
+                      </td>
+                      <td className="px-3 py-3 text-right font-mono text-admin-70">{item.quantity}</td>
+                      <td className="px-3 py-3 text-right font-mono font-semibold text-foreground">{money(item.lineTotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
 
         <div className="grid gap-5 lg:grid-cols-2">
           <section className="rounded-xl border border-admin bg-admin-surface p-5">

@@ -37,6 +37,22 @@ async function loadPublicEventSource() {
   return readFile(new URL('../src/public/routes/events/$eventId.tsx', import.meta.url), 'utf8')
 }
 
+async function loadCustomerReservationDetailSource() {
+  return readFile(new URL('../src/customer/reservations/$reservationId.tsx', import.meta.url), 'utf8')
+}
+
+async function loadPublicReservationDetailSource() {
+  return readFile(new URL('../src/public/routes/reservations/$token.tsx', import.meta.url), 'utf8')
+}
+
+async function loadAdminReservationDetailSource() {
+  return readFile(new URL('../src/routes/reservations/$reservationId.tsx', import.meta.url), 'utf8')
+}
+
+async function loadAdminReservationsListSource() {
+  return readFile(new URL('../src/routes/reservations/index.tsx', import.meta.url), 'utf8')
+}
+
 function extractFunctionSource(source, name) {
   const start = source.indexOf(`async function ${name}`)
   assert.notEqual(start, -1, `${name} should exist`)
@@ -304,4 +320,41 @@ test('customer and public event pages pass event menu items to reservation panel
 
   assert.match(customerSource, /<EventReservationPanel\s+eventId=\{event\.id\}\s+menuItems=\{event\.menuItems\}/)
   assert.match(publicSource, /<EventReservationPanel\s+eventId=\{event\.id\}\s+menuItems=\{event\.menuItems\}/)
+})
+
+test('reservation detail pages render saved preorder snapshots with customer-facing copy', async () => {
+  const customerSource = await loadCustomerReservationDetailSource()
+  const publicSource = await loadPublicReservationDetailSource()
+
+  for (const source of [customerSource, publicSource]) {
+    assert.match(source, /normalizedReservationPreOrderMenu/)
+    assert.match(source, /reservation\.preOrderMenu/)
+    assert.match(source, /Food & drink pre-order/)
+    assert.match(source, /Saved for the venue, not charged during table checkout\./)
+    assert.match(source, /preOrderTotal/)
+    assert.match(source, /lineTotal/)
+    assert.match(source, /quantity/)
+  }
+})
+
+test('admin reservation detail renders saved preorder snapshots for fulfillment', async () => {
+  const source = await loadAdminReservationDetailSource()
+
+  assert.match(source, /normalizedReservationPreOrderMenu/)
+  assert.match(source, /reservation\.preOrderMenu/)
+  assert.match(source, /Venue pre-order/)
+  assert.match(source, /Saved for the venue team/)
+  assert.match(source, /preOrderTotal/)
+  assert.match(source, /lineTotal/)
+  assert.match(source, /quantity/)
+})
+
+test('admin reservations list shows compact preorder indicators', async () => {
+  const source = await loadAdminReservationsListSource()
+
+  assert.match(source, /normalizedReservationPreOrderMenu/)
+  assert.match(source, /reservation\.preOrderMenu/)
+  assert.match(source, /Pre-order/)
+  assert.match(source, /preOrderTotal/)
+  assert.match(source, /preOrderCount/)
 })

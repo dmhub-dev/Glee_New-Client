@@ -3,6 +3,7 @@ import { Badge, Button, Skeleton } from '@glee/ui'
 import { AlertTriangle, CalendarClock, CheckCircle2, CreditCard, MapPin, ReceiptText, Table2, Users, XCircle } from 'lucide-react'
 import { usePublicReservation, type Reservation, type ReservationStatus } from '@glee/api'
 import { FeedbackCard, canReviewReservationByStatus, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../../components/feedback'
+import { normalizedReservationPreOrderMenu } from '../../../components/reservations/reservationMenuUtils'
 
 function money(value: string | number | undefined | null) {
   return `KSh ${Math.max(0, Number(value ?? 0)).toLocaleString()}`
@@ -145,6 +146,8 @@ export default function PublicReservationDetailPage() {
   const notice = reservationNotice(reservation.status, paymentStatus)
   const NoticeIcon = notice.icon
   const canReview = canReviewReservationByStatus(reservation.status)
+  const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
+  const preOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
 
   return (
     <main className="min-h-screen bg-[#050017] px-4 py-6 text-white sm:py-10">
@@ -197,6 +200,28 @@ export default function PublicReservationDetailPage() {
               <DetailTile label="Venue" value={reservation.location?.name ?? 'Location TBA'} />
               <DetailTile label="Source" value={reservation.source === 'EVENT' ? 'Event reservation' : 'Venue reservation'} />
             </div>
+            {preOrderItems.length ? (
+              <section className="mt-5 rounded-2xl border border-white/10 bg-black/24 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="font-heading text-lg font-black text-white">Food & drink pre-order</h3>
+                    <p className="mt-1 text-xs text-white/45">Saved for the venue, not charged during table checkout.</p>
+                  </div>
+                  <p className="font-mono text-sm font-bold text-neon-pink">{money(preOrderTotal)}</p>
+                </div>
+                <div className="mt-4 divide-y divide-white/10">
+                  {preOrderItems.map((item, index) => (
+                    <div key={`${item.id ?? item.name}-${index}`} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white">{item.quantity} x {item.name}</p>
+                        {item.category ? <p className="mt-1 text-xs text-white/40">{item.category}</p> : null}
+                      </div>
+                      <p className="shrink-0 font-mono text-sm font-bold text-white">{money(item.lineTotal)}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div>
 
           <aside className="space-y-5">

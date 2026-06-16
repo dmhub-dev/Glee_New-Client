@@ -5,6 +5,7 @@ import { Badge, Button, Skeleton, Textarea, useToast } from '@glee/ui'
 import { Calendar, CheckCircle2, ChevronLeft, Clock, MapPin, QrCode, ReceiptText, ShieldCheck, Users, XCircle } from 'lucide-react'
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel'
 import { FeedbackCard, canReviewReservationByStatus, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
+import { normalizedReservationPreOrderMenu } from '../../components/reservations/reservationMenuUtils'
 import CustomerLayout from '../CustomerLayout'
 
 function money(value: string | number | undefined) {
@@ -104,6 +105,9 @@ export default function CustomerReservationDetailPage() {
     )
   }
 
+  const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
+  const preOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
+
   return (
     <CustomerLayout title="Reservation" hidePageHeader>
       <div className="mx-auto w-full max-w-6xl space-y-4 px-4 pb-32 pt-5 lg:px-8">
@@ -174,6 +178,28 @@ export default function CustomerReservationDetailPage() {
                 <p className="mt-1 font-mono font-bold text-neon-pink">{money(reservation.depositAmount)}</p>
               </div>
             </div>
+            {preOrderItems.length ? (
+              <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="font-heading text-lg font-black text-white">Food & drink pre-order</h3>
+                    <p className="mt-1 text-xs text-white/45">Saved for the venue, not charged during table checkout.</p>
+                  </div>
+                  <div className="font-mono text-sm font-bold text-neon-pink">{money(preOrderTotal)}</div>
+                </div>
+                <div className="mt-4 divide-y divide-white/10">
+                  {preOrderItems.map((item, index) => (
+                    <div key={`${item.id ?? item.name}-${index}`} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white">{item.quantity} x {item.name}</p>
+                        {item.category ? <p className="mt-1 text-xs text-white/40">{item.category}</p> : null}
+                      </div>
+                      <p className="shrink-0 font-mono text-sm font-bold text-white">{money(item.lineTotal)}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             <div id="chat">
               <BookingChatPanel
                 reservation={reservation}
