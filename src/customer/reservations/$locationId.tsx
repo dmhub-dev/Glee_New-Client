@@ -14,6 +14,13 @@ import { Badge, Button, Input, Separator, Skeleton, useToast } from '@glee/ui'
 import { ChevronLeft, Clock, MapPin, ShieldCheck, Users, X } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
+import {
+  reservationDueNow,
+  reservationMenuPayload,
+  reservationMenuTotal,
+  selectedReservationMenuRows,
+  type ReservationMenuSelectableItem,
+} from '../../components/reservations/reservationMenuUtils'
 
 function money(value: string | number | undefined) {
   return `KSh ${Math.max(0, Number(value ?? 0)).toLocaleString()}`
@@ -94,6 +101,7 @@ export default function CustomerReservationVenuePage() {
   const [guestName, setGuestName] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
+  const [menuQuantities, setMenuQuantities] = useState<Record<string, number>>({})
 
   const { data: venue, isLoading } = useReservationVenue(locationId)
   const createReservation = useCreateReservation()
@@ -118,7 +126,31 @@ export default function CustomerReservationVenuePage() {
   )
   const selectedSlot = availableSlots.find(slot => slot.id === selectedSlotId)
   const selectedCategoryDetails = selectedCategory ? tableDetailsForCategory(venue, selectedCategory.category) : null
-  const totalDueNow = Number(selectedCategory?.depositAmount ?? 0)
+  const menuItems = useMemo<ReservationMenuSelectableItem[]>(
+    () => (venue?.menuItems ?? [])
+      .filter(item => item.isActive)
+      .map(item => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        price: Math.max(0, Number(item.price ?? 0)),
+        description: item.description,
+      })),
+    [venue?.menuItems],
+  )
+  const selectedMenuRows = useMemo(
+    () => selectedReservationMenuRows(menuItems, menuQuantities),
+    [menuItems, menuQuantities],
+  )
+  const selectedMenuTotal = reservationMenuTotal(selectedMenuRows)
+  const totalDueNow = reservationDueNow({ depositAmount: selectedCategory?.depositAmount, selectedMenuRows })
+
+  function changeMenuQuantity(itemId: string, delta: number) {
+    setMenuQuantities(current => ({
+      ...current,
+      [itemId]: Math.max(0, (current[itemId] ?? 0) + delta),
+    }))
+  }
 
   useEffect(() => {
     if (slotId && !availableSlots.some(slot => slot.id === slotId)) {
@@ -132,6 +164,10 @@ export default function CustomerReservationVenuePage() {
       setTableCategory('')
     }
   }, [categories, tableCategory])
+
+  useEffect(() => {
+    setMenuQuantities({})
+  }, [locationId])
 
   useEffect(() => {
     if (!user) return
@@ -161,6 +197,7 @@ export default function CustomerReservationVenuePage() {
         guestName: !isAuthenticated ? guestName.trim() : undefined,
         guestEmail: !isAuthenticated ? guestEmail.trim() : undefined,
         guestPhone: !isAuthenticated ? guestPhone.trim() : undefined,
+        preOrderMenu: selectedMenuRows.length ? reservationMenuPayload(selectedMenuRows) : undefined,
       })
       if (isPaymentIntent(result)) {
         if (!result.authorization_url) throw new Error('Payment provider did not return a checkout URL')
@@ -358,6 +395,39 @@ export default function CustomerReservationVenuePage() {
                 })}
               </div>
             </div>
+
+            {menuItems.length > 0 && (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Food & drink pre-order</p>
+                    <p className="mt-1 text-xs text-white/45">Saved for the venue, not charged now</p>
+                  </div>
+                  <p className="font-mono text-sm font-bold text-neon-pink">{money(selectedMenuTotal)}</p>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {menuItems.map(item => {
+                    const quantity = menuQuantities[item.id] ?? 0
+                    return (
+                      <div key={item.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-white">{item.name}</p>
+                            <p className="mt-1 text-xs text-white/40">{item.category} · {money(item.price)}</p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button type="button" onClick={() => changeMenuQuantity(item.id, -1)} disabled={quantity === 0} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink disabled:cursor-not-allowed disabled:opacity-30">−</button>
+                            <span className="w-6 text-center font-mono text-sm font-bold text-white">{quantity}</span>
+                            <button type="button" onClick={() => changeMenuQuantity(item.id, 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink">+</button>
+                          </div>
+                        </div>
+                        {item.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/42">{item.description}</p>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>
@@ -445,6 +515,25 @@ export default function CustomerReservationVenuePage() {
                   <p className="text-xs text-white/40">Tables: {selectedCategoryDetails.names}{selectedCategoryDetails.count > 3 ? ` +${selectedCategoryDetails.count - 3} more` : ''}</p>
                 )}
               </div>
+
+              {selectedMenuRows.length > 0 && (
+                <>
+                  <Separator className="bg-white/10" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-white">Food & drink pre-order</span>
+                      <span className="font-mono text-sm text-white">{money(selectedMenuTotal)}</span>
+                    </div>
+                    <p className="text-xs text-white/40">Saved for the venue, not charged now</p>
+                    {selectedMenuRows.map(row => (
+                      <div key={row.item.id} className="flex justify-between gap-3 text-xs text-white/50">
+                        <span className="truncate">{row.quantity} x {row.item.name}</span>
+                        <span className="font-mono">{money(row.lineTotal)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <Separator className="bg-white/10" />
 

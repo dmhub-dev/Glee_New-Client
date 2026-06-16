@@ -21,6 +21,22 @@ async function loadMenuPricingSource() {
   return readFile(new URL('../src/routes/menu-pricing/index.tsx', import.meta.url), 'utf8')
 }
 
+async function loadStandaloneReservationSource() {
+  return readFile(new URL('../src/customer/reservations/$locationId.tsx', import.meta.url), 'utf8')
+}
+
+async function loadEventReservationPanelSource() {
+  return readFile(new URL('../src/customer/events/EventReservationPanel.tsx', import.meta.url), 'utf8')
+}
+
+async function loadCustomerEventSource() {
+  return readFile(new URL('../src/customer/events/$eventId.tsx', import.meta.url), 'utf8')
+}
+
+async function loadPublicEventSource() {
+  return readFile(new URL('../src/public/routes/events/$eventId.tsx', import.meta.url), 'utf8')
+}
+
 function extractFunctionSource(source, name) {
   const start = source.indexOf(`async function ${name}`)
   assert.notEqual(start, -1, `${name} should exist`)
@@ -216,4 +232,44 @@ test('menu pricing page requires finite positive venue menu item prices', async 
   assert.match(handler, new RegExp(`Number\\.isFinite\\(\\s*${priceIdentifier}\\s*\\)`))
   assert.match(handler, new RegExp(`${priceIdentifier}\\s*<=\\s*0`))
   assert.match(handler, new RegExp(`(?:price:\\s*${priceIdentifier}\\b|\\b${priceIdentifier},)`))
+})
+
+test('standalone venue booking wires menu preorder helpers and sends preOrderMenu', async () => {
+  const source = await loadStandaloneReservationSource()
+  const handler = extractFunctionSource(source, 'handleReserve')
+
+  assert.match(source, /selectedReservationMenuRows/)
+  assert.match(source, /reservationMenuPayload/)
+  assert.match(source, /reservationMenuTotal/)
+  assert.match(source, /reservationDueNow/)
+  assert.match(source, /venue\?\.menuItems/)
+  assert.match(source, /Food & drink pre-order/)
+  assert.match(source, /Saved for the venue, not charged now/)
+  assert.match(handler, /preOrderMenu:\s*[^,\n]+/)
+  assert.doesNotMatch(handler, /menuItems:\s*[^,\n]+/)
+})
+
+test('event reservation panel accepts menu items and sends selected preOrderMenu', async () => {
+  const source = await loadEventReservationPanelSource()
+  const handler = extractNamedFunctionSource(source, 'EventReservationPanel')
+  const reserveTable = source.slice(source.indexOf('async function reserveTable'))
+
+  assert.match(source, /type\s+ReservationMenuSelectableItem/)
+  assert.match(handler, /menuItems/)
+  assert.match(source, /selectedReservationMenuRows/)
+  assert.match(source, /reservationMenuPayload/)
+  assert.match(source, /reservationMenuTotal/)
+  assert.match(source, /reservationDueNow/)
+  assert.match(source, /Food & drink pre-order/)
+  assert.match(source, /Saved for the venue, not charged now/)
+  assert.match(reserveTable, /preOrderMenu:\s*[^,\n]+/)
+  assert.doesNotMatch(reserveTable, /menuItems:\s*[^,\n]+/)
+})
+
+test('customer and public event pages pass event menu items to reservation panel', async () => {
+  const customerSource = await loadCustomerEventSource()
+  const publicSource = await loadPublicEventSource()
+
+  assert.match(customerSource, /<EventReservationPanel\s+eventId=\{event\.id\}\s+menuItems=\{event\.menuItems\}/)
+  assert.match(publicSource, /<EventReservationPanel\s+eventId=\{event\.id\}\s+menuItems=\{event\.menuItems\}/)
 })

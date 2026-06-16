@@ -13,9 +13,16 @@ import {
   type ReservationPaymentMethod,
 } from '@glee/api'
 import { useAuth } from '../../lib/auth/AuthContext'
+import {
+  reservationDueNow,
+  reservationMenuPayload,
+  reservationMenuTotal,
+  selectedReservationMenuRows,
+  type ReservationMenuSelectableItem,
+} from '../../components/reservations/reservationMenuUtils'
 
 function money(value: number | string | undefined) {
-  return `KSh ${Number(value ?? 0).toLocaleString()}`
+  return `KSh ${Math.max(0, Number(value ?? 0)).toLocaleString()}`
 }
 
 function formatSlot(value: string) {
@@ -40,7 +47,12 @@ function safeSessionStorageSet(key: string, value: string) {
   }
 }
 
-export default function EventReservationPanel({ eventId }: { eventId: string }) {
+interface EventReservationPanelProps {
+  eventId: string
+  menuItems?: ReservationMenuSelectableItem[]
+}
+
+export default function EventReservationPanel({ eventId, menuItems = [] }: EventReservationPanelProps) {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
@@ -53,6 +65,7 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
   const [guestName, setGuestName] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
+  const [menuQuantities, setMenuQuantities] = useState<Record<string, number>>({})
 
   useEffect(() => {
     if (!selectedSlotId && slots.length > 0) setSelectedSlotId(slots[0].id)
@@ -71,7 +84,19 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
     () => categories.find(category => category.category === selectedCategoryName),
     [categories, selectedCategoryName],
   )
-  const deposit = selectedCategory?.depositAmount ?? 0
+  const selectedMenuRows = useMemo(
+    () => selectedReservationMenuRows(menuItems, menuQuantities),
+    [menuItems, menuQuantities],
+  )
+  const selectedMenuTotal = reservationMenuTotal(selectedMenuRows)
+  const deposit = reservationDueNow({ depositAmount: selectedCategory?.depositAmount, selectedMenuRows })
+
+  function changeMenuQuantity(itemId: string, delta: number) {
+    setMenuQuantities(current => ({
+      ...current,
+      [itemId]: Math.max(0, (current[itemId] ?? 0) + delta),
+    }))
+  }
 
   useEffect(() => {
     if (selectedCategoryName && !categories.some(category => category.category === selectedCategoryName)) {
@@ -84,6 +109,10 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
       setPaymentMethod('PAYSTACK')
     }
   }, [isAuthenticated, paymentMethod])
+
+  useEffect(() => {
+    setMenuQuantities({})
+  }, [eventId, selectedSlotId, selectedCategoryName])
 
   async function reserveTable() {
     if (!selectedSlotId || !selectedCategory) return
@@ -103,6 +132,7 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
         guestName: !isAuthenticated ? guestName.trim() : undefined,
         guestEmail: !isAuthenticated ? guestEmail.trim() : undefined,
         guestPhone: !isAuthenticated ? guestPhone.trim() : undefined,
+        preOrderMenu: selectedMenuRows.length ? reservationMenuPayload(selectedMenuRows) : undefined,
       })
       if (isPaymentIntent(result)) {
         if (!result.authorization_url) throw new Error('Payment provider did not return a checkout URL')
@@ -201,6 +231,39 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
               })}
             </div>
           )}
+
+          {menuItems.length > 0 && selectedCategory && (
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">Food & drink pre-order</p>
+                  <p className="mt-1 text-xs text-white/45">Saved for the venue, not charged now</p>
+                </div>
+                <p className="font-mono text-sm font-bold text-neon-pink">{money(selectedMenuTotal)}</p>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {menuItems.map(item => {
+                  const quantity = menuQuantities[item.id] ?? 0
+                  return (
+                    <div key={item.id} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{item.name}</p>
+                          <p className="mt-1 text-xs text-white/40">{item.category} · {money(item.price)}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button type="button" onClick={() => changeMenuQuantity(item.id, -1)} disabled={quantity === 0} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink disabled:cursor-not-allowed disabled:opacity-30">−</button>
+                          <span className="w-6 text-center font-mono text-sm font-bold text-white">{quantity}</span>
+                          <button type="button" onClick={() => changeMenuQuantity(item.id, 1)} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-neon-pink hover:text-neon-pink">+</button>
+                        </div>
+                      </div>
+                      {item.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/42">{item.description}</p>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <aside className="rounded-2xl border border-white/12 bg-black/25 p-4">
@@ -239,8 +302,20 @@ export default function EventReservationPanel({ eventId }: { eventId: string }) 
           )}
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between gap-3 text-white/55"><span>Minimum spend</span><strong className="font-mono text-white">{money(selectedCategory?.minimumSpend ?? 0)}</strong></div>
+            <div className="flex justify-between gap-3 text-white/55"><span>Food & drink pre-order</span><strong className="font-mono text-white">{money(selectedMenuTotal)}</strong></div>
             <div className="flex justify-between gap-3 text-white/55"><span>Guests</span><strong className="font-mono text-white">{guestCount}</strong></div>
           </div>
+          {selectedMenuRows.length > 0 && (
+            <div className="mt-3 space-y-1 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-xs text-white/40">Saved for the venue, not charged now</p>
+              {selectedMenuRows.map(row => (
+                <div key={row.item.id} className="flex justify-between gap-3 text-xs text-white/55">
+                  <span className="truncate">{row.quantity} x {row.item.name}</span>
+                  <span className="font-mono">{money(row.lineTotal)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <Button
             disabled={!selectedCategory || createReservation.isPending}
             onClick={reserveTable}

@@ -451,7 +451,7 @@ export default function EventDetailPage() {
           )}
         </section>
 
-        <EventReservationPanel eventId={event.id} />
+        <EventReservationPanel eventId={event.id} menuItems={event.menuItems} />
       </div>
 
       {/* Sticky bottom action bar */}

@@ -446,7 +446,7 @@ export default function CustomerEventDetailPage() {
 
             <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
 
-            <EventReservationPanel eventId={event.id} />
+            <EventReservationPanel eventId={event.id} menuItems={event.menuItems} />
 
             {/* Menu add-on items — public style */}
             {showMenuAddons && (event.menuItems ?? []).length > 0 && (
