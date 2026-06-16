@@ -23,6 +23,18 @@ export interface LocationTable {
   isActive: boolean
 }
 
+export interface LocationMenuItem {
+  id: string
+  locationId: string
+  name: string
+  category: string
+  price: string | number
+  description?: string | null
+  isActive: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface ReservationSlot {
   id: string
   locationId: string
@@ -71,6 +83,7 @@ export interface ReservationVenue {
   timezone?: string | null
   reservationSlots?: ReservationSlot[]
   reservationTables?: LocationTable[]
+  menuItems?: LocationMenuItem[]
 }
 
 export interface AvailabilityCategory {
@@ -108,6 +121,16 @@ export interface ReservationPayment {
   createdAt: string
 }
 
+export interface ReservationPreOrderMenuItem {
+  id?: string | null
+  source?: 'EVENT_MENU_ITEM' | 'LOCATION_MENU_ITEM' | string | null
+  name: string
+  category?: string | null
+  price: string | number
+  quantity: number
+  lineTotal: string | number
+}
+
 export interface Reservation {
   id: string
   reference: string
@@ -142,6 +165,7 @@ export interface Reservation {
   paymentMethod?: ReservationPaymentMethod | null
   paymentStatus?: ReservationPayment['status'] | null
   payments?: ReservationPayment[]
+  preOrderMenu?: ReservationPreOrderMenuItem[] | null
 }
 
 export interface ReservationPaymentIntent {
@@ -180,6 +204,8 @@ export interface CreateReservationPayload {
   guestEmail?: string
   guestPhone?: string
   callbackUrl?: string
+  menuItems?: ReservationMenuOrderPayload[]
+  preOrderMenu?: ReservationMenuOrderPayload[]
 }
 
 export interface CreateEventReservationPayload {
@@ -192,6 +218,8 @@ export interface CreateEventReservationPayload {
   guestEmail?: string
   guestPhone?: string
   callbackUrl?: string
+  menuItems?: ReservationMenuOrderPayload[]
+  preOrderMenu?: ReservationMenuOrderPayload[]
 }
 
 export interface ConfirmReservationPaymentPayload {
@@ -214,6 +242,19 @@ export interface UpsertLocationTablePayload {
   minimumSpend: number
   depositType: DepositType
   depositValue: number
+  isActive?: boolean
+}
+
+export interface ReservationMenuOrderPayload {
+  id: string
+  quantity: number
+}
+
+export interface UpsertLocationMenuItemPayload {
+  name: string
+  category?: string
+  price: number
+  description?: string
   isActive?: boolean
 }
 
@@ -249,6 +290,7 @@ export const reservationKeys = {
   adminById: (id: string) => ['reservations', 'admin', id] as const,
   locationTables: (locationId: string) => ['reservations', 'locations', locationId, 'tables'] as const,
   locationSlots: (locationId: string) => ['reservations', 'locations', locationId, 'slots'] as const,
+  locationMenuItems: (locationId: string) => ['reservations', 'locations', locationId, 'menu-items'] as const,
   adminEventSlots: (eventId: string) => ['reservations', 'admin', 'events', eventId, 'slots'] as const,
 }
 
@@ -417,6 +459,27 @@ export async function updateLocationReservationTable(locationId: string, tableId
   return response.data
 }
 
+export async function getLocationMenuItems(locationId: string) {
+  const response = await apiFetch<{ success: boolean; data: LocationMenuItem[] }>(`/api/v1/admin/locations/${locationId}/menu-items`)
+  return response.data ?? []
+}
+
+export async function createLocationMenuItem(locationId: string, payload: UpsertLocationMenuItemPayload) {
+  const response = await apiFetch<{ success: boolean; data: LocationMenuItem }>(`/api/v1/admin/locations/${locationId}/menu-items`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  return response.data
+}
+
+export async function updateLocationMenuItem(locationId: string, menuItemId: string, payload: Partial<UpsertLocationMenuItemPayload>) {
+  const response = await apiFetch<{ success: boolean; data: LocationMenuItem }>(`/api/v1/admin/locations/${locationId}/menu-items/${menuItemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+  return response.data
+}
+
 export async function getLocationReservationSlots(locationId: string) {
   const response = await apiFetch<{ success: boolean; data: ReservationSlot[] }>(`/api/v1/admin/locations/${locationId}/reservation-slots`)
   return response.data ?? []
@@ -572,6 +635,37 @@ export function useUpdateLocationReservationTable() {
     mutationFn: ({ locationId, tableId, payload }: { locationId: string; tableId: string; payload: Partial<UpsertLocationTablePayload> }) =>
       updateLocationReservationTable(locationId, tableId, payload),
     onSuccess: table => queryClient.invalidateQueries({ queryKey: reservationKeys.locationTables(table.locationId) }),
+  })
+}
+
+export function useLocationMenuItems(locationId: string) {
+  return useQuery({
+    queryKey: reservationKeys.locationMenuItems(locationId),
+    queryFn: () => getLocationMenuItems(locationId),
+    enabled: Boolean(locationId),
+  })
+}
+
+export function useCreateLocationMenuItem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ locationId, payload }: { locationId: string; payload: UpsertLocationMenuItemPayload }) => createLocationMenuItem(locationId, payload),
+    onSuccess: item => {
+      queryClient.invalidateQueries({ queryKey: reservationKeys.locationMenuItems(item.locationId) })
+      queryClient.invalidateQueries({ queryKey: reservationKeys.venue(item.locationId) })
+    },
+  })
+}
+
+export function useUpdateLocationMenuItem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ locationId, menuItemId, payload }: { locationId: string; menuItemId: string; payload: Partial<UpsertLocationMenuItemPayload> }) =>
+      updateLocationMenuItem(locationId, menuItemId, payload),
+    onSuccess: item => {
+      queryClient.invalidateQueries({ queryKey: reservationKeys.locationMenuItems(item.locationId) })
+      queryClient.invalidateQueries({ queryKey: reservationKeys.venue(item.locationId) })
+    },
   })
 }
 
