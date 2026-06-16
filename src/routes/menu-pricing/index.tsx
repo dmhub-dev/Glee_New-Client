@@ -37,8 +37,10 @@ export default function MenuPricingPage() {
   }, [events, search])
 
   async function handleCreateLocationMenuItem() {
+    if (createLocationMenuItem.isPending) return
     if (!selectedLocation) return
-    if (!menuForm.name.trim() || Number(menuForm.price) <= 0) {
+    const price = Number(menuForm.price)
+    if (!menuForm.name.trim() || !Number.isFinite(price) || price <= 0) {
       toast({ title: 'Menu item required', description: 'Add a name and price greater than zero.', variant: 'destructive' })
       return
     }
@@ -48,7 +50,7 @@ export default function MenuPricingPage() {
         payload: {
           name: menuForm.name.trim(),
           category: menuForm.category.trim() || 'other',
-          price: Number(menuForm.price),
+          price,
           description: menuForm.description.trim() || undefined,
           isActive: true,
         },

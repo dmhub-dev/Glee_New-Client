@@ -17,6 +17,27 @@ async function loadReservationMenuUtils() {
   return module.exports
 }
 
+async function loadMenuPricingSource() {
+  return readFile(new URL('../src/routes/menu-pricing/index.tsx', import.meta.url), 'utf8')
+}
+
+function extractFunctionSource(source, name) {
+  const start = source.indexOf(`async function ${name}`)
+  assert.notEqual(start, -1, `${name} should exist`)
+
+  const bodyStart = source.indexOf('{', start)
+  assert.notEqual(bodyStart, -1, `${name} should have a body`)
+
+  let depth = 0
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1
+    if (source[index] === '}') depth -= 1
+    if (depth === 0) return source.slice(start, index + 1)
+  }
+
+  assert.fail(`${name} should have a complete body`)
+}
+
 test('selectedReservationMenuRows keeps only positive quantities', async () => {
   const { selectedReservationMenuRows } = await loadReservationMenuUtils()
   const rows = selectedReservationMenuRows(
@@ -116,7 +137,7 @@ test('location menu mutations invalidate venue list caches', async () => {
 })
 
 test('menu pricing page manages location menu items alongside event menu items', async () => {
-  const source = await readFile(new URL('../src/routes/menu-pricing/index.tsx', import.meta.url), 'utf8')
+  const source = await loadMenuPricingSource()
 
   assert.match(source, /useLocations\(/)
   assert.match(source, /useLocationMenuItems\(/)
@@ -126,10 +147,34 @@ test('menu pricing page manages location menu items alongside event menu items',
 })
 
 test('menu pricing page handles venue menu item toggle failures and pending state', async () => {
-  const source = await readFile(new URL('../src/routes/menu-pricing/index.tsx', import.meta.url), 'utf8')
+  const source = await loadMenuPricingSource()
+  const handler = extractFunctionSource(source, 'handleToggleLocationMenuItem')
 
-  assert.match(source, /try\s*\{[\s\S]*updateLocationMenuItem\.mutateAsync/)
-  assert.match(source, /catch\s*\(\s*error\s*\)\s*\{[\s\S]*variant:\s*'destructive'/)
-  assert.match(source, /updateLocationMenuItem\.isPending/)
+  assert.match(handler, /if\s*\(\s*!selectedLocation\s*\|\|\s*updateLocationMenuItem\.isPending\s*\)\s*return/)
+  assert.match(handler, /try\s*\{[\s\S]*updateLocationMenuItem\.mutateAsync/)
+  assert.match(handler, /catch\s*\(\s*error\s*\)\s*\{[\s\S]*variant:\s*'destructive'/)
   assert.match(source, /disabled=\{[^}]*updateLocationMenuItem\.isPending/)
+})
+
+test('menu pricing page blocks duplicate venue menu item creates in the handler', async () => {
+  const source = await loadMenuPricingSource()
+  const handler = extractFunctionSource(source, 'handleCreateLocationMenuItem')
+
+  assert.match(handler, /if\s*\(\s*createLocationMenuItem\.isPending\s*\)\s*return/)
+  assert.ok(
+    handler.indexOf('createLocationMenuItem.isPending') < handler.indexOf('createLocationMenuItem.mutateAsync'),
+    'pending guard should run before the create mutation',
+  )
+})
+
+test('menu pricing page requires finite positive venue menu item prices', async () => {
+  const source = await loadMenuPricingSource()
+  const handler = extractFunctionSource(source, 'handleCreateLocationMenuItem')
+  const priceDeclaration = handler.match(/const\s+([A-Za-z_$][\w$]*)\s*=\s*Number\(\s*menuForm\.price\s*\)/)
+
+  assert.ok(priceDeclaration, 'price should be parsed once before validation')
+  const priceIdentifier = priceDeclaration[1]
+  assert.match(handler, new RegExp(`Number\\.isFinite\\(\\s*${priceIdentifier}\\s*\\)`))
+  assert.match(handler, new RegExp(`${priceIdentifier}\\s*<=\\s*0`))
+  assert.match(handler, new RegExp(`(?:price:\\s*${priceIdentifier}\\b|\\b${priceIdentifier},)`))
 })
