@@ -25,6 +25,7 @@ import { cn } from '@glee/ui'
 import { formatDateOnly, formatDateRange, formatTimeOnly, splitBackendDateTime } from '@glee/utils'
 import type { Event } from '@glee/types'
 import EventDetailTabs from './EventDetailTabs'
+import EventEarningsPanel from './EventEarningsPanel'
 import { EventChatPanel } from '../../components/chat/EventChatPanel'
 import EventReservationSlotsPanel from './EventReservationSlotsPanel'
 
@@ -53,7 +54,7 @@ const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
 ]
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
-type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'chat' | 'reservations'
+type EventDetailTab = 'details' | 'earnings' | 'complimentary' | 'attendants' | 'chat' | 'reservations'
 
 function formatEventDate(startDate: string, endDate: string): string {
   return formatDateRange(
@@ -139,7 +140,7 @@ export default function EventDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
     const state = location.state as { tab?: EventDetailTab } | null
-    return state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' || state?.tab === 'reservations' ? state.tab : 'details'
+    return state?.tab === 'earnings' || state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' || state?.tab === 'reservations' ? state.tab : 'details'
   })
 
   function handleStatusChange(newStatus: Event['status']) {
@@ -341,6 +342,15 @@ export default function EventDetailPage() {
 
             {(user.role === 'admin' || user.role === 'super_admin') && event.status === 'pending_approval' && (
               <>
+                {event.vendorId && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard/payouts')}
+                    className="flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/15 transition-colors"
+                  >
+                    Configure Commission
+                  </button>
+                )}
                 <button
                   onClick={() => handleReview('approve')}
                   disabled={reviewMutation.isPending}
@@ -375,7 +385,9 @@ export default function EventDetailPage() {
         <EventDetailTabs eventId={event.id} activeTab={activeTab} userRole={user.role} onSelectLocalTab={setActiveTab} />
 
         {/* Two-column layout */}
-        {activeTab === 'complimentary' ? (
+        {activeTab === 'earnings' ? (
+          <EventEarningsPanel event={event} userRole={user.role} />
+        ) : activeTab === 'complimentary' ? (
           <ComplimentaryTicketPanel event={event} />
         ) : activeTab === 'attendants' ? (
           <TicketAttendantsPanel event={event} />

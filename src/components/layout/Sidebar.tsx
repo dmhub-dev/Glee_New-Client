@@ -15,6 +15,7 @@ import {
   ScrollText,
   Settings,
   UserCircle,
+  HandCoins,
 } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { useAdminUser } from '../../app/providers'
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Bookings', to: '/dashboard/reservations', icon: Table2, active: true, roles: ['super_admin', 'admin', 'operations_manager', 'vendor', 'vendor_staff'] },
   { label: 'Menu & Pricing', to: '/dashboard/menu-pricing', icon: FileText, active: true, roles: ['vendor', 'vendor_staff', 'admin'] },
   { label: 'Sales Reports', to: '/dashboard/sales-reports', icon: BarChart2, active: true, roles: ['vendor', 'vendor_staff'] },
+  { label: 'Payouts', to: '/dashboard/payouts', icon: HandCoins, active: true, roles: ['super_admin', 'admin', 'finance', 'vendor', 'vendor_staff'] },
   { label: 'Financials', to: '/dashboard/financials', icon: BarChart2, active: true, roles: ['super_admin', 'admin', 'finance'] },
   { label: 'Roles & Permissions', to: '/dashboard/roles', icon: ShieldCheck, active: true, roles: ['super_admin'] },
   { label: 'Audit Logs', to: '/dashboard/audit-logs', icon: ScrollText, active: true, roles: ['super_admin'] },

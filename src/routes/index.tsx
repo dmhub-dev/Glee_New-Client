@@ -31,12 +31,14 @@ import AdminLayout from '../components/layout/AdminLayout'
 import { useAdminUser } from '../app/providers'
 import AdminEventCard from '../components/events/AdminEventCard'
 import {
+  ApiError,
   useAdminEvents,
   useAuditLogs,
   useCategories,
   useDeleteEvent,
   useLocations,
   useUsers,
+  useVendorPayoutProfile,
 } from '@glee/api'
 import { Badge, Progress, Skeleton, cn } from '@glee/ui'
 import type { Event } from '@glee/types'
@@ -139,6 +141,7 @@ export default function DashboardPage() {
   const { data: locations, isLoading: locationsLoading } = useLocations()
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const { data: auditLogs, isLoading: auditLoading } = useAuditLogs({ limit: 4 }, { enabled: isSuperAdmin })
+  const { data: payoutProfile, error: payoutProfileError } = useVendorPayoutProfile({ enabled: user.role === 'vendor' })
 
   const eventList = useMemo(() => events ?? [], [events])
   const userList = useMemo(() => users ?? [], [users])
@@ -198,6 +201,12 @@ export default function DashboardPage() {
 
   const isLoading = eventsLoading || usersLoading || locationsLoading || categoriesLoading
   const sellThrough = tickets.total > 0 ? Math.round((tickets.sold / tickets.total) * 100) : 0
+  const missingPayoutProfile = payoutProfileError instanceof ApiError && payoutProfileError.status === 404
+  const needsPayoutProfileAction = user.role === 'vendor' && (
+    missingPayoutProfile ||
+    payoutProfile?.status === 'PENDING_VERIFICATION' ||
+    payoutProfile?.status === 'REJECTED'
+  )
 
   if (isVendorRole) {
     const grossRevenue = eventList.reduce((sum, event) => (
@@ -261,6 +270,24 @@ export default function DashboardPage() {
               )}
             </div>
           </section>
+
+          {needsPayoutProfileAction && (
+            <section className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-4 shadow-admin">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-heading text-base font-bold text-foreground">Payout profile needs attention</p>
+                  <p className="mt-1 text-sm text-amber-100/80">Glee must verify payout details before vendor payouts can be marked paid.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/payouts')}
+                  className="rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white hover:bg-neon-pink/90"
+                >
+                  Open Payouts
+                </button>
+              </div>
+            </section>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {eventsLoading ? (

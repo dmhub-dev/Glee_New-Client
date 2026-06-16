@@ -141,7 +141,7 @@ function LocationReferenceGrid({
       <div className="flex flex-col gap-3 rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-heading text-base font-bold text-foreground">Event Locations</h2>
-          <p className="mt-1 text-sm text-admin-40">Use Glee-approved locations or add your own venue. Your private locations are only visible to your vendor account.</p>
+          <p className="mt-1 text-sm text-admin-40">Use Glee-approved locations for your events. Vendors cannot create or modify platform locations.</p>
         </div>
         {allowCreate && (
           <Button onClick={() => navigate('/dashboard/locations/new')} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
@@ -285,7 +285,7 @@ export default function EventsListPage() {
           <CategoryReferenceGrid categories={categories ?? []} isLoading={categoriesLoading} />
         ) : <CategoriesTab />)}
         {activeSection === 'locations' && (isVendorRole ? (
-          <LocationReferenceGrid locations={locations ?? []} isLoading={locationsLoading} allowCreate />
+          <LocationReferenceGrid locations={locations ?? []} isLoading={locationsLoading} />
         ) : <LocationsTab />)}
         {activeSection === 'events' && (
           <>

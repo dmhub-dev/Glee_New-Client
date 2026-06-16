@@ -1,22 +1,24 @@
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@glee/ui'
 import type { UserRole } from '@glee/types'
+import { canViewPayoutEarnings } from '../payouts/utils'
 
-type EventDetailTab = 'details' | 'complimentary' | 'attendants' | 'attendees' | 'chat' | 'reservations'
+type EventDetailTab = 'details' | 'earnings' | 'complimentary' | 'attendants' | 'attendees' | 'chat' | 'reservations'
 
 interface EventDetailTabsProps {
   eventId: string
   activeTab: EventDetailTab
   userRole: UserRole
-  onSelectLocalTab?: (tab: 'details' | 'complimentary' | 'attendants' | 'chat' | 'reservations') => void
+  onSelectLocalTab?: (tab: 'details' | 'earnings' | 'complimentary' | 'attendants' | 'chat' | 'reservations') => void
 }
 
 export default function EventDetailTabs({ eventId, activeTab, userRole, onSelectLocalTab }: EventDetailTabsProps) {
   const navigate = useNavigate()
   const canIssueComplimentaryTickets = ['super_admin', 'admin', 'vendor'].includes(userRole)
   const canManageAttendants = ['super_admin', 'admin', 'vendor'].includes(userRole)
+  const canViewEarnings = canViewPayoutEarnings(userRole)
 
-  function selectLocal(tab: 'details' | 'complimentary' | 'attendants' | 'chat' | 'reservations') {
+  function selectLocal(tab: 'details' | 'earnings' | 'complimentary' | 'attendants' | 'chat' | 'reservations') {
     if (activeTab === 'attendees') {
       navigate(`/dashboard/events/${eventId}`, tab === 'details' ? undefined : { state: { tab } })
       return
@@ -31,6 +33,11 @@ export default function EventDetailTabs({ eventId, activeTab, userRole, onSelect
           <EventDetailTabButton active={activeTab === 'details'} onClick={() => selectLocal('details')}>
             Details
           </EventDetailTabButton>
+          {canViewEarnings && (
+            <EventDetailTabButton active={activeTab === 'earnings'} onClick={() => selectLocal('earnings')}>
+              Earnings
+            </EventDetailTabButton>
+          )}
           {canIssueComplimentaryTickets && (
             <EventDetailTabButton active={activeTab === 'complimentary'} onClick={() => selectLocal('complimentary')}>
               Complimentary Tickets

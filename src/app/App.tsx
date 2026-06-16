@@ -44,6 +44,7 @@ const BookingChatsPage = lazy(() => import('../routes/booking-chats/index'))
 const MenuPricingPage    = lazy(() => import('../routes/menu-pricing/index'))
 const SalesReportsPage   = lazy(() => import('../routes/sales-reports/index'))
 const FinancialsPage     = lazy(() => import('../routes/financials/index'))
+const PayoutsPage        = lazy(() => import('../routes/payouts/index'))
 const CalendarPage       = lazy(() => import('../routes/calendar/index'))
 const SettingsPage       = lazy(() => import('../routes/settings/index'))
 const UsersPage          = lazy(() => import('../routes/users/index'))
@@ -70,10 +71,11 @@ const EVENT_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
 const BOOKINGS_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'customer_support']
 const BOOKING_EVENT_ROLES: UserRole[] = ['vendor', 'vendor_staff', 'admin', 'customer_support']
 const RESERVATION_ROLES: UserRole[] = [...ADMIN_ROLES, 'operations_manager', 'vendor', 'vendor_staff']
-const LOCATION_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff']
+const LOCATION_ROLES: UserRole[] = [...ADMIN_ROLES]
 const MENU_PRICING_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff']
 const SALES_REPORT_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'finance']
 const FINANCIALS_ROLES: UserRole[] = [...ADMIN_ROLES, 'finance']
+const PAYOUTS_ROLES: UserRole[] = [...ADMIN_ROLES, 'finance', 'vendor', 'vendor_staff']
 const CALENDAR_ROLES: UserRole[] = [...ADMIN_ROLES, 'operations_manager']
 
 function PageSkeleton() {
@@ -196,6 +198,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={FINANCIALS_ROLES}>
               <FinancialsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/payouts"
+          element={
+            <ProtectedRoute roles={PAYOUTS_ROLES}>
+              <PayoutsPage />
             </ProtectedRoute>
           }
         />
