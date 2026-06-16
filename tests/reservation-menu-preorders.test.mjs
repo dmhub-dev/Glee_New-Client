@@ -118,9 +118,18 @@ test('location menu mutations invalidate venue list caches', async () => {
 test('menu pricing page manages location menu items alongside event menu items', async () => {
   const source = await readFile(new URL('../src/routes/menu-pricing/index.tsx', import.meta.url), 'utf8')
 
-  assert.match(source, /useLocations/)
-  assert.match(source, /useLocationMenuItems/)
-  assert.match(source, /useCreateLocationMenuItem/)
-  assert.match(source, /useUpdateLocationMenuItem/)
+  assert.match(source, /useLocations\(/)
+  assert.match(source, /useLocationMenuItems\(/)
+  assert.match(source, /useCreateLocationMenuItem\(/)
+  assert.match(source, /useUpdateLocationMenuItem\(/)
   assert.match(source, /Venue Menu Items/)
+})
+
+test('menu pricing page handles venue menu item toggle failures and pending state', async () => {
+  const source = await readFile(new URL('../src/routes/menu-pricing/index.tsx', import.meta.url), 'utf8')
+
+  assert.match(source, /try\s*\{[\s\S]*updateLocationMenuItem\.mutateAsync/)
+  assert.match(source, /catch\s*\(\s*error\s*\)\s*\{[\s\S]*variant:\s*'destructive'/)
+  assert.match(source, /updateLocationMenuItem\.isPending/)
+  assert.match(source, /disabled=\{[^}]*updateLocationMenuItem\.isPending/)
 })

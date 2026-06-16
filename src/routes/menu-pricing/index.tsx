@@ -61,12 +61,16 @@ export default function MenuPricingPage() {
   }
 
   async function handleToggleLocationMenuItem(itemId: string, isActive: boolean) {
-    if (!selectedLocation) return
-    await updateLocationMenuItem.mutateAsync({
-      locationId: selectedLocation.id,
-      menuItemId: itemId,
-      payload: { isActive: !isActive },
-    })
+    if (!selectedLocation || updateLocationMenuItem.isPending) return
+    try {
+      await updateLocationMenuItem.mutateAsync({
+        locationId: selectedLocation.id,
+        menuItemId: itemId,
+        payload: { isActive: !isActive },
+      })
+    } catch (error) {
+      toast({ title: 'Could not update menu item', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
+    }
   }
 
   return (
@@ -92,6 +96,7 @@ export default function MenuPricingPage() {
               <p className="mt-1 text-sm text-admin-40">Food and drink choices saved as pre-order notes on table bookings.</p>
             </div>
             <select
+              aria-label="Venue menu location"
               value={selectedLocation?.id ?? ''}
               onChange={event => setSelectedLocationId(event.target.value)}
               className="h-10 rounded-lg border border-admin bg-admin-input px-3 text-sm text-foreground"
@@ -103,11 +108,11 @@ export default function MenuPricingPage() {
           </div>
 
           <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_160px]">
-            <Input value={menuForm.name} onChange={event => setMenuForm(current => ({ ...current, name: event.target.value }))} placeholder="Item name" className="bg-admin-input border-admin" />
-            <Input value={menuForm.category} onChange={event => setMenuForm(current => ({ ...current, category: event.target.value }))} placeholder="Category" className="bg-admin-input border-admin" />
-            <Input value={menuForm.price} onChange={event => setMenuForm(current => ({ ...current, price: event.target.value }))} type="number" min={0} placeholder="Price" className="bg-admin-input border-admin" />
+            <Input aria-label="Venue menu item name" value={menuForm.name} onChange={event => setMenuForm(current => ({ ...current, name: event.target.value }))} placeholder="Item name" className="bg-admin-input border-admin" />
+            <Input aria-label="Venue menu item category" value={menuForm.category} onChange={event => setMenuForm(current => ({ ...current, category: event.target.value }))} placeholder="Category" className="bg-admin-input border-admin" />
+            <Input aria-label="Venue menu item price" value={menuForm.price} onChange={event => setMenuForm(current => ({ ...current, price: event.target.value }))} type="number" min={0} placeholder="Price" className="bg-admin-input border-admin" />
           </div>
-          <Textarea value={menuForm.description} onChange={event => setMenuForm(current => ({ ...current, description: event.target.value }))} placeholder="Description" className="mt-3 min-h-20 border-admin bg-admin-input" />
+          <Textarea aria-label="Venue menu item description" value={menuForm.description} onChange={event => setMenuForm(current => ({ ...current, description: event.target.value }))} placeholder="Description" className="mt-3 min-h-20 border-admin bg-admin-input" />
           <Button onClick={handleCreateLocationMenuItem} disabled={!selectedLocation || createLocationMenuItem.isPending} className="mt-3 gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
             <Plus className="h-4 w-4" />
             Add Venue Menu Item
@@ -128,7 +133,7 @@ export default function MenuPricingPage() {
                   <p className="font-mono text-sm font-semibold text-neon-pink">{money(Number(item.price))}</p>
                 </div>
                 {item.description && <p className="mt-2 line-clamp-2 text-xs text-admin-40">{item.description}</p>}
-                <Button size="sm" variant="ghost" onClick={() => handleToggleLocationMenuItem(item.id, item.isActive)} className="mt-3 gap-1.5 text-xs text-admin-60 hover:bg-admin-input">
+                <Button size="sm" variant="ghost" disabled={updateLocationMenuItem.isPending} onClick={() => handleToggleLocationMenuItem(item.id, item.isActive)} className="mt-3 gap-1.5 text-xs text-admin-60 hover:bg-admin-input">
                   <Save className="h-3.5 w-3.5" />
                   {item.isActive ? 'Deactivate' : 'Activate'}
                 </Button>
