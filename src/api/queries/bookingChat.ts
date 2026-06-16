@@ -1,20 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   canOpenBookingChat,
-  ensureBookingChatThread,
-  getBookingChatMessagesFromStorage,
-  getBookingChatThreadsFromStorage,
-  markBookingChatRead,
-  reopenBookingChatThread,
-  resolveBookingChatThread,
-  sendBookingChatMessage,
   type BookingChatMessage,
   type BookingChatMessageDraft,
   type BookingChatReservationSummary,
-  type BookingChatStorageLike,
   type BookingChatThread,
   type BookingChatViewerType,
 } from '../../lib/chat/bookingChatStorage'
+import { apiFetch } from '../client'
 
 export type {
   BookingChatMessage,
@@ -32,72 +25,86 @@ export {
 
 export const bookingChatKeys = {
   all: ['booking-chat'] as const,
-  threads: () => ['booking-chat', 'threads'] as const,
+  threads: (status?: 'OPEN' | 'RESOLVED' | 'ALL') => ['booking-chat', 'threads', status ?? 'ALL'] as const,
   thread: (reservationId: string) => ['booking-chat', 'thread', reservationId] as const,
   messages: (reservationId: string) => ['booking-chat', 'messages', reservationId] as const,
 }
 
-function browserBookingChatStorage(): BookingChatStorageLike | null {
-  if (typeof window === 'undefined') return null
-
-  try {
-    return window.localStorage
-  } catch {
-    return null
-  }
+interface BookingChatResponse<T> {
+  success: boolean
+  message?: string
+  data: T
 }
 
-function requireStorage(): BookingChatStorageLike {
-  const storage = browserBookingChatStorage()
-  if (!storage) throw new Error('Booking chat storage is unavailable in this browser.')
-  return storage
-}
-
-export async function listBookingChatThreads(): Promise<BookingChatThread[]> {
-  return getBookingChatThreadsFromStorage(browserBookingChatStorage())
+export async function listBookingChatThreads(status: 'OPEN' | 'RESOLVED' | 'ALL' = 'ALL'): Promise<BookingChatThread[]> {
+  const params = new URLSearchParams()
+  if (status !== 'ALL') params.set('status', status)
+  const query = params.toString()
+  return apiFetch<BookingChatResponse<BookingChatThread[]>>(`/api/v1/booking-chats${query ? `?${query}` : ''}`)
+    .then(response => response.data ?? [])
 }
 
 export async function getBookingChatThread(
   reservation: BookingChatReservationSummary | null | undefined,
 ): Promise<BookingChatThread | null> {
   if (!canOpenBookingChat(reservation)) return null
-
-  const storage = browserBookingChatStorage()
-  if (!storage || !reservation) return null
-
-  return ensureBookingChatThread(storage, reservation)
+  if (!reservation) return null
+  return apiFetch<BookingChatResponse<BookingChatThread>>(`/api/v1/reservations/${encodeURIComponent(reservation.id)}/chat`)
+    .then(response => response.data)
 }
 
 export async function getBookingChatMessages(reservationId: string): Promise<BookingChatMessage[]> {
-  return getBookingChatMessagesFromStorage(browserBookingChatStorage(), reservationId)
+  return apiFetch<BookingChatResponse<BookingChatMessage[]>>(`/api/v1/reservations/${encodeURIComponent(reservationId)}/chat/messages`)
+    .then(response => response.data ?? [])
 }
 
 export async function sendBookingChatMessageMutation(params: {
   reservation: BookingChatReservationSummary
   draft: BookingChatMessageDraft
 }): Promise<BookingChatMessage> {
-  return sendBookingChatMessage(requireStorage(), params.reservation, params.draft)
+  return apiFetch<BookingChatResponse<BookingChatMessage>>(
+    `/api/v1/reservations/${encodeURIComponent(params.reservation.id)}/chat/messages`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ body: params.draft.body }),
+    },
+  ).then(response => response.data)
 }
 
 export async function markBookingChatReadMutation(params: {
   reservationId: string
   viewer: BookingChatViewerType
 }): Promise<BookingChatThread | null> {
-  return markBookingChatRead(requireStorage(), params.reservationId, params.viewer)
+  return apiFetch<BookingChatResponse<BookingChatThread>>(
+    `/api/v1/reservations/${encodeURIComponent(params.reservationId)}/chat/read`,
+    { method: 'POST' },
+  ).then(response => response.data)
 }
 
 export async function resolveBookingChatThreadMutation(reservationId: string): Promise<BookingChatThread | null> {
-  return resolveBookingChatThread(requireStorage(), reservationId)
+  return apiFetch<BookingChatResponse<BookingChatThread>>(
+    `/api/v1/reservations/${encodeURIComponent(reservationId)}/chat/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'RESOLVED' }),
+    },
+  ).then(response => response.data)
 }
 
 export async function reopenBookingChatThreadMutation(reservationId: string): Promise<BookingChatThread | null> {
-  return reopenBookingChatThread(requireStorage(), reservationId)
+  return apiFetch<BookingChatResponse<BookingChatThread>>(
+    `/api/v1/reservations/${encodeURIComponent(reservationId)}/chat/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'OPEN' }),
+    },
+  ).then(response => response.data)
 }
 
-export function useBookingChatThreads() {
+export function useBookingChatThreads(status: 'OPEN' | 'RESOLVED' | 'ALL' = 'ALL') {
   return useQuery({
-    queryKey: bookingChatKeys.threads(),
-    queryFn: listBookingChatThreads,
+    queryKey: bookingChatKeys.threads(status),
+    queryFn: () => listBookingChatThreads(status),
     refetchInterval: 4000,
     refetchIntervalInBackground: false,
   })
@@ -147,7 +154,7 @@ export function useMarkBookingChatRead() {
   return useMutation({
     mutationFn: markBookingChatReadMutation,
     onSuccess: (_, { reservationId }) => {
-      queryClient.invalidateQueries({ queryKey: bookingChatKeys.threads() })
+      queryClient.invalidateQueries({ queryKey: bookingChatKeys.all })
       queryClient.invalidateQueries({ queryKey: bookingChatKeys.thread(reservationId) })
     },
   })

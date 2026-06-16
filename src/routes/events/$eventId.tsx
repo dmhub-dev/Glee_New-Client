@@ -7,8 +7,8 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminUser } from '../../app/providers'
 import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories, useLocations } from '@glee/api'
-import { Button, Input, Textarea, Label, Skeleton, useToast } from '@glee/ui'
-import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
+import { Button, Input, Textarea, Label, Skeleton, Switch, useToast } from '@glee/ui'
+import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, ShieldCheck, Table2, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
 import type { Location } from '@glee/api'
 import { splitBackendDateTime, toDateTimeLocalInputValue } from '@glee/utils'
@@ -358,6 +358,7 @@ export default function EventFormPage() {
   const [portraits,  setPortraits]  = useState<{ url: string; file?: File }[]>([])
   const [mediums,    setMediums]    = useState<{ url: string; file?: File }[]>([])
   const [eventDurationMode, setEventDurationMode] = useState<'single' | 'multi'>('single')
+  const [setupReservationsAfterSave, setSetupReservationsAfterSave] = useState(false)
   const posterInputRef  = useRef<HTMLInputElement>(null)
   const posterTargetRef = useRef<'landscape' | 'portrait' | 'medium'>('landscape')
 
@@ -392,6 +393,7 @@ export default function EventFormPage() {
   const { fields: menuFields, append: appendMenu, remove: removeMenu } = useFieldArray({ control, name: 'menuItems' })
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({ control, name: 'schedules' })
   const formValues = watch()
+  const selectedLocation = locationsData?.find(location => location.id === formValues.locationId)
 
   function addTierToWave(waveIndex: number) {
     const waves = [...(formValues.ticketWaves ?? [])]
@@ -591,16 +593,21 @@ export default function EventFormPage() {
     }
 
     try {
+      let savedEvent: Event
       if (isNew) {
-        await createMutation.mutateAsync(payload)
+        savedEvent = await createMutation.mutateAsync(payload)
       } else {
-        await updateMutation.mutateAsync({ id: eventId!, data: payload })
+        savedEvent = await updateMutation.mutateAsync({ id: eventId!, data: payload })
       }
       toast({
         title: isVendorRole
           ? (isNew ? 'Event submitted for approval' : 'Event updated')
           : asDraft ? 'Event saved as draft' : values.status === 'active' ? 'Event published' : 'Event saved',
       })
+      if (setupReservationsAfterSave && selectedLocation?.bookingEnabled) {
+        navigate(`/dashboard/events/${savedEvent.id}`, { state: { tab: 'reservations' } })
+        return
+      }
       navigate('/dashboard/events')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Please check the event details and try again.'
@@ -905,6 +912,42 @@ export default function EventFormPage() {
                   {errors.locationId && <p className="text-xs text-red-400">{errors.locationId.message}</p>}
                 </div>
               </div>
+            </section>
+
+            {/* Table reservations */}
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-pink/10 text-neon-pink">
+                    <Table2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-heading font-bold text-sm text-foreground">Table Reservations</h2>
+                    <p className="mt-1 text-xs leading-5 text-admin-40">
+                      Send this event to reservation setup after saving so attendees can add a table booking during ticket checkout.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={setupReservationsAfterSave}
+                  onCheckedChange={setSetupReservationsAfterSave}
+                  disabled={!selectedLocation?.bookingEnabled}
+                  className="data-[state=checked]:!bg-neon-pink"
+                />
+              </div>
+              {!selectedLocation ? (
+                <p className="rounded-xl border border-admin bg-admin-overlay px-4 py-3 text-xs text-admin-40">
+                  Select a location before enabling event table reservations.
+                </p>
+              ) : selectedLocation.bookingEnabled ? (
+                <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-300">
+                  {selectedLocation.name} accepts table reservations. After saving, add event-specific reservation slots for attendees.
+                </p>
+              ) : (
+                <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+                  This location does not currently accept table reservations. Enable reservation setup on the location before attaching tables to this event.
+                </p>
+              )}
             </section>
 
             {/* Media */}
