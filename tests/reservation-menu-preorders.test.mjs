@@ -114,3 +114,13 @@ test('location menu mutations invalidate venue list caches', async () => {
   assert.match(source, /venues:\s*\(filters\?: ReservationVenuesFilters\)\s*=>\s*\[\.\.\.reservationKeys\.venuesRoot,\s*filters \?\? \{\}\]\s+as const/)
   assert.equal((source.match(/invalidateQueries\(\{\s*queryKey:\s*reservationKeys\.venuesRoot\s*\}\)/g) ?? []).length, 2)
 })
+
+test('menu pricing page manages location menu items alongside event menu items', async () => {
+  const source = await readFile(new URL('../src/routes/menu-pricing/index.tsx', import.meta.url), 'utf8')
+
+  assert.match(source, /useLocations/)
+  assert.match(source, /useLocationMenuItems/)
+  assert.match(source, /useCreateLocationMenuItem/)
+  assert.match(source, /useUpdateLocationMenuItem/)
+  assert.match(source, /Venue Menu Items/)
+})
