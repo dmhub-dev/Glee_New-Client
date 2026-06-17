@@ -36,7 +36,7 @@ import { normalizedReservationPreOrderMenu } from '../../components/reservations
 import {
   ArrowLeft, Pencil, Trash2, MapPin, Users, Building2, Wind, ParkingCircle,
   CalendarCheck, FileText, Image, ImagePlus, Save, ShieldCheck, ShieldX, X as XIcon,
-  CalendarDays, MessageCircle, Search, Table2,
+  ArrowUpDown, CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Search, Table2,
 } from 'lucide-react'
 import { cn } from '@glee/ui'
 
@@ -45,6 +45,8 @@ const PLACEHOLDER = '/glee-image-fallback.svg'
 type CanonicalVenueType = 'CLUB' | 'RESTAURANT' | 'OTHER'
 type LocationDetailTab = 'overview' | 'bookings' | 'setup' | 'hostesses' | 'chats' | 'settings'
 type BookingStatusFilter = 'ALL' | ReservationStatus
+type BookingSortKey = 'customer' | 'email' | 'phone' | 'guests' | 'table' | 'status' | 'paymentMethod' | 'paymentStatus' | 'deposit' | 'minimumSpend' | 'preOrder' | 'startDateTime'
+type SortDirection = 'asc' | 'desc'
 
 const LOCATION_DETAIL_TABS: Array<{ label: string; value: LocationDetailTab }> = [
   { label: 'Overview', value: 'overview' },
@@ -154,6 +156,18 @@ function customerContact(reservation: Reservation) {
   return reservation.user?.email ?? reservation.guestEmail ?? reservation.user?.phone ?? reservation.guestPhone ?? 'No contact'
 }
 
+function customerEmail(reservation: Reservation) {
+  return reservation.user?.email ?? reservation.guestEmail ?? '-'
+}
+
+function customerPhone(reservation: Reservation) {
+  return reservation.user?.phone ?? reservation.guestPhone ?? '-'
+}
+
+function paymentMethodLabel(reservation: Reservation) {
+  return reservation.paymentMethod ?? reservation.payment?.method ?? reservation.payments?.[0]?.method ?? 'UNKNOWN'
+}
+
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('en-KE', {
     weekday: 'short',
@@ -183,15 +197,48 @@ function bookingSearchText(reservation: Reservation) {
     reservation.table?.name,
     reservation.tableCategory,
     customerName(reservation),
-    reservation.user?.email,
-    reservation.guestEmail,
-    reservation.user?.phone,
-    reservation.guestPhone,
+    customerEmail(reservation),
+    customerPhone(reservation),
   ].join(' ').toLowerCase()
 }
 
 function bookingChatUnread(reservation: Reservation, chatThreads: BookingChatThread[]) {
   return chatThreads.find(thread => thread.reservationId === reservation.id)?.unreadForStaff ?? 0
+}
+
+function bookingPreOrderTotal(reservation: Reservation) {
+  return normalizedReservationPreOrderMenu(reservation.preOrderMenu).reduce((sum, item) => sum + item.lineTotal, 0)
+}
+
+function bookingSortValue(reservation: Reservation, key: BookingSortKey) {
+  switch (key) {
+    case 'customer':
+      return customerName(reservation).toLowerCase()
+    case 'email':
+      return customerEmail(reservation).toLowerCase()
+    case 'phone':
+      return customerPhone(reservation).toLowerCase()
+    case 'guests':
+      return reservation.guestCount
+    case 'table':
+      return `${reservation.table?.name ?? ''} ${reservation.tableCategory}`.toLowerCase()
+    case 'status':
+      return reservation.status.toLowerCase()
+    case 'paymentMethod':
+      return paymentMethodLabel(reservation).toLowerCase()
+    case 'paymentStatus':
+      return paymentStatusLabel(reservation).toLowerCase()
+    case 'deposit':
+      return Number(reservation.depositAmount ?? 0)
+    case 'minimumSpend':
+      return Number(reservation.minimumSpend ?? 0)
+    case 'preOrder':
+      return bookingPreOrderTotal(reservation)
+    case 'startDateTime':
+      return new Date(reservation.startDateTime).getTime()
+    default:
+      return ''
+  }
 }
 
 function EditLocationPage({
@@ -1002,23 +1049,50 @@ function LocationBookingsPanel({ location }: { location: Location }) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<BookingStatusFilter>('ALL')
   const [date, setDate] = useState('')
+  const [sortKey, setSortKey] = useState<BookingSortKey>('startDateTime')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [page, setPage] = useState(1)
+  const pageSize = 10
   const { data, isLoading } = useAdminReservations({ locationId: location.id, page: 1, limit: 100 })
   const { data: chatThreads = [] } = useBookingChatThreads()
 
   const rows = useMemo(() => data?.items ?? [], [data?.items])
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return rows.filter(reservation => {
-      if (status !== 'ALL' && reservation.status !== status) return false
-      if (date && bookingDateKey(reservation.reservationDate || reservation.startDateTime) !== date) return false
-      if (!query) return true
-      return bookingSearchText(reservation).includes(query)
-    })
-  }, [date, rows, search, status])
+    return rows
+      .filter(reservation => {
+        if (status !== 'ALL' && reservation.status !== status) return false
+        if (date && bookingDateKey(reservation.reservationDate || reservation.startDateTime) !== date) return false
+        if (!query) return true
+        return bookingSearchText(reservation).includes(query)
+      })
+      .sort((a, b) => {
+        const aValue = bookingSortValue(a, sortKey)
+        const bValue = bookingSortValue(b, sortKey)
+        const result = aValue > bValue ? 1 : aValue < bValue ? -1 : 0
+        return sortDirection === 'asc' ? result : -result
+      })
+  }, [date, rows, search, sortDirection, sortKey, status])
 
   const confirmedCount = rows.filter(reservation => reservation.status === 'CONFIRMED' || reservation.status === 'SEATED').length
   const totalGuests = rows.reduce((sum, reservation) => sum + reservation.guestCount, 0)
   const depositTotal = rows.reduce((sum, reservation) => sum + Number(reservation.depositAmount ?? 0), 0)
+  const preOrderTotal = rows.reduce((sum, reservation) => sum + bookingPreOrderTotal(reservation), 0)
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
+  const pagedRows = filteredRows.slice((page - 1) * pageSize, page * pageSize)
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
+
+  function handleSort(nextSortKey: BookingSortKey) {
+    if (sortKey === nextSortKey) {
+      setSortDirection(direction => direction === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(nextSortKey)
+      setSortDirection('asc')
+    }
+  }
 
   return (
     <section className="space-y-5">
@@ -1032,109 +1106,213 @@ function LocationBookingsPanel({ location }: { location: Location }) {
         <InlineStat label="Deposits" value={money(depositTotal)} />
       </TabPageHeader>
 
-      <div className="rounded-xl border border-admin bg-admin-surface p-3 shadow-admin">
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_190px] xl:items-center">
+      <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="font-heading text-lg font-black text-foreground">{location.name} bookings</h2>
+            <p className="mt-1 text-sm text-admin-40">{filteredRows.length.toLocaleString()} booking record{filteredRows.length === 1 ? '' : 's'}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <BookingSummaryCard label="Guests" value={totalGuests.toLocaleString()} />
+            <BookingSummaryCard label="Deposits" value={money(depositTotal)} />
+            <BookingSummaryCard label="Pre-orders" value={money(preOrderTotal)} />
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_220px_190px]">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-30" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-30" />
             <Input
               value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="Search reference, table, customer, email, or phone..."
-              className="border-admin bg-admin-input pl-8"
+              onChange={event => {
+                setSearch(event.target.value)
+                setPage(1)
+              }}
+              placeholder="Search name, email, phone, reference, or table..."
+              className="border-admin bg-admin-input pl-9"
             />
           </div>
-          <select value={status} onChange={event => setStatus(event.target.value as BookingStatusFilter)} className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+          <select
+            value={status}
+            onChange={event => {
+              setStatus(event.target.value as BookingStatusFilter)
+              setPage(1)
+            }}
+            className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground outline-none"
+          >
             {BOOKING_STATUS_FILTERS.map(filter => (
               <option key={filter.value} value={filter.value}>{filter.label}</option>
             ))}
           </select>
-          <Input type="date" value={date} onChange={event => setDate(event.target.value)} className="border-admin bg-admin-input" />
+          <Input
+            type="date"
+            value={date}
+            onChange={event => {
+              setDate(event.target.value)
+              setPage(1)
+            }}
+            className="border-admin bg-admin-input"
+          />
         </div>
-      </div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-20 rounded-xl" />
-          <Skeleton className="h-20 rounded-xl" />
-          <Skeleton className="h-20 rounded-xl" />
-        </div>
-      ) : filteredRows.length === 0 ? (
-        <EmptyPanel icon={CalendarDays} title="No bookings found" description="Bookings for this location will appear here once customers reserve tables." />
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin">
-          <div className="flex flex-col gap-2 border-b border-admin px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-foreground">{filteredRows.length.toLocaleString()} booking{filteredRows.length === 1 ? '' : 's'}</p>
-              <p className="mt-1 text-xs text-admin-40">{totalGuests.toLocaleString()} guest{totalGuests === 1 ? '' : 's'} across the current result set.</p>
-            </div>
-            <Badge className="w-fit border-admin bg-admin-overlay text-admin-50">Location only</Badge>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[940px] text-sm">
-              <thead className="bg-admin-overlay/70 text-left text-xs uppercase tracking-wide text-admin-40">
+        <div className="mt-5 overflow-x-auto rounded-xl border border-admin">
+          <table className="w-full min-w-[1360px] text-sm">
+            <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
+              <tr>
+                <BookingSortableTh label="Full name" sortKey="customer" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Email" sortKey="email" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Phone" sortKey="phone" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Guests" sortKey="guests" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Table / category" sortKey="table" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Pre-order" sortKey="preOrder" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <th className="px-4 py-3 font-medium">Chat</th>
+                <BookingSortableTh label="Status" sortKey="status" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Payment method" sortKey="paymentMethod" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Paid status" sortKey="paymentStatus" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Deposit paid" sortKey="deposit" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Minimum spend" sortKey="minimumSpend" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <BookingSortableTh label="Booking time" sortKey="startDateTime" activeKey={sortKey} direction={sortDirection} onSort={handleSort} />
+                <th className="px-4 py-3 text-right font-medium">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-admin">
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <tr key={index}>
+                    <td colSpan={14} className="px-4 py-3"><Skeleton className="h-8 rounded-lg" /></td>
+                  </tr>
+                ))
+              ) : pagedRows.length === 0 ? (
                 <tr>
-                  <th className="px-4 py-3 font-medium">Guest</th>
-                  <th className="px-4 py-3 font-medium">Booking</th>
-                  <th className="px-4 py-3 font-medium">Service Time</th>
-                  <th className="px-4 py-3 font-medium">Spend</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                  <td colSpan={14} className="px-4 py-12 text-center">
+                    <CalendarDays className="mx-auto h-8 w-8 text-admin-30" />
+                    <p className="mt-3 text-sm font-medium text-admin-70">No bookings found</p>
+                    <p className="mt-1 text-xs text-admin-40">Bookings for this location will appear here once customers reserve tables.</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-admin">
-            {filteredRows.map(reservation => {
-              const unread = bookingChatUnread(reservation, chatThreads)
-              const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
-              const preOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
-              const paymentStatus = paymentStatusLabel(reservation)
-              return (
-                <tr key={reservation.id} className="transition hover:bg-admin-overlay/45">
-                  <td className="px-4 py-3">
-                    <p className="font-heading text-sm font-black text-foreground">{customerName(reservation)}</p>
-                    <p className="mt-1 max-w-[220px] truncate text-xs text-admin-40">{customerContact(reservation)}</p>
-                    <p className="mt-1 font-mono text-[11px] text-admin-30">#{reservation.reference}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-admin-80">{reservation.table?.name ?? reservation.tableCategory}</p>
-                    <p className="mt-1 text-xs text-admin-40">{reservation.guestCount} guest{reservation.guestCount === 1 ? '' : 's'}</p>
-                  </td>
-                  <td className="px-4 py-3 text-admin-50">
-                    <p>{formatDateTime(reservation.startDateTime)}</p>
-                    <p className="mt-1 text-xs text-admin-40">Until {formatShortDateTime(reservation.endDateTime)}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="font-mono text-sm font-semibold text-foreground">{money(reservation.depositAmount)}</p>
-                    <p className="mt-1 text-xs text-admin-40">Pre-order {money(preOrderTotal)}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col items-start gap-1.5">
-                      <Badge className={statusTone(reservation.status)}>{statusLabel(reservation.status)}</Badge>
-                      <Badge className={paymentStatusTone(paymentStatus)}>{statusLabel(paymentStatus)}</Badge>
-                      {unread > 0 && <Badge className="border-neon-pink/25 bg-neon-pink/10 text-neon-pink">{unread} unread</Badge>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      {canOpenBookingChat(reservation) && (
-                        <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/dashboard/booking-chats?reservationId=${reservation.id}`)} className="gap-1.5 border-admin bg-admin-overlay text-admin-60 hover:text-neon-pink">
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          Chat
-                        </Button>
+              ) : pagedRows.map(reservation => {
+                const unread = bookingChatUnread(reservation, chatThreads)
+                const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
+                const preOrderCount = preOrderItems.reduce((sum, item) => sum + item.quantity, 0)
+                const reservationPreOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
+                const paymentStatus = paymentStatusLabel(reservation)
+                return (
+                  <tr key={reservation.id} className="hover:bg-admin-overlay/60">
+                    <td className="px-4 py-3 font-medium text-admin-90">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/dashboard/reservations/${reservation.id}`)}
+                        className="block max-w-[220px] truncate text-left transition hover:text-neon-pink"
+                      >
+                        {customerName(reservation)}
+                      </button>
+                      <span className="mt-1 block font-mono text-xs text-admin-30">#{reservation.reference}</span>
+                    </td>
+                    <td className="px-4 py-3 text-admin-50">{customerEmail(reservation)}</td>
+                    <td className="px-4 py-3 text-admin-50">{customerPhone(reservation)}</td>
+                    <td className="px-4 py-3 font-mono text-neon-pink">{reservation.guestCount}</td>
+                    <td className="px-4 py-3 text-admin-60">
+                      <p className="font-medium text-admin-80">{reservation.table?.name ?? reservation.tableCategory}</p>
+                      <p className="mt-1 text-xs text-admin-40">{reservation.tableCategory}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      {preOrderItems.length ? (
+                        <Badge className="whitespace-nowrap border-neon-pink/25 bg-neon-pink/10 text-neon-pink">
+                          {preOrderCount} item{preOrderCount === 1 ? '' : 's'} · {money(reservationPreOrderTotal)}
+                        </Badge>
+                      ) : (
+                        <span className="text-admin-30">-</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {canOpenBookingChat(reservation) ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/dashboard/booking-chats?reservationId=${reservation.id}`)}
+                          className="inline-flex items-center gap-2 rounded-full border border-neon-pink/30 bg-neon-pink/10 px-3 py-1.5 text-xs font-semibold text-neon-pink transition hover:border-neon-pink/60 hover:bg-neon-pink/15"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          {unread > 0 ? `${unread} unread` : 'Open'}
+                        </button>
+                      ) : (
+                        <span className="text-admin-30">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className={statusTone(reservation.status)}>{statusLabel(reservation.status)}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className="border-admin bg-admin-input text-admin-60">{paymentMethodLabel(reservation).replaceAll('_', ' ')}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className={paymentStatusTone(paymentStatus)}>{statusLabel(paymentStatus)}</Badge>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-admin-70">{money(reservation.depositAmount)}</td>
+                    <td className="px-4 py-3 font-mono text-admin-70">{money(reservation.minimumSpend)}</td>
+                    <td className="px-4 py-3 text-admin-40">{formatDateTime(reservation.startDateTime)}</td>
+                    <td className="px-4 py-3 text-right">
                       <Button type="button" size="sm" onClick={() => navigate(`/dashboard/reservations/${reservation.id}`)} className="bg-neon-pink text-white hover:bg-neon-pink/90">
                         Open
                       </Button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-              </tbody>
-            </table>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-admin-40">
+            Showing {filteredRows.length === 0 ? 0 : (page - 1) * pageSize + 1} - {Math.min(page * pageSize, filteredRows.length)} of {filteredRows.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(value => Math.max(1, value - 1))} className="gap-1 border-admin bg-admin-input">
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Previous
+            </Button>
+            <span className="font-mono text-xs text-admin-50">Page {page} / {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(value => Math.min(totalPages, value + 1))} className="gap-1 border-admin bg-admin-input">
+              Next
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
-      )}
+      </section>
     </section>
+  )
+}
+
+function BookingSummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-admin bg-admin-overlay px-4 py-3">
+      <p className="text-xs text-admin-40">{label}</p>
+      <p className="mt-1 font-heading text-xl font-black text-foreground">{value}</p>
+    </div>
+  )
+}
+
+function BookingSortableTh({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string
+  sortKey: BookingSortKey
+  activeKey: BookingSortKey
+  direction: SortDirection
+  onSort: (key: BookingSortKey) => void
+}) {
+  return (
+    <th className="px-4 py-3 font-medium">
+      <button type="button" onClick={() => onSort(sortKey)} className="flex items-center gap-1.5 transition hover:text-admin-70">
+        {label}
+        <ArrowUpDown className={activeKey === sortKey ? 'h-3.5 w-3.5 text-neon-pink' : 'h-3.5 w-3.5'} />
+        {activeKey === sortKey && <span className="normal-case text-neon-pink">{direction}</span>}
+      </button>
+    </th>
   )
 }
 
