@@ -5,7 +5,7 @@ import type { Event } from '@glee/types'
 import { Button, Skeleton } from '@glee/ui'
 import { formatDateRange, formatTimeOnly } from '@glee/utils'
 
-const PLACEHOLDER = 'https://placehold.co/900x1200/0B0B10/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 function formatCarouselDate(startDate: string, endDate: string, startTime: string): string {
   const datePart = formatDateRange(

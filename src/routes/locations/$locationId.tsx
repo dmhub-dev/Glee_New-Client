@@ -31,7 +31,7 @@ import {
 } from 'lucide-react'
 
 const MAX_PHOTOS = 6
-const PLACEHOLDER = 'https://placehold.co/800x500/141419/FF2D8F?text=Location'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 type CanonicalVenueType = 'CLUB' | 'RESTAURANT' | 'OTHER'
 
 const SPACE_TYPES = [
@@ -439,7 +439,7 @@ export default function LocationDetailPage() {
       <AdminLayout title="Location not found" subtitle="">
         <div className="text-center py-20">
           <p className="text-admin-40 text-sm mb-4">This location doesn't exist or was deleted.</p>
-          <Button onClick={() => navigate('/dashboard/events?section=locations')} variant="ghost">← Back to Locations</Button>
+          <Button onClick={() => navigate('/dashboard/locations')} variant="ghost">← Back to Locations</Button>
         </div>
       </AdminLayout>
     )
@@ -459,7 +459,7 @@ export default function LocationDetailPage() {
     try {
       await deleteMutation.mutateAsync(loc!.id)
       toast({ title: 'Location deleted' })
-      navigate('/dashboard/events?section=locations')
+      navigate('/dashboard/locations')
     } catch {
       toast({ title: 'Failed to delete location', variant: 'destructive' })
     }
@@ -509,7 +509,7 @@ export default function LocationDetailPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 rounded-2xl border border-admin bg-admin-surface p-4 shadow-admin sm:flex-row sm:items-center sm:justify-between">
           <button
-            onClick={() => navigate('/dashboard/events?section=locations')}
+            onClick={() => navigate('/dashboard/locations')}
             className="inline-flex w-fit items-center gap-2 rounded-full border border-admin-md bg-admin-input px-4 py-2 text-sm font-medium text-admin-50 transition-colors hover:bg-admin-overlay hover:text-admin-80"
           >
             <ArrowLeft className="h-4 w-4" />

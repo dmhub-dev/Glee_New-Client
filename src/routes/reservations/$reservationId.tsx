@@ -1,6 +1,19 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Badge, Button, Input, Skeleton, Textarea, useToast } from '@glee/ui'
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Skeleton,
+  Textarea,
+  useToast,
+} from '@glee/ui'
 import {
   ArrowLeft,
   CalendarClock,
@@ -36,7 +49,7 @@ const TRANSITIONS: Partial<Record<ReservationStatus, ReservationStatus[]>> = {
   SEATED: ['COMPLETED', 'CANCELLED'],
 }
 
-const PLACEHOLDER = 'https://placehold.co/900x560/141419/FF2D8F?text=Glee+Booking'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 type BookingDetailTab = 'overview' | 'payment' | 'preorder' | 'chat' | 'feedback' | 'history'
 
 const BOOKING_DETAIL_TABS: Array<{ label: string; value: BookingDetailTab }> = [
@@ -134,6 +147,7 @@ export default function AdminReservationDetailPage() {
   const nextStatuses = useMemo(() => reservation ? TRANSITIONS[reservation.status] ?? [] : [], [reservation])
   const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview')
   const [historyDate, setHistoryDate] = useState('')
+  const [statusDialog, setStatusDialog] = useState<{ status: ReservationStatus; reason: string } | null>(null)
   const { data: historyData, isLoading: isHistoryLoading } = useAdminReservations({ page: 1, limit: 100 })
   const historyReservations = useMemo(() => historyData?.items ?? [], [historyData?.items])
   const previousBookings = useMemo(() => {
@@ -150,18 +164,28 @@ export default function AdminReservationDetailPage() {
       .sort((a, b) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime())
   }, [historyDate, historyReservations, reservation])
 
-  async function handleStatus(status: ReservationStatus) {
+  async function submitStatus(status: ReservationStatus, reason?: string) {
     if (!reservation) return
-    const reason = status === 'CANCELLED' || status === 'NO_SHOW'
-      ? window.prompt(status === 'CANCELLED' ? 'Cancellation reason?' : 'No-show note?') ?? undefined
-      : undefined
-    if ((status === 'CANCELLED' || status === 'NO_SHOW') && reason === undefined) return
     try {
       await updateStatus.mutateAsync({ id: reservation.id, status, reason })
       toast({ title: 'Booking updated', description: `Status changed to ${statusLabel(status)}.` })
     } catch (error) {
       toast({ title: 'Could not update booking', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
     }
+  }
+
+  async function handleStatus(status: ReservationStatus) {
+    if (status === 'CANCELLED' || status === 'NO_SHOW') {
+      setStatusDialog({ status, reason: '' })
+      return
+    }
+    await submitStatus(status)
+  }
+
+  async function handleReasonedStatus() {
+    if (!statusDialog) return
+    await submitStatus(statusDialog.status, statusDialog.reason.trim() || undefined)
+    setStatusDialog(null)
   }
 
   if (isLoading) {
@@ -277,6 +301,35 @@ export default function AdminReservationDetailPage() {
           </section>
         )}
       </div>
+      <Dialog
+        open={Boolean(statusDialog)}
+        onOpenChange={open => {
+          if (!open && !updateStatus.isPending) setStatusDialog(null)
+        }}
+      >
+        <DialogContent className="border-admin bg-admin-surface text-foreground">
+          <DialogHeader>
+            <DialogTitle>{statusDialog?.status === 'NO_SHOW' ? 'Mark as no-show?' : 'Cancel booking?'}</DialogTitle>
+            <DialogDescription>
+              Add the operational note that should be stored with this booking status change.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={statusDialog?.reason ?? ''}
+            onChange={event => setStatusDialog(current => current ? { ...current, reason: event.target.value } : current)}
+            placeholder={statusDialog?.status === 'NO_SHOW' ? 'Example: Guest did not arrive by cutoff time.' : 'Example: Customer requested cancellation.'}
+            className="min-h-[120px] resize-none border-admin bg-admin-input"
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setStatusDialog(null)} disabled={updateStatus.isPending}>
+              Keep booking
+            </Button>
+            <Button type="button" onClick={handleReasonedStatus} disabled={updateStatus.isPending} className="bg-neon-pink text-white hover:bg-neon-pink/90">
+              {updateStatus.isPending ? 'Updating...' : 'Update booking'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }

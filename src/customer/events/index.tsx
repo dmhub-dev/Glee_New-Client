@@ -13,7 +13,7 @@ import { VenueCarouselSection, VenueListSection, isClubOrRestaurantVenue } from 
 type StatusFilter = 'active' | 'live' | 'sold_out' | 'cancelled'
 type ExploreContentType = 'events' | 'venues'
 
-const PLACEHOLDER = 'https://placehold.co/900x1200/050017/FF007A?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'active', label: 'Active' },
   { value: 'live', label: 'Live' },

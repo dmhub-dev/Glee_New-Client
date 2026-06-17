@@ -7,7 +7,7 @@ import { FeedbackCard, canReviewEventByDate, eventTicketFeedbackTargetId, eventT
 import CustomerLayout from '../CustomerLayout'
 import ReservationBookingsList from '../reservations/ReservationBookingsList'
 
-const PLACEHOLDER = 'https://placehold.co/900x600/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 function money(value: number) {
   return `KSh ${Math.max(0, value).toLocaleString()}`

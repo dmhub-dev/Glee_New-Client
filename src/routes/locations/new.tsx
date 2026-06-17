@@ -115,8 +115,6 @@ type TableDraft = {
   minimumSpend: number | ''
   depositType: DepositType
   depositValue: number | ''
-  hasCategoryPhoto: boolean
-  categoryPhoto?: { file: File; preview: string }
 }
 
 function newTableDraft(type: CanonicalVenueType = 'CLUB'): TableDraft {
@@ -131,7 +129,6 @@ function newTableDraft(type: CanonicalVenueType = 'CLUB'): TableDraft {
     minimumSpend: '',
     depositType: 'FLAT',
     depositValue: '',
-    hasCategoryPhoto: false,
   }
 }
 
@@ -251,17 +248,6 @@ export default function NewLocationPage() {
     })
   }
 
-  function setTableCategoryPhoto(id: string, file: File) {
-    updateTable(id, { categoryPhoto: { file, preview: URL.createObjectURL(file) } })
-  }
-
-  function handleTableCategoryPhotoChange(id: string, event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setTableCategoryPhoto(id, file)
-    event.target.value = ''
-  }
-
   function updateSlot(id: string, patch: Partial<UpsertReservationSlotPayload>) {
     setSlots(current => current.map(slot => slot.id === id ? { ...slot, ...patch } : slot))
   }
@@ -366,7 +352,7 @@ export default function NewLocationPage() {
         <div className="min-w-0 flex-1 space-y-6">
           <button
             type="button"
-            onClick={() => navigate('/dashboard/events?section=locations')}
+            onClick={() => navigate('/dashboard/locations')}
             className="flex items-center gap-2 rounded-full border border-admin-md bg-admin-input px-4 py-1.5 text-sm text-admin-40 transition-colors hover:bg-admin-overlay hover:text-admin-70"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -617,29 +603,6 @@ export default function NewLocationPage() {
                           <FieldError label="Table notes" htmlFor={`${table.id}-description`} className="md:col-span-3">
                             <Input id={`${table.id}-description`} value={table.description} onChange={event => updateTable(table.id, { description: event.target.value })} placeholder="Optional table notes shown internally" className="border-admin-md bg-admin-input" />
                           </FieldError>
-                          <label className="flex min-h-10 items-center gap-3 rounded-md border border-admin-md bg-admin-input px-3 text-sm text-admin-50 md:col-span-4">
-                            <input
-                              type="checkbox"
-                              checked={table.hasCategoryPhoto}
-                              onChange={event => updateTable(table.id, {
-                                hasCategoryPhoto: event.target.checked,
-                                categoryPhoto: event.target.checked ? table.categoryPhoto : undefined,
-                              })}
-                              className="h-4 w-4 rounded border-admin accent-neon-pink"
-                            />
-                            Add table category picture
-                          </label>
-                          {table.hasCategoryPhoto && (
-                            <div className="md:col-span-4">
-                              <TableCategoryPhotoPicker
-                                inputId={`${table.id}-category-photo`}
-                                photo={table.categoryPhoto}
-                                onFile={file => setTableCategoryPhoto(table.id, file)}
-                                onInputChange={event => handleTableCategoryPhotoChange(table.id, event)}
-                                onClear={() => updateTable(table.id, { categoryPhoto: undefined })}
-                              />
-                            </div>
-                          )}
                         </div>
                       </article>
                     ))}
@@ -698,7 +661,7 @@ export default function NewLocationPage() {
             )}
 
             <div className="sticky bottom-0 flex items-center justify-between border-t border-admin bg-admin-body py-4">
-              <button type="button" onClick={() => navigate('/dashboard/events?section=locations')} className="text-sm text-admin-30 transition-colors hover:text-admin-60">
+              <button type="button" onClick={() => navigate('/dashboard/locations')} className="text-sm text-admin-30 transition-colors hover:text-admin-60">
                 Discard changes
               </button>
               <Button type="submit" disabled={isSaving} className="gap-2 rounded-full bg-neon-pink px-6 font-semibold text-white hover:bg-neon-pink/90">
@@ -769,70 +732,6 @@ function RequiredMark() {
   return <span className="ml-1 text-neon-pink" aria-label="required">*</span>
 }
 
-function TableCategoryPhotoPicker({
-  inputId,
-  photo,
-  onFile,
-  onInputChange,
-  onClear,
-}: {
-  inputId: string
-  photo?: { file: File; preview: string }
-  onFile: (file: File) => void
-  onInputChange: (event: ChangeEvent<HTMLInputElement>) => void
-  onClear: () => void
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={inputId} className="text-xs text-admin-50">Upload table category picture</Label>
-      <div
-        onDragOver={event => event.preventDefault()}
-        onDrop={event => {
-          event.preventDefault()
-          const file = event.dataTransfer.files?.[0]
-          if (file) onFile(file)
-        }}
-        className={cn(
-          'group relative overflow-hidden rounded-2xl border border-dashed p-4 transition-colors',
-          photo ? 'border-neon-pink/40 bg-neon-pink/8' : 'border-admin-md bg-admin-input hover:border-neon-pink/45 hover:bg-admin-overlay',
-        )}
-      >
-        {photo ? (
-          <div className="flex items-center gap-4">
-            <img src={photo.preview} alt="" className="h-20 w-20 rounded-xl object-cover shadow-[0_12px_32px_rgba(0,0,0,0.24)]" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">{photo.file.name}</p>
-              <p className="mt-1 text-xs text-admin-40">This image will represent the table category once table media is supported.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center rounded-full bg-neon-pink px-3 text-xs font-semibold text-white transition hover:bg-neon-pink/90">
-                  Change image
-                </label>
-                <button type="button" onClick={onClear} className="inline-flex h-8 items-center rounded-full border border-admin px-3 text-xs font-semibold text-admin-50 transition hover:border-red-500/35 hover:text-red-400">
-                  Remove
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <label htmlFor={inputId} className="flex cursor-pointer flex-col items-center justify-center rounded-xl py-6 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-pink/12 text-neon-pink ring-1 ring-neon-pink/20 transition group-hover:scale-105">
-              <ImagePlus className="h-5 w-5" />
-            </span>
-            <span className="mt-3 text-sm font-semibold text-foreground">Drag an image here or click to upload</span>
-            <span className="mt-1 text-xs text-admin-40">JPG, PNG, or WebP for this table category.</span>
-          </label>
-        )}
-        <input
-          id={inputId}
-          className="sr-only"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={onInputChange}
-        />
-      </div>
-    </div>
-  )
-}
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (

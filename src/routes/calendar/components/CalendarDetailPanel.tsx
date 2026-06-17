@@ -20,7 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
   sold_out:  'Sold Out',
 }
 
-const PLACEHOLDER = 'https://placehold.co/600x400/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 interface CalendarDetailPanelProps {
   event: Event | null

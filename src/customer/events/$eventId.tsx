@@ -5,7 +5,6 @@ import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, 
 import { formatDateOnly, formatTimeOnly, splitBackendDateTime } from '@glee/utils'
 import { Calendar, CheckCircle2, MapPin, Share2, ShoppingBag, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
-import EventReservationPanel from './EventReservationPanel'
 import EventCheckoutTableBooking from '../../components/events/EventCheckoutTableBooking'
 import {
   combinedCheckoutTotal,
@@ -14,7 +13,7 @@ import {
   type CheckoutTableBookingSelection,
 } from '../../components/events/eventCheckoutTableBookingUtils'
 
-const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 type FeeType = 'PERCENTAGE' | 'FIXED'
 
 function money(value: number) {
@@ -445,8 +444,6 @@ export default function CustomerEventDetailPage() {
             </section>
 
             <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
-
-            <EventReservationPanel eventId={event.id} menuItems={event.menuItems} />
 
             {/* Menu add-on items — public style */}
             {showMenuAddons && (event.menuItems ?? []).length > 0 && (

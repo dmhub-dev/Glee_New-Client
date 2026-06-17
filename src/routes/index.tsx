@@ -330,7 +330,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <DataTile label="Club profile / locations" value={vendorLocations.length} detail="Locations used by your events" onClick={() => navigate('/dashboard/events?section=locations')} />
+                  <DataTile label="Club profile / locations" value={vendorLocations.length} detail="Locations used by your events" onClick={() => navigate('/dashboard/locations')} />
                   <DataTile label="Menu items uploaded" value={menuItems} detail="Food and drink items attached to your events" onClick={() => navigate('/dashboard/menu-pricing')} />
                   <DataTile label="Ticket waves" value={allTicketWaves.length || eventList.filter(event => event.ticketTiers.length > 0).length} detail={`${activeTicketWaves.length} active, ${upcomingTicketWaves.length} upcoming`} onClick={() => navigate('/dashboard/events')} />
                   <DataTile label="Ticket price groups" value={pricedTicketCategories} detail="Tiers configured across all waves" onClick={() => navigate('/dashboard/menu-pricing')} />
@@ -466,7 +466,7 @@ export default function DashboardPage() {
                   value={locationList.length}
                   detail={`${activeLocations.length} currently used by events`}
                   icon={MapPin}
-                  onClick={() => navigate('/dashboard/events?section=locations')}
+                  onClick={() => navigate('/dashboard/locations')}
                 />
                 <StatCard
                   label="Ticket Bookings"
@@ -691,7 +691,7 @@ export default function DashboardPage() {
                 value={locationList.length}
                 detail={`${categoryList.length} event categories`}
                 icon={MapPin}
-                onClick={() => navigate('/dashboard/events?section=locations')}
+                onClick={() => navigate('/dashboard/locations')}
               />
             </>
           )}
@@ -920,7 +920,7 @@ export default function DashboardPage() {
             label="Configured Locations"
             value={locationList.length}
             detail={`${locationList.filter(location => location.isParkingAvailable).length} with parking`}
-            onClick={() => navigate('/dashboard/events?section=locations')}
+            onClick={() => navigate('/dashboard/locations')}
           />
           <SmallSummary
             icon={Activity}

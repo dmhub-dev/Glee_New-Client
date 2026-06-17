@@ -4,7 +4,7 @@ import { canOpenBookingChat, useBookingChatThreads, useMyReservations, type Rese
 import { Badge, Button, Input, Skeleton, cn } from '@glee/ui'
 import { Calendar, CalendarCheck, Clock, MapPin, MessageCircle, QrCode, Search, Users } from 'lucide-react'
 
-const PLACEHOLDER = 'https://placehold.co/900x600/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 const PAID_RESERVATION_STATUSES: ReservationStatus[] = ['CONFIRMED', 'SEATED', 'COMPLETED']
 

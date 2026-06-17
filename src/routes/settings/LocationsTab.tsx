@@ -19,9 +19,10 @@ import {
   MapPin, Users, FileText, ImagePlus, X as XIcon, Image,
 } from 'lucide-react'
 import { SlidePanel } from '../../components/ui/SlidePanel'
+import { useAdminUser } from '../../app/providers'
 
 const MAX_PHOTOS = 6
-const PLACEHOLDER = 'https://placehold.co/600x400/141419/FF2D8F?text=Location'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 const VENUE_TYPES = [
   { label: 'Club', value: 'CLUB' },
   { label: 'Restaurant/Hotel', value: 'RESTAURANT' },
@@ -412,6 +413,8 @@ function LocationFormPanel({
 export default function LocationsTab() {
   const navigate    = useNavigate()
   const { toast }   = useToast()
+  const user = useAdminUser()
+  const canManageLocations = user.role !== 'vendor_staff'
   const [editTarget, setEditTarget] = useState<Location | null>(null)
 
   const { data: locations, isLoading } = useLocations()
@@ -443,9 +446,11 @@ export default function LocationsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading font-bold text-base text-foreground">Locations</h2>
-        <Button onClick={() => navigate('/dashboard/locations/new')} className="bg-neon-pink hover:bg-neon-pink/90 text-white gap-2" size="sm">
-          <Plus className="w-4 h-4" /> Add Location
-        </Button>
+        {canManageLocations && (
+          <Button onClick={() => navigate('/dashboard/locations/new')} className="bg-neon-pink hover:bg-neon-pink/90 text-white gap-2" size="sm">
+            <Plus className="w-4 h-4" /> Add Location
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -492,43 +497,45 @@ export default function LocationsTab() {
                     {venueTypeLabel(loc.venueType)}
                   </Badge>
                 </div>
-                <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    onClick={e => { e.stopPropagation(); setEditTarget(loc) }}
-                    className="w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-neon-pink/80 transition-colors"
-                    title="Edit"
-                  >
-                    <Pencil className="w-3 h-3" />
-                  </button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        onClick={e => e.stopPropagation()}
-                        className="w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-red-500/80 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete "{loc.name}"?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This permanently removes the location and cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(loc.id)}
-                          className="bg-red-500 hover:bg-red-600 text-white"
+                {canManageLocations && (
+                  <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      onClick={e => { e.stopPropagation(); setEditTarget(loc) }}
+                      className="w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-neon-pink/80 transition-colors"
+                      title="Edit"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          onClick={e => e.stopPropagation()}
+                          className="w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-red-500/80 transition-colors"
+                          title="Delete"
                         >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete "{loc.name}"?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently removes the location and cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(loc.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3 p-4">
@@ -551,7 +558,7 @@ export default function LocationsTab() {
         </div>
       )}
 
-      {editTarget && (
+      {canManageLocations && editTarget && (
         <LocationFormPanel
           key={editTarget.id}
           mode="edit"

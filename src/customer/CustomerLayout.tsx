@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { Home, Search, Ticket, UserCircle, Wallet, Bell, LogOut } from 'lucide-react'
+import { Home, Search, Ticket, UserCircle, Wallet, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage, cn } from '@glee/ui'
 import { useAuth } from '../lib/auth/AuthContext'
 
@@ -79,18 +79,6 @@ export default function CustomerLayout({
                 )}
               </NavLink>
             ))}
-
-            {/* Notifications — action button, no route yet */}
-            <button
-              type="button"
-              className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/45 transition-all duration-200 hover:bg-white/5 hover:text-white"
-            >
-              <div className="relative shrink-0">
-                <Bell className="h-[18px] w-[18px] text-white/35 transition-colors group-hover:text-white/70" strokeWidth={2} />
-                <span className="absolute -right-1 -top-1 h-2 w-2 animate-pulse rounded-full bg-neon-pink" />
-              </div>
-              Notifications
-            </button>
           </nav>
 
           {/* User strip at bottom */}

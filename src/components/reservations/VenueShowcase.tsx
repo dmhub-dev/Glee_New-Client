@@ -4,7 +4,7 @@ import { Badge, Skeleton } from '@glee/ui'
 import { CalendarCheck, MapPin } from 'lucide-react'
 import type { ReservationVenue } from '@glee/api'
 
-const PLACEHOLDER = 'https://placehold.co/900x600/050017/FF2D8F?text=Glee+Reservations'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 export function isClubOrRestaurantVenue(venue: ReservationVenue) {
   return venue.venueType === 'CLUB' || venue.venueType === 'RESTAURANT' || venue.venueType === 'HOTEL_RESTAURANT'

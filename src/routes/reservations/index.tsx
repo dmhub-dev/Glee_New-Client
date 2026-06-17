@@ -28,7 +28,7 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import { FeedbackReadOnly, publicReservationFeedbackTargetId, reservationFeedbackTargetId } from '../../components/feedback'
 import { normalizedReservationPreOrderMenu } from '../../components/reservations/reservationMenuUtils'
 
-const PLACEHOLDER = 'https://placehold.co/900x560/141419/FF2D8F?text=Glee+Bookings'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 type BookingVenueTab = 'all' | 'club' | 'restaurant' | 'other'
 type BookingLocationView = 'grid' | 'list'
 

@@ -7,7 +7,7 @@ import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 import PageWrapper from '../../public/components/layout/PageWrapper'
 
-const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 const TYPES: Array<{ label: string; value?: VenueType }> = [
   { label: 'All' },

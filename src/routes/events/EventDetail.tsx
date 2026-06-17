@@ -19,7 +19,29 @@ import {
 } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
-import { Button, Input, Label, Skeleton, Progress, Textarea, useToast } from '@glee/ui'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Progress,
+  Skeleton,
+  Textarea,
+  useToast,
+} from '@glee/ui'
 import { ArrowLeft, Pencil, Trash2, MapPin, Calendar, Clock, Ticket, ChevronDown, DollarSign, Users, Utensils, Gift, UserCheck, CheckCircle2, XCircle, ShieldCheck, UserPlus, Copy, RotateCcw, Ban, Play, Square } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { formatDateOnly, formatDateRange, formatTimeOnly, splitBackendDateTime } from '@glee/utils'
@@ -29,7 +51,7 @@ import EventEarningsPanel from './EventEarningsPanel'
 import { EventChatPanel } from '../../components/chat/EventChatPanel'
 import EventReservationSlotsPanel from './EventReservationSlotsPanel'
 
-const PLACEHOLDER = 'https://placehold.co/800x400/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 const STATUS_CONFIG: Record<Event['status'], { label: string; dot: string; badge: string }> = {
   active:           { label: 'Active',           dot: 'bg-green-400',   badge: 'bg-green-500/15 text-green-400 border-green-500/20'   },
@@ -138,6 +160,9 @@ export default function EventDetailPage() {
   const { toast } = useToast()
   const { data: ticketData } = useAdminEventTickets(eventId)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [deleteEventOpen, setDeleteEventOpen] = useState(false)
+  const [rejectEventOpen, setRejectEventOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
   const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
     const state = location.state as { tab?: EventDetailTab } | null
     return state?.tab === 'earnings' || state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' || state?.tab === 'reservations' ? state.tab : 'details'
@@ -175,21 +200,41 @@ export default function EventDetailPage() {
 
   function handleDelete() {
     if (!event) return
-    if (window.confirm('Delete this event? This cannot be undone.')) {
-      deleteMutation.mutate(event.id)
-      navigate('/dashboard/events')
-    }
+    setDeleteEventOpen(true)
+  }
+
+  function confirmDelete() {
+    if (!event) return
+    deleteMutation.mutate(event.id)
+    setDeleteEventOpen(false)
+    navigate('/dashboard/events')
   }
 
   async function handleReview(decision: 'approve' | 'reject') {
     if (!event) return
-    const reason = decision === 'reject'
-      ? window.prompt('Reason for rejection? This will be sent to the vendor.') ?? undefined
-      : undefined
-    if (decision === 'reject' && reason === undefined) return
+    if (decision === 'reject') {
+      setRejectReason('')
+      setRejectEventOpen(true)
+      return
+    }
     try {
-      await reviewMutation.mutateAsync({ id: event.id, decision, reason })
+      await reviewMutation.mutateAsync({ id: event.id, decision })
       toast({ title: decision === 'approve' ? 'Event approved' : 'Event rejected' })
+    } catch (error) {
+      toast({
+        title: 'Could not review event',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function confirmReject() {
+    if (!event) return
+    try {
+      await reviewMutation.mutateAsync({ id: event.id, decision: 'reject', reason: rejectReason.trim() || undefined })
+      setRejectEventOpen(false)
+      toast({ title: 'Event rejected' })
     } catch (error) {
       toast({
         title: 'Could not review event',
@@ -687,6 +732,52 @@ export default function EventDetailPage() {
         </div>
         )}
       </div>
+      <AlertDialog open={deleteEventOpen} onOpenChange={setDeleteEventOpen}>
+        <AlertDialogContent className="border-admin bg-admin-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the event and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 text-white hover:bg-red-600">
+              Delete event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={rejectEventOpen}
+        onOpenChange={open => {
+          if (!open && !reviewMutation.isPending) setRejectEventOpen(false)
+        }}
+      >
+        <DialogContent className="border-admin bg-admin-surface text-foreground">
+          <DialogHeader>
+            <DialogTitle>Reject event?</DialogTitle>
+            <DialogDescription>
+              Add an optional reason for the vendor before sending the review decision.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={rejectReason}
+            onChange={inputEvent => setRejectReason(inputEvent.target.value)}
+            placeholder="Example: Event location needs approval before publishing."
+            className="min-h-[120px] resize-none border-admin bg-admin-input"
+          />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRejectEventOpen(false)} disabled={reviewMutation.isPending}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={confirmReject} disabled={reviewMutation.isPending} className="bg-red-500 text-white hover:bg-red-600">
+              {reviewMutation.isPending ? 'Rejecting...' : 'Reject event'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   )
 }
@@ -715,6 +806,7 @@ function TicketAttendantsPanel({ event }: { event: Event }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [latestInvite, setLatestInvite] = useState<TicketAttendant | null>(null)
+  const [pendingRevoke, setPendingRevoke] = useState<TicketAttendant | null>(null)
 
   const checkedInTotal = stats.reduce((sum, row) => sum + row.success, 0)
   const duplicateTotal = stats.reduce((sum, row) => sum + row.duplicate, 0)
@@ -760,9 +852,9 @@ function TicketAttendantsPanel({ event }: { event: Event }) {
   }
 
   async function handleRevoke(attendant: TicketAttendant) {
-    if (!window.confirm(`Revoke access for ${attendant.name}?`)) return
     try {
       await revokeAttendant.mutateAsync({ eventId: event.id, id: attendant.id })
+      setPendingRevoke(null)
       toast({ title: 'Attendant access revoked' })
     } catch (error) {
       toast({
@@ -854,7 +946,7 @@ function TicketAttendantsPanel({ event }: { event: Event }) {
                           <RotateCcw className="h-3.5 w-3.5" />
                           Reset
                         </Button>
-                        <Button type="button" variant="outline" size="sm" className="border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15" onClick={() => handleRevoke(attendant)}>
+                        <Button type="button" variant="outline" size="sm" className="border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/15" onClick={() => setPendingRevoke(attendant)}>
                           <Ban className="h-3.5 w-3.5" />
                           Revoke
                         </Button>
@@ -919,6 +1011,25 @@ function TicketAttendantsPanel({ event }: { event: Event }) {
           </div>
         )}
       </aside>
+      <AlertDialog open={Boolean(pendingRevoke)} onOpenChange={open => { if (!open) setPendingRevoke(null) }}>
+        <AlertDialogContent className="border-admin bg-admin-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke attendant access?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRevoke ? `${pendingRevoke.name} will no longer be able to check in tickets for this event.` : 'This attendant will lose check-in access.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingRevoke && handleRevoke(pendingRevoke)}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              Revoke access
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

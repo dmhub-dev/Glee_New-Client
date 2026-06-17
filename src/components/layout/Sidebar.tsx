@@ -16,6 +16,7 @@ import {
   Settings,
   UserCircle,
   HandCoins,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { useAdminUser } from '../../app/providers'
@@ -33,6 +34,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, active: true },
   { label: 'Events', to: '/dashboard/events', icon: CalendarDays, active: true },
+  { label: 'Locations', to: '/dashboard/locations', icon: Building2, active: true, roles: ['super_admin', 'admin', 'operations_manager', 'vendor', 'vendor_staff'] },
   { label: 'Calendar', to: '/dashboard/calendar', icon: Calendar, active: true, roles: ['super_admin', 'admin', 'operations_manager'] },
   { label: 'Bookings', to: '/dashboard/reservations', icon: Table2, active: true, roles: ['super_admin', 'admin', 'operations_manager', 'vendor', 'vendor_staff'] },
   { label: 'Menu & Pricing', to: '/dashboard/menu-pricing', icon: FileText, active: true, roles: ['vendor', 'vendor_staff', 'admin'] },

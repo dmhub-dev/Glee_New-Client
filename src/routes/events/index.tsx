@@ -4,7 +4,20 @@ import { useAdminEvents, useDeleteEvent, useCategories, useLocations } from '@gl
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminUser } from '../../app/providers'
-import { Skeleton, Input, Progress, Button } from '@glee/ui'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Skeleton,
+  Input,
+  Progress,
+  Button,
+} from '@glee/ui'
 import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2, Tags, MapPinned } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { formatDateRange, formatTimeOnly } from '@glee/utils'
@@ -57,7 +70,7 @@ const CATEGORY_COLOURS: Record<string, string> = {
   Other:         'bg-admin-overlay text-admin-50 border-admin',
 }
 
-const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 function venueTypeLabel(value?: string | null) {
   if (value === 'CLUB') return 'Club'
@@ -232,6 +245,7 @@ export default function EventsListPage() {
   const [activeTab, setActiveTab] = useState<StatusTab>('pending_approval')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const { data: locations, isLoading: locationsLoading } = useLocations({ vendorScoped: isVendorRole })
   const rawSection = searchParams.get('section')
@@ -261,11 +275,19 @@ export default function EventsListPage() {
       return acc
     }, {} as Record<StatusTab, number>)
   }, [events])
+  const pendingDeleteEvent = useMemo(
+    () => events?.find(event => event.id === pendingDeleteId) ?? null,
+    [events, pendingDeleteId],
+  )
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Delete this event? This cannot be undone.')) {
-      deleteMutation.mutate(id)
-    }
+    setPendingDeleteId(id)
+  }
+
+  const confirmDelete = () => {
+    if (!pendingDeleteId) return
+    deleteMutation.mutate(pendingDeleteId)
+    setPendingDeleteId(null)
   }
 
   return (
@@ -517,6 +539,22 @@ export default function EventsListPage() {
           </>
         )}
       </div>
+      <AlertDialog open={Boolean(pendingDeleteId)} onOpenChange={open => { if (!open) setPendingDeleteId(null) }}>
+        <AlertDialogContent className="border-admin bg-admin-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeleteEvent ? `"${pendingDeleteEvent.title}" will be permanently removed.` : 'This event will be permanently removed.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 text-white hover:bg-red-600">
+              Delete event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   )
 }

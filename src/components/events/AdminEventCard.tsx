@@ -4,7 +4,7 @@ import type { Event } from '@glee/types'
 import { cn, Progress } from '@glee/ui'
 import { Pencil, Trash2, MapPin } from 'lucide-react'
 
-const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 const STATUS_CONFIG = {
   active:           { label: 'Active',           dot: 'bg-green-400',  text: 'text-green-400'  },
