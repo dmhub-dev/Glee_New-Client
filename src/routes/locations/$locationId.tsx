@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,26 +13,57 @@ import {
   useToast,
 } from '@glee/ui'
 import {
+  canOpenBookingChat,
   useApproveLocation,
+  useAdminReservations,
+  useBookingChatThreads,
   useDeleteLocation,
   useLocation,
   useRejectLocation,
   useUpdateLocation,
   useUploadLocationMenuDocument,
+  type BookingChatThread,
   type Location,
+  type Reservation,
+  type ReservationStatus,
 } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import ReservationSetupPanel from './ReservationSetupPanel'
 import BookingAttendantsPanel from './BookingAttendantsPanel'
 import { useAdminUser } from '../../app/providers'
+import { BookingChatPanel } from '../../components/chat/BookingChatPanel'
+import { normalizedReservationPreOrderMenu } from '../../components/reservations/reservationMenuUtils'
 import {
   ArrowLeft, Pencil, Trash2, MapPin, Users, Building2, Wind, ParkingCircle,
   CalendarCheck, FileText, Image, ImagePlus, Save, ShieldCheck, ShieldX, X as XIcon,
+  CalendarDays, MessageCircle, Search, Table2,
 } from 'lucide-react'
+import { cn } from '@glee/ui'
 
 const MAX_PHOTOS = 6
 const PLACEHOLDER = '/glee-image-fallback.svg'
 type CanonicalVenueType = 'CLUB' | 'RESTAURANT' | 'OTHER'
+type LocationDetailTab = 'overview' | 'bookings' | 'setup' | 'hostesses' | 'chats' | 'settings'
+type BookingStatusFilter = 'ALL' | ReservationStatus
+
+const LOCATION_DETAIL_TABS: Array<{ label: string; value: LocationDetailTab }> = [
+  { label: 'Overview', value: 'overview' },
+  { label: 'Bookings', value: 'bookings' },
+  { label: 'Tables & Slots', value: 'setup' },
+  { label: 'Hostesses', value: 'hostesses' },
+  { label: 'Booking Chats', value: 'chats' },
+  { label: 'Settings', value: 'settings' },
+]
+
+const BOOKING_STATUS_FILTERS: Array<{ label: string; value: BookingStatusFilter }> = [
+  { label: 'All', value: 'ALL' },
+  { label: 'Pending', value: 'PENDING_PAYMENT' },
+  { label: 'Confirmed', value: 'CONFIRMED' },
+  { label: 'Seated', value: 'SEATED' },
+  { label: 'Completed', value: 'COMPLETED' },
+  { label: 'No-show', value: 'NO_SHOW' },
+  { label: 'Cancelled', value: 'CANCELLED' },
+]
 
 const SPACE_TYPES = [
   { label: 'Indoor', value: 'indoor', hint: 'Interior rooms, dining halls, private areas, or hotel spaces.', icon: Building2 },
@@ -80,6 +111,87 @@ function approvalLabel(status?: Location['approvalStatus']) {
   if (status === 'APPROVED') return 'Approved'
   if (status === 'REJECTED') return 'Rejected'
   return 'Pending approval'
+}
+
+function money(value: string | number | undefined) {
+  return `KSh ${Number(value ?? 0).toLocaleString()}`
+}
+
+function statusLabel(status: ReservationStatus | string) {
+  return status.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function statusTone(status: ReservationStatus | string) {
+  switch (status) {
+    case 'CONFIRMED': return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+    case 'SEATED': return 'border-sky-500/25 bg-sky-500/10 text-sky-300'
+    case 'COMPLETED': return 'border-admin bg-admin-overlay text-admin-60'
+    case 'NO_SHOW': return 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+    case 'CANCELLED': return 'border-red-500/25 bg-red-500/10 text-red-300'
+    case 'PENDING_PAYMENT': return 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+    default: return 'border-admin bg-admin-overlay text-admin-60'
+  }
+}
+
+function paymentStatusLabel(reservation: Reservation) {
+  return reservation.paymentStatus ?? reservation.payment?.status ?? reservation.payments?.[0]?.status ?? 'PENDING'
+}
+
+function paymentStatusTone(status: string) {
+  switch (status) {
+    case 'SUCCESS': return 'border-green-500/30 bg-green-500/10 text-green-400'
+    case 'FAILED': return 'border-red-500/30 bg-red-500/10 text-red-300'
+    case 'REFUNDED': return 'border-blue-500/30 bg-blue-500/10 text-blue-300'
+    default: return 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+  }
+}
+
+function customerName(reservation: Reservation) {
+  return reservation.user?.name || reservation.guestName || reservation.user?.email || reservation.guestEmail || 'Guest'
+}
+
+function customerContact(reservation: Reservation) {
+  return reservation.user?.email ?? reservation.guestEmail ?? reservation.user?.phone ?? reservation.guestPhone ?? 'No contact'
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString('en-KE', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function formatShortDateTime(value: string) {
+  return new Date(value).toLocaleString('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function bookingDateKey(value: string) {
+  return new Date(value).toISOString().slice(0, 10)
+}
+
+function bookingSearchText(reservation: Reservation) {
+  return [
+    reservation.reference,
+    reservation.table?.name,
+    reservation.tableCategory,
+    customerName(reservation),
+    reservation.user?.email,
+    reservation.guestEmail,
+    reservation.user?.phone,
+    reservation.guestPhone,
+  ].join(' ').toLowerCase()
+}
+
+function bookingChatUnread(reservation: Reservation, chatThreads: BookingChatThread[]) {
+  return chatThreads.find(thread => thread.reservationId === reservation.id)?.unreadForStaff ?? 0
 }
 
 function EditLocationPage({
@@ -415,6 +527,7 @@ export default function LocationDetailPage() {
   const [editOpen, setEditOpen]     = useState(false)
   const [heroIdx, setHeroIdx]       = useState(0)
   const [rejectReason, setRejectReason] = useState('')
+  const [activeTab, setActiveTab] = useState<LocationDetailTab>('overview')
 
   const { data: loc, isLoading }    = useLocation(locationId!)
   const deleteMutation              = useDeleteLocation()
@@ -454,6 +567,7 @@ export default function LocationDetailPage() {
     ['super_admin', 'admin'].includes(user.role) ||
     (isVendorOwner && loc.vendorId === user.id)
   ) && Boolean(loc.bookingEnabled)
+  const canViewHostesses = Boolean(loc.bookingEnabled)
 
   async function handleDelete() {
     try {
@@ -507,20 +621,21 @@ export default function LocationDetailPage() {
   return (
     <AdminLayout title={loc.name} subtitle={loc.address}>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 rounded-2xl border border-admin bg-admin-surface p-4 shadow-admin sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
             onClick={() => navigate('/dashboard/locations')}
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-admin-md bg-admin-input px-4 py-2 text-sm font-medium text-admin-50 transition-colors hover:bg-admin-overlay hover:text-admin-80"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-admin bg-admin-overlay px-4 py-1.5 text-sm font-medium text-admin-40 transition-colors hover:text-admin-70"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             Back to Locations
           </button>
           <div className="flex flex-wrap items-center gap-2">
+            <Badge className={approvalBadgeClass(loc.approvalStatus)}>{approvalLabel(loc.approvalStatus)}</Badge>
             {canEditLocation && (
               <Button
                 onClick={() => setEditOpen(true)}
                 aria-label="Open edit form"
-                className="gap-2 rounded-full bg-neon-pink px-5 text-white hover:bg-neon-pink/90"
+                className="gap-2 rounded-full bg-admin-overlay border border-admin px-4 text-admin-70 hover:bg-neon-pink/10 hover:border-neon-pink/30 hover:text-neon-pink"
               >
                 <Pencil className="h-4 w-4" />
                 Edit Location
@@ -553,159 +668,677 @@ export default function LocationDetailPage() {
           </div>
         </div>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_420px]">
-          <div className="space-y-4">
-            <div className="relative h-[360px] overflow-hidden rounded-2xl border border-admin bg-admin-overlay shadow-admin lg:h-[520px]">
-              {hero ? (
-                <img
-                  src={hero}
-                  alt={loc.name}
-                  className="h-full w-full object-cover"
-                  onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-                />
-              ) : (
-                <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-neon-pink/5 to-admin-overlay">
-                  <Image className="h-10 w-10 text-admin-20" />
-                  <p className="text-xs text-admin-30">No photos yet</p>
-                </div>
-              )}
-              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/75 to-transparent" />
-              <div className="absolute bottom-5 left-5 right-5">
-                <Badge className="mb-3 border-neon-pink/25 bg-neon-pink/15 text-neon-pink">{venueTypeLabel(loc.venueType)}</Badge>
-                <h1 className="font-heading text-2xl font-black text-white md:text-4xl">{loc.name}</h1>
-                <p className="mt-2 flex items-center gap-2 text-sm text-white/75">
-                  <MapPin className="h-4 w-4 shrink-0 text-neon-pink" />
-                  {loc.address}
-                </p>
+        <div className="overflow-hidden rounded-2xl border border-admin bg-admin-surface shadow-admin">
+          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="border-neon-pink/25 bg-neon-pink/10 text-neon-pink">{venueTypeLabel(loc.venueType)}</Badge>
+                <Badge className={loc.bookingEnabled ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-admin bg-admin-overlay text-admin-50'}>
+                  {loc.bookingEnabled ? 'Reservations on' : 'Reservations off'}
+                </Badge>
               </div>
-            </div>
-
-            {pictures.length > 1 && (
-              <div className="grid grid-cols-4 gap-3 md:grid-cols-6">
-                {pictures.map((src, i) => (
-                  <button
-                    key={src}
-                    onClick={() => setHeroIdx(i)}
-                    className={[
-                      'aspect-[4/3] overflow-hidden rounded-xl border-2 transition-all',
-                      heroIdx === i ? 'border-neon-pink' : 'border-transparent hover:border-admin-md',
-                    ].join(' ')}
-                  >
-                    <img src={src} alt="" className="h-full w-full object-cover transition-transform duration-200 hover:scale-105" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <aside className="space-y-4">
-            <div className="rounded-2xl border border-admin bg-admin-surface p-6 shadow-admin">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Venue overview</p>
-              <h2 className="mt-3 font-heading text-2xl font-black text-foreground">{loc.name}</h2>
-              <p className="mt-3 flex items-start gap-2 text-sm text-admin-40">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-neon-pink" />
-                {loc.address}
+              <h2 className="mt-3 truncate font-heading text-2xl font-black text-foreground">{loc.name}</h2>
+              <p className="mt-1 flex min-w-0 items-center gap-2 text-sm text-admin-40">
+                <MapPin className="h-4 w-4 shrink-0 text-neon-pink" />
+                <span className="truncate">{loc.address}</span>
               </p>
-              {loc.description ? (
-                <p className="mt-5 text-sm leading-6 text-admin-60">{loc.description}</p>
-              ) : (
-                <p className="mt-5 rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No description added yet.</p>
-              )}
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <DetailMetric icon={Users} label="Max capacity" value={loc.capacity.toLocaleString()} />
-              <DetailMetric icon={CalendarCheck} label="Reservations" value={loc.bookingEnabled ? 'Enabled' : 'Off'} />
-              <DetailMetric icon={loc.isOutdoors && !loc.isIndoors ? Wind : Building2} label="Space" value={loc.isIndoors && loc.isOutdoors ? 'Indoor + Outdoor' : loc.isIndoors ? 'Indoor' : loc.isOutdoors ? 'Outdoor' : 'Not set'} />
-              <DetailMetric icon={ParkingCircle} label="Parking" value={loc.isParkingAvailable ? 'Available' : 'Not set'} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[520px]">
+              <InlineStat label="Capacity" value={loc.capacity.toLocaleString()} />
+              <InlineStat label="Space" value={loc.isIndoors && loc.isOutdoors ? 'Mixed' : loc.isIndoors ? 'Indoor' : loc.isOutdoors ? 'Outdoor' : 'Unset'} />
+              <InlineStat label="Parking" value={loc.isParkingAvailable ? 'Yes' : 'No'} />
+              <InlineStat label="Menu" value={loc.menuDocumentUrl ? 'Uploaded' : 'Missing'} />
             </div>
-
-            <div className="rounded-2xl border border-admin bg-admin-surface p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Venue features</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-              {loc.isIndoors && (
-                <Badge className="text-xs border bg-blue-500/10 text-blue-400 border-blue-500/30 gap-1.5 px-2.5 py-1">
-                  <Building2 className="w-3 h-3" /> Indoor
-                </Badge>
-              )}
-              {loc.isOutdoors && (
-                <Badge className="text-xs border bg-green-500/10 text-green-400 border-green-500/30 gap-1.5 px-2.5 py-1">
-                  <Wind className="w-3 h-3" /> Outdoor
-                </Badge>
-              )}
-              {loc.isParkingAvailable && (
-                <Badge className="text-xs border bg-admin-overlay text-admin-50 border-admin gap-1.5 px-2.5 py-1">
-                  <ParkingCircle className="w-3 h-3" /> Parking
-                </Badge>
-              )}
-                {!loc.isIndoors && !loc.isOutdoors && !loc.isParkingAvailable && (
-                  <span className="text-sm text-admin-40">No features selected yet.</span>
-                )}
-              </div>
-            </div>
-          </aside>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Approval</p>
-                <h2 className="mt-2 font-heading text-xl font-black text-foreground">Location review status</h2>
-                <p className="mt-2 text-sm leading-6 text-admin-50">
-                  Vendor locations become public and usable for event setup only after approval.
-                </p>
-              </div>
-              <Badge className={approvalBadgeClass(loc.approvalStatus)}>{approvalLabel(loc.approvalStatus)}</Badge>
-            </div>
-            {loc.rejectionReason && (
-              <p className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">{loc.rejectionReason}</p>
-            )}
-            {canModerateLocation && loc.vendorId && (
-              <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                <Input value={rejectReason} onChange={event => setRejectReason(event.target.value)} placeholder="Reason if rejecting" className="border-admin bg-admin-input" />
-                <Button onClick={approve} disabled={approveMutation.isPending} className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
-                  <ShieldCheck className="h-4 w-4" />
-                  Approve
-                </Button>
-                <Button onClick={reject} disabled={rejectMutation.isPending} variant="outline" className="gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10">
-                  <ShieldX className="h-4 w-4" />
-                  Reject
-                </Button>
-              </div>
-            )}
           </div>
+        </div>
 
-          <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="flex items-center gap-2 font-heading text-lg font-black text-foreground">
-                  <FileText className="h-5 w-5 text-neon-pink" />
-                  Full menu
-                </h2>
-                <p className="mt-1 text-sm text-admin-40">PDF or image shown on the public booking page.</p>
-              </div>
-              {canEditLocation && (
-                <label className="inline-flex h-10 cursor-pointer items-center rounded-full border border-admin bg-admin-input px-4 text-sm font-semibold text-admin-60 hover:border-neon-pink/40 hover:text-neon-pink">
-                  Upload
-                  <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={handleMenuDocumentChange} />
-                </label>
-              )}
-            </div>
-            {loc.menuDocumentUrl ? (
-              <a href={loc.menuDocumentUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex max-w-full break-all text-sm font-semibold text-neon-pink hover:underline">
-                {loc.menuDocumentName ?? 'Open menu document'}
-              </a>
-            ) : (
-              <p className="mt-4 rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No menu document uploaded yet.</p>
-            )}
-          </div>
-        </section>
+        <LocationDetailTabs activeTab={activeTab} onSelect={setActiveTab} />
 
-        <ReservationSetupPanel location={loc} />
-        {canManageHostesses && <BookingAttendantsPanel location={loc} />}
+        {activeTab === 'overview' && (
+          <LocationOverviewTab
+            location={loc}
+            hero={hero}
+            pictures={pictures}
+            heroIdx={heroIdx}
+            onSelectHero={setHeroIdx}
+          />
+        )}
+
+        {activeTab === 'bookings' && <LocationBookingsPanel location={loc} />}
+
+        {activeTab === 'setup' && (
+          loc.bookingEnabled ? <ReservationSetupPanel location={loc} /> : (
+            <EmptyPanel
+              icon={Table2}
+              title="Reservations are off"
+              description="Enable reservations in Settings before configuring table inventory and slots."
+            />
+          )
+        )}
+
+        {activeTab === 'hostesses' && (
+          canViewHostesses ? (
+            canManageHostesses ? <BookingAttendantsPanel location={loc} /> : (
+              <EmptyPanel
+                icon={ShieldCheck}
+                title="Hostess management is restricted"
+                description="Only admins and the owning vendor can invite or revoke booking hostesses for this location."
+              />
+            )
+          ) : (
+            <EmptyPanel icon={Users} title="Hostesses are not available" description="Turn on reservations before inviting location check-in hostesses." />
+          )
+        )}
+
+        {activeTab === 'chats' && <LocationBookingChatsPanel location={loc} viewerName={user.name ?? 'Venue team'} />}
+
+        {activeTab === 'settings' && (
+          <LocationSettingsTab
+            location={loc}
+            rejectReason={rejectReason}
+            onRejectReasonChange={setRejectReason}
+            canModerateLocation={canModerateLocation}
+            canEditLocation={canEditLocation}
+            approvePending={approveMutation.isPending}
+            rejectPending={rejectMutation.isPending}
+            onApprove={approve}
+            onReject={reject}
+            onMenuDocumentChange={handleMenuDocumentChange}
+          />
+        )}
       </div>
     </AdminLayout>
+  )
+}
+
+function LocationDetailTabs({
+  activeTab,
+  onSelect,
+}: {
+  activeTab: LocationDetailTab
+  onSelect: (tab: LocationDetailTab) => void
+}) {
+  return (
+    <div className="w-full overflow-x-auto pb-1">
+      <div className="flex w-max min-w-full justify-start">
+        <div className="flex shrink-0 rounded-full border border-admin bg-admin-surface p-1">
+          {LOCATION_DETAIL_TABS.map(tab => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => onSelect(tab.value)}
+              className={cn(
+                'whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition',
+                activeTab === tab.value ? 'bg-neon-pink text-white' : 'text-admin-50 hover:text-neon-pink',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LocationOverviewTab({
+  location,
+  hero,
+  pictures,
+  heroIdx,
+  onSelectHero,
+}: {
+  location: Location
+  hero: string | null
+  pictures: string[]
+  heroIdx: number
+  onSelectHero: (index: number) => void
+}) {
+  return (
+    <section className="space-y-5">
+      <TabPageHeader
+        eyebrow="Location profile"
+        title="Venue snapshot"
+        description="Public-facing venue content and the operational basics staff need before managing bookings."
+      />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_380px]">
+      <div className="space-y-5">
+        <div className="relative h-[320px] overflow-hidden rounded-2xl border border-admin bg-admin-overlay shadow-admin lg:h-[460px]">
+          {hero ? (
+            <img
+              src={hero}
+              alt={location.name}
+              className="h-full w-full object-cover"
+              onError={event => { event.currentTarget.src = PLACEHOLDER }}
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-neon-pink/5 to-admin-overlay">
+              <Image className="h-10 w-10 text-admin-20" />
+              <p className="text-xs text-admin-30">No photos yet</p>
+            </div>
+          )}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/75 to-transparent" />
+          <div className="absolute bottom-5 left-5 right-5">
+            <Badge className="mb-3 border-neon-pink/25 bg-neon-pink/15 text-neon-pink">{venueTypeLabel(location.venueType)}</Badge>
+            <h1 className="font-heading text-2xl font-black text-white md:text-4xl">{location.name}</h1>
+            <p className="mt-2 flex items-center gap-2 text-sm text-white/75">
+              <MapPin className="h-4 w-4 shrink-0 text-neon-pink" />
+              {location.address}
+            </p>
+          </div>
+        </div>
+
+        {pictures.length > 1 && (
+          <div className="grid grid-cols-4 gap-3 md:grid-cols-6">
+            {pictures.map((src, index) => (
+              <button
+                key={src}
+                type="button"
+                onClick={() => onSelectHero(index)}
+                className={cn(
+                  'aspect-[4/3] overflow-hidden rounded-xl border-2 transition-all',
+                  heroIdx === index ? 'border-neon-pink' : 'border-transparent hover:border-admin-md',
+                )}
+              >
+                <img src={src} alt="" className="h-full w-full object-cover transition-transform duration-200 hover:scale-105" onError={event => { event.currentTarget.src = PLACEHOLDER }} />
+              </button>
+            ))}
+          </div>
+        )}
+
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <h2 className="font-heading text-base font-black text-foreground">About Location</h2>
+          {location.description ? (
+            <p className="mt-3 text-sm leading-6 text-admin-60">{location.description}</p>
+          ) : (
+            <p className="mt-3 rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No description added yet.</p>
+          )}
+        </section>
+      </div>
+
+      <aside className="space-y-5">
+        <div className="grid grid-cols-2 gap-3">
+          <DetailMetric icon={Users} label="Max capacity" value={location.capacity.toLocaleString()} />
+          <DetailMetric icon={CalendarCheck} label="Reservations" value={location.bookingEnabled ? 'Enabled' : 'Off'} />
+          <DetailMetric icon={location.isOutdoors && !location.isIndoors ? Wind : Building2} label="Space" value={location.isIndoors && location.isOutdoors ? 'Indoor + Outdoor' : location.isIndoors ? 'Indoor' : location.isOutdoors ? 'Outdoor' : 'Not set'} />
+          <DetailMetric icon={ParkingCircle} label="Parking" value={location.isParkingAvailable ? 'Available' : 'Not set'} />
+        </div>
+
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Venue features</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {location.isIndoors && (
+              <Badge className="gap-1.5 border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs text-blue-400">
+                <Building2 className="h-3 w-3" /> Indoor
+              </Badge>
+            )}
+            {location.isOutdoors && (
+              <Badge className="gap-1.5 border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-xs text-green-400">
+                <Wind className="h-3 w-3" /> Outdoor
+              </Badge>
+            )}
+            {location.isParkingAvailable && (
+              <Badge className="gap-1.5 border border-admin bg-admin-overlay px-2.5 py-1 text-xs text-admin-50">
+                <ParkingCircle className="h-3 w-3" /> Parking
+              </Badge>
+            )}
+            {!location.isIndoors && !location.isOutdoors && !location.isParkingAvailable && (
+              <span className="text-sm text-admin-40">No features selected yet.</span>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Approval</p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-sm text-admin-50">Current status</span>
+            <Badge className={approvalBadgeClass(location.approvalStatus)}>{approvalLabel(location.approvalStatus)}</Badge>
+          </div>
+          {location.rejectionReason && (
+            <p className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">{location.rejectionReason}</p>
+          )}
+        </section>
+      </aside>
+      </div>
+    </section>
+  )
+}
+
+function LocationSettingsTab({
+  location,
+  rejectReason,
+  onRejectReasonChange,
+  canModerateLocation,
+  canEditLocation,
+  approvePending,
+  rejectPending,
+  onApprove,
+  onReject,
+  onMenuDocumentChange,
+}: {
+  location: Location
+  rejectReason: string
+  onRejectReasonChange: (value: string) => void
+  canModerateLocation: boolean
+  canEditLocation: boolean
+  approvePending: boolean
+  rejectPending: boolean
+  onApprove: () => void
+  onReject: () => void
+  onMenuDocumentChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+}) {
+  return (
+    <section className="space-y-5">
+      <TabPageHeader
+        eyebrow="Location controls"
+        title="Approval and public menu"
+        description="Keep vendor approval, rejection notes, and public menu documents in one review surface."
+      >
+        <InlineStat label="Approval" value={approvalLabel(location.approvalStatus)} />
+        <InlineStat label="Reservations" value={location.bookingEnabled ? 'On' : 'Off'} />
+        <InlineStat label="Menu" value={location.menuDocumentUrl ? 'Uploaded' : 'Missing'} />
+      </TabPageHeader>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="rounded-xl border border-admin bg-admin-surface p-5 shadow-admin">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Approval</p>
+            <h2 className="mt-2 font-heading text-xl font-black text-foreground">Location review status</h2>
+            <p className="mt-2 text-sm leading-6 text-admin-50">
+              Vendor locations become public and usable for event setup only after approval.
+            </p>
+          </div>
+          <Badge className={approvalBadgeClass(location.approvalStatus)}>{approvalLabel(location.approvalStatus)}</Badge>
+        </div>
+        {location.rejectionReason && (
+          <p className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">{location.rejectionReason}</p>
+        )}
+        {canModerateLocation && location.vendorId && (
+          <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+            <Input value={rejectReason} onChange={event => onRejectReasonChange(event.target.value)} placeholder="Reason if rejecting" className="border-admin bg-admin-input" />
+            <Button onClick={onApprove} disabled={approvePending} className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
+              <ShieldCheck className="h-4 w-4" />
+              Approve
+            </Button>
+            <Button onClick={onReject} disabled={rejectPending} variant="outline" className="gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10">
+              <ShieldX className="h-4 w-4" />
+              Reject
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-admin bg-admin-surface p-5 shadow-admin">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 font-heading text-lg font-black text-foreground">
+              <FileText className="h-5 w-5 text-neon-pink" />
+              Full menu
+            </h2>
+            <p className="mt-1 text-sm text-admin-40">PDF or image shown on the public booking page.</p>
+          </div>
+          {canEditLocation && (
+            <label className="inline-flex h-10 cursor-pointer items-center rounded-full border border-admin bg-admin-input px-4 text-sm font-semibold text-admin-60 hover:border-neon-pink/40 hover:text-neon-pink">
+              Upload
+              <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={onMenuDocumentChange} />
+            </label>
+          )}
+        </div>
+        {location.menuDocumentUrl ? (
+          <a href={location.menuDocumentUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex max-w-full break-all text-sm font-semibold text-neon-pink hover:underline">
+            {location.menuDocumentName ?? 'Open menu document'}
+          </a>
+        ) : (
+          <p className="mt-4 rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No menu document uploaded yet.</p>
+        )}
+      </div>
+      </div>
+    </section>
+  )
+}
+
+function LocationBookingsPanel({ location }: { location: Location }) {
+  const navigate = useNavigate()
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<BookingStatusFilter>('ALL')
+  const [date, setDate] = useState('')
+  const { data, isLoading } = useAdminReservations({ locationId: location.id, page: 1, limit: 100 })
+  const { data: chatThreads = [] } = useBookingChatThreads()
+
+  const rows = useMemo(() => data?.items ?? [], [data?.items])
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return rows.filter(reservation => {
+      if (status !== 'ALL' && reservation.status !== status) return false
+      if (date && bookingDateKey(reservation.reservationDate || reservation.startDateTime) !== date) return false
+      if (!query) return true
+      return bookingSearchText(reservation).includes(query)
+    })
+  }, [date, rows, search, status])
+
+  const confirmedCount = rows.filter(reservation => reservation.status === 'CONFIRMED' || reservation.status === 'SEATED').length
+  const totalGuests = rows.reduce((sum, reservation) => sum + reservation.guestCount, 0)
+  const depositTotal = rows.reduce((sum, reservation) => sum + Number(reservation.depositAmount ?? 0), 0)
+
+  return (
+    <section className="space-y-5">
+      <TabPageHeader
+        eyebrow="Table bookings"
+        title="Reservations for this location"
+        description="Filter arrivals, review deposits and pre-orders, then open the booking or chat with the customer."
+      >
+        <InlineStat label="Bookings" value={(data?.total ?? rows.length).toLocaleString()} />
+        <InlineStat label="Active" value={confirmedCount.toLocaleString()} />
+        <InlineStat label="Deposits" value={money(depositTotal)} />
+      </TabPageHeader>
+
+      <div className="rounded-xl border border-admin bg-admin-surface p-3 shadow-admin">
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_190px] xl:items-center">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-30" />
+            <Input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Search reference, table, customer, email, or phone..."
+              className="border-admin bg-admin-input pl-8"
+            />
+          </div>
+          <select value={status} onChange={event => setStatus(event.target.value as BookingStatusFilter)} className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+            {BOOKING_STATUS_FILTERS.map(filter => (
+              <option key={filter.value} value={filter.value}>{filter.label}</option>
+            ))}
+          </select>
+          <Input type="date" value={date} onChange={event => setDate(event.target.value)} className="border-admin bg-admin-input" />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+      ) : filteredRows.length === 0 ? (
+        <EmptyPanel icon={CalendarDays} title="No bookings found" description="Bookings for this location will appear here once customers reserve tables." />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin">
+          <div className="flex flex-col gap-2 border-b border-admin px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">{filteredRows.length.toLocaleString()} booking{filteredRows.length === 1 ? '' : 's'}</p>
+              <p className="mt-1 text-xs text-admin-40">{totalGuests.toLocaleString()} guest{totalGuests === 1 ? '' : 's'} across the current result set.</p>
+            </div>
+            <Badge className="w-fit border-admin bg-admin-overlay text-admin-50">Location only</Badge>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[940px] text-sm">
+              <thead className="bg-admin-overlay/70 text-left text-xs uppercase tracking-wide text-admin-40">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Guest</th>
+                  <th className="px-4 py-3 font-medium">Booking</th>
+                  <th className="px-4 py-3 font-medium">Service Time</th>
+                  <th className="px-4 py-3 font-medium">Spend</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-admin">
+            {filteredRows.map(reservation => {
+              const unread = bookingChatUnread(reservation, chatThreads)
+              const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
+              const preOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
+              const paymentStatus = paymentStatusLabel(reservation)
+              return (
+                <tr key={reservation.id} className="transition hover:bg-admin-overlay/45">
+                  <td className="px-4 py-3">
+                    <p className="font-heading text-sm font-black text-foreground">{customerName(reservation)}</p>
+                    <p className="mt-1 max-w-[220px] truncate text-xs text-admin-40">{customerContact(reservation)}</p>
+                    <p className="mt-1 font-mono text-[11px] text-admin-30">#{reservation.reference}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-admin-80">{reservation.table?.name ?? reservation.tableCategory}</p>
+                    <p className="mt-1 text-xs text-admin-40">{reservation.guestCount} guest{reservation.guestCount === 1 ? '' : 's'}</p>
+                  </td>
+                  <td className="px-4 py-3 text-admin-50">
+                    <p>{formatDateTime(reservation.startDateTime)}</p>
+                    <p className="mt-1 text-xs text-admin-40">Until {formatShortDateTime(reservation.endDateTime)}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="font-mono text-sm font-semibold text-foreground">{money(reservation.depositAmount)}</p>
+                    <p className="mt-1 text-xs text-admin-40">Pre-order {money(preOrderTotal)}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col items-start gap-1.5">
+                      <Badge className={statusTone(reservation.status)}>{statusLabel(reservation.status)}</Badge>
+                      <Badge className={paymentStatusTone(paymentStatus)}>{statusLabel(paymentStatus)}</Badge>
+                      {unread > 0 && <Badge className="border-neon-pink/25 bg-neon-pink/10 text-neon-pink">{unread} unread</Badge>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      {canOpenBookingChat(reservation) && (
+                        <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/dashboard/booking-chats?reservationId=${reservation.id}`)} className="gap-1.5 border-admin bg-admin-overlay text-admin-60 hover:text-neon-pink">
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          Chat
+                        </Button>
+                      )}
+                      <Button type="button" size="sm" onClick={() => navigate(`/dashboard/reservations/${reservation.id}`)} className="bg-neon-pink text-white hover:bg-neon-pink/90">
+                        Open
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function LocationBookingChatsPanel({ location, viewerName }: { location: Location; viewerName: string }) {
+  const navigate = useNavigate()
+  const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const { data, isLoading } = useAdminReservations({ locationId: location.id, page: 1, limit: 100 })
+  const { data: chatThreads = [], isLoading: isLoadingThreads } = useBookingChatThreads()
+
+  const rows = useMemo(() => {
+    const threadByReservationId = new Map(chatThreads.map(thread => [thread.reservationId, thread]))
+    return (data?.items ?? [])
+      .filter(reservation => canOpenBookingChat(reservation))
+      .map(reservation => ({
+        reservation,
+        thread: threadByReservationId.get(reservation.id) ?? null,
+      }))
+      .sort((a, b) => {
+        const aTime = a.thread?.updatedAt ?? a.reservation.startDateTime
+        const bTime = b.thread?.updatedAt ?? b.reservation.startDateTime
+        return new Date(bTime).getTime() - new Date(aTime).getTime()
+      })
+  }, [chatThreads, data?.items])
+
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return rows
+    return rows.filter(row => bookingSearchText(row.reservation).includes(query))
+  }, [rows, search])
+
+  useEffect(() => {
+    if (selectedReservationId && rows.some(row => row.reservation.id === selectedReservationId)) return
+    setSelectedReservationId(filteredRows[0]?.reservation.id ?? null)
+  }, [filteredRows, rows, selectedReservationId])
+
+  const selected = selectedReservationId ? rows.find(row => row.reservation.id === selectedReservationId) ?? null : null
+  const openCount = rows.filter(row => row.thread?.status !== 'RESOLVED').length
+  const unreadCount = rows.reduce((sum, row) => sum + (row.thread?.unreadForStaff ?? 0), 0)
+
+  return (
+    <section className="space-y-5">
+      <TabPageHeader
+        eyebrow="Customer conversations"
+        title="Booking chat inbox"
+        description="Location-scoped support inbox for confirmed table reservations and service questions."
+      >
+        <InlineStat label="Open" value={openCount.toLocaleString()} />
+        <InlineStat label="Unread" value={unreadCount.toLocaleString()} />
+        <InlineStat label="Eligible" value={rows.length.toLocaleString()} />
+      </TabPageHeader>
+
+      <div className="rounded-xl border border-admin bg-admin-surface p-3 shadow-admin">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-30" />
+          <Input
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search reference, customer, or table..."
+            className="border-admin bg-admin-input pl-8"
+          />
+        </div>
+      </div>
+
+      {isLoading || isLoadingThreads ? (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(440px,1.1fr)]">
+          <Skeleton className="h-[520px] rounded-2xl" />
+          <Skeleton className="h-[520px] rounded-2xl" />
+        </div>
+      ) : rows.length === 0 ? (
+        <EmptyPanel icon={MessageCircle} title="No booking chats yet" description="Confirmed and paid bookings for this location will appear here when chat is available." />
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[minmax(340px,0.85fr)_minmax(500px,1.15fr)]">
+          <section className="overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin">
+            <div className="border-b border-admin px-4 py-3">
+              <p className="text-sm font-semibold text-foreground">{filteredRows.length.toLocaleString()} conversation{filteredRows.length === 1 ? '' : 's'}</p>
+              <p className="mt-1 text-xs text-admin-40">Select a booking to review or reply to customer messages.</p>
+            </div>
+            <div className="max-h-[680px] overflow-y-auto">
+              {filteredRows.map(row => {
+                const active = selected?.reservation.id === row.reservation.id
+                const unread = row.thread?.unreadForStaff ?? 0
+                return (
+                  <button
+                    key={row.reservation.id}
+                    type="button"
+                    onClick={() => setSelectedReservationId(row.reservation.id)}
+                    className={cn(
+                      'flex w-full gap-3 border-b border-admin px-4 py-3.5 text-left transition last:border-b-0',
+                      active ? 'bg-neon-pink/10' : 'hover:bg-admin-overlay/55',
+                    )}
+                  >
+                    <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-pink/10 text-neon-pink">
+                      <MessageCircle className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-start justify-between gap-2">
+                        <span className="min-w-0">
+                          <span className="block truncate font-heading text-base font-black text-foreground">{customerName(row.reservation)}</span>
+                          <span className="mt-1 block font-mono text-xs text-admin-30">#{row.reservation.reference}</span>
+                        </span>
+                        <Badge className={row.thread?.status === 'RESOLVED' ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-neon-pink/25 bg-neon-pink/10 text-neon-pink'}>
+                          {row.thread?.status === 'RESOLVED' ? 'Resolved' : 'Open'}
+                        </Badge>
+                      </span>
+                      <span className="mt-3 block truncate text-xs text-admin-50">{row.reservation.table?.name ?? row.reservation.tableCategory} / {formatShortDateTime(row.reservation.startDateTime)}</span>
+                      <span className="mt-3 flex items-center justify-between gap-3">
+                        <span className="truncate text-xs text-admin-40">{customerContact(row.reservation)}</span>
+                        <span className={unread > 0 ? 'rounded-full bg-neon-pink px-2 py-0.5 text-xs font-bold text-white' : 'text-xs text-admin-30'}>
+                          {unread > 0 ? `${unread > 9 ? '9+' : unread} unread` : 'Read'}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            {selected ? (
+              <>
+                <div className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs text-admin-30">#{selected.reservation.reference}</p>
+                      <h2 className="mt-1 truncate font-heading text-xl font-black text-foreground">{customerName(selected.reservation)}</h2>
+                      <p className="mt-2 text-sm text-admin-50">{customerContact(selected.reservation)}</p>
+                      <p className="mt-1 text-xs text-admin-40">
+                        {selected.reservation.table?.name ?? selected.reservation.tableCategory} / {selected.reservation.guestCount} guest{selected.reservation.guestCount === 1 ? '' : 's'} / {formatShortDateTime(selected.reservation.startDateTime)}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 border-admin bg-admin-overlay text-admin-70 hover:text-neon-pink"
+                      onClick={() => navigate(`/dashboard/reservations/${selected.reservation.id}`)}
+                    >
+                      Open Booking
+                    </Button>
+                  </div>
+                </div>
+                <BookingChatPanel
+                  reservation={selected.reservation}
+                  viewer="STAFF"
+                  viewerName={viewerName}
+                  tone="admin"
+                />
+              </>
+            ) : (
+              <EmptyPanel icon={MessageCircle} title="No chat selected" description="Choose a booking conversation from the list." />
+            )}
+          </section>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function TabPageHeader({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">{eyebrow}</p>
+          <h2 className="mt-2 font-heading text-xl font-black text-foreground">{title}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-admin-50">{description}</p>
+        </div>
+        {children && (
+          <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[360px] sm:grid-cols-3">
+            {children}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function InlineStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-admin bg-admin-overlay px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-admin-30">{label}</p>
+      <p className="mt-1 truncate font-heading text-sm font-black text-foreground">{value}</p>
+    </div>
+  )
+}
+
+function EmptyPanel({ icon: Icon, title, description }: { icon: typeof Users; title: string; description: string }) {
+  return (
+    <section className="rounded-2xl border border-admin bg-admin-surface p-10 text-center shadow-admin">
+      <Icon className="mx-auto h-8 w-8 text-admin-30" />
+      <p className="mt-3 text-sm font-semibold text-admin-70">{title}</p>
+      <p className="mt-1 text-xs text-admin-40">{description}</p>
+    </section>
   )
 }
 

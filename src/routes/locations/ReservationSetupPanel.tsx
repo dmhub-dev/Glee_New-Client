@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   Badge,
   Button,
@@ -10,12 +10,10 @@ import {
 import {
   CalendarClock,
   Clock,
-  ImagePlus,
   Plus,
   Power,
   Save,
   Table2,
-  X,
 } from 'lucide-react'
 import {
   useCreateLocationReservationSlot,
@@ -54,10 +52,7 @@ const DAYS = [
 
 const DEPOSIT_PERCENTAGES = [20, 40, 60, 80, 100]
 
-type TableDraft = UpsertLocationTablePayload & {
-  hasCategoryPhoto: boolean
-  categoryPhoto?: { file: File; preview: string }
-}
+type TableDraft = UpsertLocationTablePayload
 
 const emptyTable: TableDraft = {
   name: '',
@@ -69,7 +64,6 @@ const emptyTable: TableDraft = {
   depositType: 'FLAT',
   depositValue: 0,
   isActive: true,
-  hasCategoryPhoto: false,
 }
 
 const emptySlot: UpsertReservationSlotPayload = {
@@ -101,7 +95,6 @@ function tableToDraft(table: LocationTable): TableDraft {
     depositType: table.depositType,
     depositValue: Number(table.depositValue),
     isActive: table.isActive,
-    hasCategoryPhoto: false,
   }
 }
 
@@ -141,6 +134,10 @@ export default function ReservationSetupPanel({ location }: { location: Location
     const categories = new Set(active.map(table => table.category))
     return { activeCount: active.length, categoryCount: categories.size }
   }, [tables])
+  const slotStats = useMemo(() => {
+    const active = slots.filter(slot => slot.isActive)
+    return { activeCount: active.length }
+  }, [slots])
 
   async function saveSettings() {
     try {
@@ -175,9 +172,8 @@ export default function ReservationSetupPanel({ location }: { location: Location
       return
     }
     try {
-      const { hasCategoryPhoto: _hasCategoryPhoto, categoryPhoto: _categoryPhoto, ...tablePayload } = tableDraft
       const payload = {
-        ...tablePayload,
+        ...tableDraft,
         minGuests: Number(tableDraft.minGuests),
         maxGuests: Number(tableDraft.maxGuests),
         minimumSpend: Number(tableDraft.minimumSpend),
@@ -202,17 +198,6 @@ export default function ReservationSetupPanel({ location }: { location: Location
       depositType,
       depositValue: depositType === 'PERCENTAGE' ? 20 : 0,
     }))
-  }
-
-  function setTableCategoryPhoto(file: File) {
-    setTableDraft(prev => ({ ...prev, categoryPhoto: { file, preview: URL.createObjectURL(file) } }))
-  }
-
-  function handleTableCategoryPhotoChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setTableCategoryPhoto(file)
-    event.target.value = ''
   }
 
   async function saveSlot() {
@@ -243,29 +228,39 @@ export default function ReservationSetupPanel({ location }: { location: Location
   }
 
   return (
-    <section className="rounded-xl border border-admin bg-admin-surface p-5 shadow-admin">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 font-heading text-lg font-black text-foreground">
-            <Table2 className="h-5 w-5 text-neon-pink" />
-            Reservation Setup
-          </h2>
-          <p className="mt-1 text-sm text-admin-40">Configure table bookings, minimum spends, deposits, and customer slots.</p>
+    <section className="space-y-5">
+      <div className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Table inventory</p>
+            <h2 className="mt-2 flex items-center gap-2 font-heading text-xl font-black text-foreground">
+              <Table2 className="h-5 w-5 text-neon-pink" />
+              Reservation setup
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-admin-50">Configure bookable tables, customer time slots, deposits, and the rules shown during public checkout.</p>
+          </div>
+          <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[360px] sm:grid-cols-3">
+            <Stat label="Tables" value={tableStats.activeCount.toLocaleString()} />
+            <Stat label="Slots" value={slotStats.activeCount.toLocaleString()} />
+            <Stat label="Categories" value={tableStats.categoryCount.toLocaleString()} />
+          </div>
         </div>
-        <Badge className={bookingEnabled ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-admin bg-admin-overlay text-admin-50'}>
-          {bookingEnabled ? 'Bookings enabled' : 'Bookings off'}
-        </Badge>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[360px_1fr]">
-        <div className="space-y-4">
-          <div className="rounded-xl border border-admin bg-admin-overlay p-4">
+      <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="space-y-4">
+          <div className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-foreground">Accept reservations</p>
                 <p className="text-xs text-admin-40">Customers can book tables when active slots exist.</p>
               </div>
-              <Switch checked={bookingEnabled} onCheckedChange={setBookingEnabled} />
+              <div className="flex items-center gap-3">
+                <Badge className={bookingEnabled ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-admin bg-admin-overlay text-admin-50'}>
+                  {bookingEnabled ? 'On' : 'Off'}
+                </Badge>
+                <Switch checked={bookingEnabled} onCheckedChange={setBookingEnabled} />
+              </div>
             </div>
             <div className="mt-4 grid gap-3">
               <label className="space-y-1">
@@ -293,14 +288,16 @@ export default function ReservationSetupPanel({ location }: { location: Location
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Stat label="Active tables" value={tableStats.activeCount.toLocaleString()} />
-            <Stat label="Categories" value={tableStats.categoryCount.toLocaleString()} />
-          </div>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-2">
           <div className="rounded-xl border border-admin bg-admin-overlay p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-admin-30">Checkout rule</p>
+            <p className="mt-2 text-sm leading-6 text-admin-50">
+              Guests pay the table deposit at checkout. Minimum spend stays visible as a venue rule.
+            </p>
+          </div>
+        </aside>
+
+        <div className="grid gap-5 2xl:grid-cols-2">
+          <div className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin">
             <PanelHeading icon={Table2} title="Physical Tables" count={tables.length} />
             <div className="mt-4 grid gap-3">
               <DraftLabel label="Table name">
@@ -341,28 +338,6 @@ export default function ReservationSetupPanel({ location }: { location: Location
                   </select>
                 </DraftLabel>
               )}
-              <label className="flex min-h-10 items-center gap-3 rounded-md border border-admin bg-admin-input px-3 text-sm text-admin-40">
-                <input
-                  type="checkbox"
-                  checked={tableDraft.hasCategoryPhoto}
-                  onChange={event => setTableDraft(prev => ({
-                    ...prev,
-                    hasCategoryPhoto: event.target.checked,
-                    categoryPhoto: event.target.checked ? prev.categoryPhoto : undefined,
-                  }))}
-                  className="h-4 w-4 rounded border-admin accent-neon-pink"
-                />
-                Add table category picture
-              </label>
-              {tableDraft.hasCategoryPhoto && (
-                <TableCategoryPhotoPicker
-                  inputId="reservation-table-category-photo"
-                  photo={tableDraft.categoryPhoto}
-                  onFile={setTableCategoryPhoto}
-                  onInputChange={handleTableCategoryPhotoChange}
-                  onClear={() => setTableDraft(prev => ({ ...prev, categoryPhoto: undefined }))}
-                />
-              )}
               <Button onClick={saveTable} disabled={createTable.isPending || updateTable.isPending} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
                 <Plus className="h-4 w-4" />
                 {editingTableId ? 'Update Table' : 'Add Table'}
@@ -389,7 +364,7 @@ export default function ReservationSetupPanel({ location }: { location: Location
             </div>
           </div>
 
-          <div className="rounded-xl border border-admin bg-admin-overlay p-4">
+          <div className="rounded-xl border border-admin bg-admin-surface p-4 shadow-admin">
             <PanelHeading icon={CalendarClock} title="Venue Slots" count={slots.length} />
             <div className="mt-4 grid gap-3">
               <Input placeholder="Slot label e.g. Dinner" value={slotDraft.label} onChange={event => setSlotDraft(prev => ({ ...prev, label: event.target.value }))} className="border-admin bg-admin-input" />
@@ -465,70 +440,5 @@ function DraftLabel({ label, children }: { label: string; children: ReactNode })
       <span className="text-xs text-admin-40">{label}</span>
       {children}
     </label>
-  )
-}
-
-function TableCategoryPhotoPicker({
-  inputId,
-  photo,
-  onFile,
-  onInputChange,
-  onClear,
-}: {
-  inputId: string
-  photo?: { file: File; preview: string }
-  onFile: (file: File) => void
-  onInputChange: (event: ChangeEvent<HTMLInputElement>) => void
-  onClear: () => void
-}) {
-  return (
-    <div className="space-y-2">
-      <span className="text-xs text-admin-40">Upload table category picture</span>
-      <div
-        onDragOver={event => event.preventDefault()}
-        onDrop={event => {
-          event.preventDefault()
-          const file = event.dataTransfer.files?.[0]
-          if (file) onFile(file)
-        }}
-        className={`group relative overflow-hidden rounded-2xl border border-dashed p-4 transition-colors ${
-          photo ? 'border-neon-pink/40 bg-neon-pink/8' : 'border-admin-md bg-admin-input hover:border-neon-pink/45 hover:bg-admin-overlay'
-        }`}
-      >
-        {photo ? (
-          <div className="flex items-center gap-4">
-            <img src={photo.preview} alt="" className="h-20 w-20 rounded-xl object-cover shadow-[0_12px_32px_rgba(0,0,0,0.24)]" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">{photo.file.name}</p>
-              <p className="mt-1 text-xs text-admin-40">This preview represents the table category image.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <label htmlFor={inputId} className="inline-flex h-8 cursor-pointer items-center rounded-full bg-neon-pink px-3 text-xs font-semibold text-white transition hover:bg-neon-pink/90">
-                  Change image
-                </label>
-                <button type="button" onClick={onClear} className="inline-flex h-8 items-center gap-1 rounded-full border border-admin px-3 text-xs font-semibold text-admin-50 transition hover:border-red-500/35 hover:text-red-400">
-                  <X className="h-3.5 w-3.5" />
-                  Remove
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <label htmlFor={inputId} className="flex cursor-pointer flex-col items-center justify-center rounded-xl py-6 text-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neon-pink/12 text-neon-pink ring-1 ring-neon-pink/20 transition group-hover:scale-105">
-              <ImagePlus className="h-5 w-5" />
-            </span>
-            <span className="mt-3 text-sm font-semibold text-foreground">Drag an image here or click to upload</span>
-            <span className="mt-1 text-xs text-admin-40">JPG, PNG, or WebP for this table category.</span>
-          </label>
-        )}
-        <input
-          id={inputId}
-          className="sr-only"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={onInputChange}
-        />
-      </div>
-    </div>
   )
 }
