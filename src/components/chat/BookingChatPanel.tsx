@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { CheckCircle2, Loader2, MessageCircle, RotateCcw, Send } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Loader2, MessageCircle, RotateCcw, Send } from 'lucide-react'
 import {
   canOpenBookingChat,
   type BookingChatMessage,
@@ -21,6 +21,7 @@ export interface BookingChatPanelProps {
   tone?: 'customer' | 'admin'
   compact?: boolean
   className?: string
+  onBack?: () => void
 }
 
 function formatMessageTime(value: string) {
@@ -39,6 +40,7 @@ export function BookingChatPanel({
   tone = 'admin',
   compact = false,
   className,
+  onBack,
 }: BookingChatPanelProps) {
   const { toast } = useToast()
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -73,6 +75,8 @@ export function BookingChatPanel({
   const emptyStateClass = isCustomerTone
     ? 'border-white/10 bg-white/[0.05] text-white/60'
     : 'border-admin bg-admin-overlay text-admin-50'
+  const customerTitle = thread?.title ?? reservation?.location?.name ?? reservation?.event?.name ?? reservation?.tableCategory ?? 'Booking Chat'
+  const customerSubtitle = thread?.reference ?? reservation?.reference ?? 'Reservation support'
 
   useEffect(() => {
     setDraft('')
@@ -137,6 +141,27 @@ export function BookingChatPanel({
   }
 
   if (!reservation || !isEligible) {
+    if (isCustomerTone) {
+      return (
+        <div className={cn('flex flex-col', className)}>
+          <BookingCustomerChatHeader
+            title={customerTitle}
+            subtitle={customerSubtitle}
+            statusLabel="Locked"
+            onBack={onBack}
+          />
+          <div className={cn('flex-1 overflow-y-auto overscroll-contain', chatSurfaceClass)}>
+            <div className="flex min-h-full flex-col items-center justify-center p-8 text-center">
+              <MessageCircle className="mb-3 h-9 w-9 text-neon-pink/55" />
+              <p className="text-sm font-semibold text-white/75">
+                Chat opens after this booking is confirmed and paid.
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <section className={cn('flex min-h-[280px] flex-col rounded-2xl border p-4', shellClass, className)}>
         <BookingChatHeader
@@ -156,6 +181,24 @@ export function BookingChatPanel({
   }
 
   if (threadQuery.isLoading) {
+    if (isCustomerTone) {
+      return (
+        <div className={cn('flex flex-col', className)}>
+          <BookingCustomerChatHeader
+            title={customerTitle}
+            subtitle={customerSubtitle}
+            statusLabel="Loading"
+            onBack={onBack}
+          />
+          <div className={cn('flex-1 overflow-y-auto overscroll-contain p-3', chatSurfaceClass)}>
+            <Skeleton className="h-16 rounded-xl bg-white/10" />
+            <Skeleton className="mt-3 h-16 rounded-xl bg-white/10" />
+            <Skeleton className="mt-3 h-12 rounded-xl bg-white/10" />
+          </div>
+        </div>
+      )
+    }
+
     return (
       <section className={cn('flex rounded-2xl border p-4', compact ? 'min-h-[360px]' : 'min-h-[520px]', shellClass, className)}>
         <div className="flex min-h-0 flex-1 flex-col">
@@ -234,7 +277,7 @@ export function BookingChatPanel({
   ) : null
 
   const composer = (
-    <div className={cn('mt-4 shrink-0 space-y-2', isCustomerTone ? 'border-t border-white/10 pt-3' : '')}>
+    <div className={cn('shrink-0 space-y-2', isCustomerTone ? 'border-t border-white/10 bg-[#050017]/80 px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-3 backdrop-blur-xl lg:pb-[calc(env(safe-area-inset-bottom)+1rem)]' : 'mt-4')}>
       {resolvedNotice}
       <div className={cn('flex items-end gap-2 rounded-2xl border p-2', isCustomerTone ? 'border-white/10 bg-white/[0.06]' : 'border-admin bg-admin-overlay')}>
         <Textarea
@@ -263,6 +306,28 @@ export function BookingChatPanel({
       </div>
     </div>
   )
+
+  if (isCustomerTone) {
+    return (
+      <div className={cn('flex flex-col', className)}>
+        <BookingCustomerChatHeader
+          title={customerTitle}
+          subtitle={customerSubtitle}
+          statusLabel={thread?.status === 'RESOLVED' ? 'Resolved' : 'Open'}
+          onBack={onBack}
+        />
+
+        <div
+          ref={scrollRef}
+          className={cn('flex-1 overflow-y-auto overscroll-contain', chatSurfaceClass)}
+        >
+          {messageList}
+        </div>
+
+        {composer}
+      </div>
+    )
+  }
 
   return (
     <section className={cn('flex flex-col rounded-2xl border p-4', compact ? 'min-h-[360px]' : 'min-h-[520px]', shellClass, className)}>
@@ -310,6 +375,43 @@ export function BookingChatPanel({
 
       {composer}
     </section>
+  )
+}
+
+function BookingCustomerChatHeader({
+  title,
+  subtitle,
+  statusLabel,
+  onBack,
+}: {
+  title: string
+  subtitle: string
+  statusLabel: string
+  onBack?: () => void
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-[#050017]/90 px-4 py-3 backdrop-blur-xl">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+      )}
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neon-pink/15">
+        <MessageCircle className="h-5 w-5 text-neon-pink" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-black text-white">{title}</p>
+        <div className="flex items-center gap-1.5">
+          <div className={cn('h-1.5 w-1.5 rounded-full', statusLabel === 'Open' ? 'bg-emerald-400' : statusLabel === 'Resolved' ? 'bg-sky-400' : 'bg-amber-400')} />
+          <p className="truncate text-xs text-white/45">{statusLabel} · {subtitle}</p>
+        </div>
+      </div>
+    </div>
   )
 }
 

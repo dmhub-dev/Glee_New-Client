@@ -39,12 +39,7 @@ function statusTone(status?: ReservationStatus | string | null) {
 function reservationNotice(status?: ReservationStatus | string | null, paymentStatus?: string | null) {
   switch (status) {
     case 'CONFIRMED':
-      return {
-        className: 'border-emerald-400/20 bg-emerald-400/10 text-emerald-50',
-        icon: CheckCircle2,
-        iconClassName: 'text-emerald-300',
-        message: 'Keep this page available when you arrive. The venue team can verify the reservation using the reference and guest details above.',
-      }
+      return null
     case 'SEATED':
     case 'COMPLETED':
       return {
@@ -144,7 +139,7 @@ export default function PublicReservationDetailPage() {
   const guestEmail = reservation.guestEmail ?? reservation.user?.email
   const guestPhone = reservation.guestPhone ?? reservation.user?.phone
   const notice = reservationNotice(reservation.status, paymentStatus)
-  const NoticeIcon = notice.icon
+  const NoticeIcon = notice?.icon
   const canReview = canReviewReservationByStatus(reservation.status)
   const preOrderItems = normalizedReservationPreOrderMenu(reservation.preOrderMenu)
   const preOrderTotal = preOrderItems.reduce((sum, item) => sum + item.lineTotal, 0)
@@ -270,12 +265,14 @@ export default function PublicReservationDetailPage() {
           />
         ) : null}
 
-        <section className={`rounded-3xl border p-5 text-sm leading-6 ${notice.className}`}>
-          <div className="flex items-start gap-3">
-            <NoticeIcon className={`mt-0.5 h-5 w-5 shrink-0 ${notice.iconClassName}`} />
-            <p>{notice.message}</p>
-          </div>
-        </section>
+        {notice && NoticeIcon ? (
+          <section className={`rounded-3xl border p-5 text-sm leading-6 ${notice.className}`}>
+            <div className="flex items-start gap-3">
+              <NoticeIcon className={`mt-0.5 h-5 w-5 shrink-0 ${notice.iconClassName}`} />
+              <p>{notice.message}</p>
+            </div>
+          </section>
+        ) : null}
 
         <footer className="flex flex-wrap items-center gap-3 pb-8 text-xs text-white/35">
           <ReceiptText className="h-4 w-4 text-neon-pink" />

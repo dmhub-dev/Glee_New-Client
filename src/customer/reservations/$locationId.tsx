@@ -207,7 +207,13 @@ export default function CustomerReservationVenuePage() {
         safeSessionStorageSet(reservationVerificationStorageKey(result.reference), result.verificationToken)
         safeSessionStorageSet(
           reservationCheckoutContextStorageKey(result.reference),
-          JSON.stringify({ mode: isAuthenticated ? 'customer' : 'guest', source: 'VENUE', locationId, reservationId: result.reservation.id }),
+          JSON.stringify({
+            mode: isAuthenticated ? 'customer' : 'guest',
+            source: 'VENUE',
+            locationId,
+            reservationId: result.reservation.id,
+            email: isAuthenticated ? user?.email ?? null : guestEmail.trim(),
+          }),
         )
         window.location.href = result.authorization_url
         return

@@ -21,6 +21,7 @@ test('BookingChatPanel exposes the booking support chat API surface', async () =
   assert.deepEqual(diagnostics?.map(diagnostic => diagnostic.messageText) ?? [], [])
   assert.match(source, /export function BookingChatPanel/)
   assert.match(source, /interface BookingChatPanelProps/)
+  assert.match(source, /onBack\?:\s*\(\)\s*=>\s*void/)
 
   for (const requiredToken of [
     'canOpenBookingChat',
@@ -36,6 +37,21 @@ test('BookingChatPanel exposes the booking support chat API surface', async () =
   ]) {
     assert.match(source, new RegExp(requiredToken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
+})
+
+test('customer booking chat panel uses the event chat full-screen header pattern', async () => {
+  const source = await readPanelSource()
+
+  assert.match(
+    source,
+    /if\s*\(isCustomerTone\)\s*\{\s*return\s*\(\s*<div className=\{cn\(['"]flex flex-col['"], className\)\}>/s,
+    'expected customer tone to render a full-screen chat container like event chat',
+  )
+  assert.match(source, /onBack\s*&&\s*\(/, 'expected optional in-panel back action')
+  assert.match(source, /aria-label=['"]Back['"]/, 'expected the same accessible back button pattern as event chat')
+  assert.match(source, /border-b border-white\/10 bg-\[#050017\]\/90 px-4 py-3 backdrop-blur-xl/)
+  assert.match(source, /flex-1 overflow-y-auto overscroll-contain/)
+  assert.match(source, /pb-\[calc\(env\(safe-area-inset-bottom\)\+5\.5rem\)\]/)
 })
 
 test('admin thread actions require a staff viewer', async () => {

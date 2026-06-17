@@ -125,7 +125,7 @@ export default function ReservationBookingsList() {
           <div className="flex shrink-0 items-center gap-2">
             {chatEnabled ? (
               <Button
-                onClick={() => navigate(`/app/reservations/detail/${reservation.id}#chat`)}
+                onClick={() => navigate(`/app/reservations/detail/${reservation.id}/chat`)}
                 className="relative h-12 w-12 shrink-0 rounded-xl bg-purple-100 p-0 text-purple-700 hover:bg-purple-200"
                 aria-label={`Open booking chat for ${venue?.name ?? reservation.tableCategory}`}
               >

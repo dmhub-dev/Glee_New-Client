@@ -68,6 +68,7 @@ const CustomerReservationsPage = lazy(() => import('../customer/reservations/ind
 const CustomerReservationVenuePage = lazy(() => import('../customer/reservations/$locationId'))
 const CustomerMyReservationsPage = lazy(() => import('../customer/reservations/my'))
 const CustomerReservationDetailPage = lazy(() => import('../customer/reservations/$reservationId'))
+const CustomerReservationChatPage = lazy(() => import('../customer/reservations/ReservationChat'))
 
 const EVENT_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
 const BOOKINGS_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'customer_support']
@@ -135,6 +136,7 @@ export default function App() {
         <Route path="/reservations/:locationId" element={<CustomerReservationVenuePage />} />
         <Route path="/app/reservations/:locationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationVenuePage /></ProtectedRoute>} />
         <Route path="/app/reservations/detail/:reservationId" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationDetailPage /></ProtectedRoute>} />
+        <Route path="/app/reservations/detail/:reservationId/chat" element={<ProtectedRoute roles={CUSTOMER_ROLES}><CustomerReservationChatPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute roles={DASHBOARD_ROLES}><DashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/events" element={<ProtectedRoute roles={DASHBOARD_ROLES}><EventsListPage /></ProtectedRoute>} />
         <Route path="/dashboard/events/new" element={<ProtectedRoute roles={EVENT_CREATE_ROLES}><EventFormPage /></ProtectedRoute>} />

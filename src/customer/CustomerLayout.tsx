@@ -4,13 +4,38 @@ import { Home, Search, Ticket, UserCircle, Wallet, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage, cn } from '@glee/ui'
 import { useAuth } from '../lib/auth/AuthContext'
 
+type CustomerNavItem = {
+  label: string
+  to: string
+  icon: typeof Home
+  end?: boolean
+  isActive?: (pathname: string) => boolean
+}
+
 const navItems = [
   { label: 'Home',    to: '/app',         icon: Home,       end: true },
-  { label: 'Explore', to: '/app/events',  icon: Search },
-  { label: 'Tickets', to: '/app/tickets', icon: Ticket },
+  {
+    label: 'Explore',
+    to: '/app/events',
+    icon: Search,
+    isActive: (pathname: string) =>
+      pathname === '/app/events' ||
+      (pathname.startsWith('/app/events/') && !pathname.endsWith('/chat')) ||
+      (pathname.startsWith('/app/reservations/') && !pathname.startsWith('/app/reservations/detail/')),
+  },
+  {
+    label: 'Tickets',
+    to: '/app/tickets',
+    icon: Ticket,
+    isActive: (pathname: string) =>
+      pathname === '/app/tickets' ||
+      pathname.startsWith('/app/tickets/') ||
+      pathname.startsWith('/app/reservations/detail/') ||
+      /^\/app\/events\/[^/]+\/chat$/.test(pathname),
+  },
   { label: 'Wallet',  to: '/app/wallet',  icon: Wallet },
   { label: 'Profile', to: '/app/profile', icon: UserCircle },
-]
+] satisfies CustomerNavItem[]
 
 export default function CustomerLayout({
   title,
@@ -27,8 +52,9 @@ export default function CustomerLayout({
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const isEventDetail = location.pathname.startsWith('/app/events/') && !location.pathname.endsWith('/chat')
-  const isReservationDetail = location.pathname.startsWith('/app/reservations/')
-  const hideNav = isEventDetail || isReservationDetail
+  const isReservationBookingDetail = location.pathname.startsWith('/app/reservations/detail/')
+  const isReservationVenueDetail = location.pathname.startsWith('/app/reservations/') && !isReservationBookingDetail
+  const hideNav = isEventDetail || isReservationVenueDetail
 
   const initials = (user?.name ?? 'U')
     .split(' ').filter(Boolean).slice(0, 2)
@@ -60,23 +86,26 @@ export default function CustomerLayout({
           <nav className="flex-1 px-3 pt-1 space-y-0.5">
             {navItems.map(item => (
               <NavLink key={item.to} to={item.to} end={item.end}>
-                {({ isActive }) => (
-                  <span className={cn(
-                    'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
-                    isActive
-                      ? 'bg-neon-pink/12 text-neon-pink'
-                      : 'text-white/45 hover:bg-white/5 hover:text-white',
-                  )}>
-                    <item.icon
-                      className={cn('h-[18px] w-[18px] shrink-0 transition-colors', isActive ? 'text-neon-pink' : 'text-white/35 group-hover:text-white/70')}
-                      strokeWidth={isActive ? 2.5 : 2}
-                    />
-                    {item.label}
-                    {isActive && (
-                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-neon-pink" />
-                    )}
-                  </span>
-                )}
+                {({ isActive }) => {
+                  const active = item.isActive ? item.isActive(location.pathname) : isActive
+                  return (
+                    <span className={cn(
+                      'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
+                      active
+                        ? 'bg-neon-pink/12 text-neon-pink'
+                        : 'text-white/45 hover:bg-white/5 hover:text-white',
+                    )}>
+                      <item.icon
+                        className={cn('h-[18px] w-[18px] shrink-0 transition-colors', active ? 'text-neon-pink' : 'text-white/35 group-hover:text-white/70')}
+                        strokeWidth={active ? 2.5 : 2}
+                      />
+                      {item.label}
+                      {active && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-neon-pink" />
+                      )}
+                    </span>
+                  )
+                }}
               </NavLink>
             ))}
           </nav>
@@ -138,24 +167,27 @@ export default function CustomerLayout({
                 end={item.end}
                 className="group flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-1"
               >
-                {({ isActive }) => (
-                  <>
-                    <div className={cn(
-                      'rounded-full p-2 transition-all duration-300',
-                      isActive
-                        ? 'bg-neon-pink text-white shadow-[0_0_20px_rgba(255,0,122,0.45)]'
-                        : 'text-white/50 group-hover:bg-white/10 group-hover:text-white',
-                    )}>
-                      <item.icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 2} />
-                    </div>
-                    <span className={cn(
-                      'max-w-12 truncate text-[10px] font-semibold leading-none transition-colors',
-                      isActive ? 'text-white' : 'text-white/45',
-                    )}>
-                      {item.label}
-                    </span>
-                  </>
-                )}
+                {({ isActive }) => {
+                  const active = item.isActive ? item.isActive(location.pathname) : isActive
+                  return (
+                    <>
+                      <div className={cn(
+                        'rounded-full p-2 transition-all duration-300',
+                        active
+                          ? 'bg-neon-pink text-white shadow-[0_0_20px_rgba(255,0,122,0.45)]'
+                          : 'text-white/50 group-hover:bg-white/10 group-hover:text-white',
+                      )}>
+                        <item.icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
+                      </div>
+                      <span className={cn(
+                        'max-w-12 truncate text-[10px] font-semibold leading-none transition-colors',
+                        active ? 'text-white' : 'text-white/45',
+                      )}>
+                        {item.label}
+                      </span>
+                    </>
+                  )
+                }}
               </NavLink>
             ))}
           </div>

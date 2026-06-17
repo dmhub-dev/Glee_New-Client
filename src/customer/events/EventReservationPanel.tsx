@@ -55,7 +55,7 @@ interface EventReservationPanelProps {
 export default function EventReservationPanel({ eventId, menuItems = [] }: EventReservationPanelProps) {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth()
   const { data: slots = [], isLoading } = useEventReservationSlots(eventId)
   const createReservation = useCreateEventReservation()
   const [selectedSlotId, setSelectedSlotId] = useState('')
@@ -139,7 +139,13 @@ export default function EventReservationPanel({ eventId, menuItems = [] }: Event
         safeSessionStorageSet(reservationVerificationStorageKey(result.reference), result.verificationToken)
         safeSessionStorageSet(
           reservationCheckoutContextStorageKey(result.reference),
-          JSON.stringify({ mode: isAuthenticated ? 'customer' : 'guest', source: 'EVENT', eventId, reservationId: result.reservation.id }),
+          JSON.stringify({
+            mode: isAuthenticated ? 'customer' : 'guest',
+            source: 'EVENT',
+            eventId,
+            reservationId: result.reservation.id,
+            email: isAuthenticated ? user?.email ?? null : guestEmail.trim(),
+          }),
         )
         window.location.href = result.authorization_url
         return
