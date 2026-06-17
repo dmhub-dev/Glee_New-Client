@@ -12,12 +12,22 @@ import {
   Switch,
   useToast,
 } from '@glee/ui'
-import { useLocation, useUpdateLocation, useDeleteLocation, type Location } from '@glee/api'
+import {
+  useApproveLocation,
+  useDeleteLocation,
+  useLocation,
+  useRejectLocation,
+  useUpdateLocation,
+  useUploadLocationMenuDocument,
+  type Location,
+} from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import ReservationSetupPanel from './ReservationSetupPanel'
+import BookingAttendantsPanel from './BookingAttendantsPanel'
+import { useAdminUser } from '../../app/providers'
 import {
   ArrowLeft, Pencil, Trash2, MapPin, Users, Building2, Wind, ParkingCircle,
-  CalendarCheck, Image, ImagePlus, Save, X as XIcon,
+  CalendarCheck, FileText, Image, ImagePlus, Save, ShieldCheck, ShieldX, X as XIcon,
 } from 'lucide-react'
 
 const MAX_PHOTOS = 6
@@ -58,6 +68,18 @@ function normalizeVenueType(value?: Location['venueType'] | null): CanonicalVenu
 
 function venueTypeLabel(value?: Location['venueType'] | CanonicalVenueType | null) {
   return VENUE_TYPES.find(type => type.value === normalizeVenueType(value))?.label ?? 'Other'
+}
+
+function approvalBadgeClass(status?: Location['approvalStatus']) {
+  if (status === 'APPROVED') return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+  if (status === 'REJECTED') return 'border-red-500/25 bg-red-500/10 text-red-300'
+  return 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+}
+
+function approvalLabel(status?: Location['approvalStatus']) {
+  if (status === 'APPROVED') return 'Approved'
+  if (status === 'REJECTED') return 'Rejected'
+  return 'Pending approval'
 }
 
 function EditLocationPage({
@@ -386,11 +408,19 @@ export default function LocationDetailPage() {
   const { locationId } = useParams<{ locationId: string }>()
   const navigate       = useNavigate()
   const { toast }      = useToast()
+  const user = useAdminUser()
+  const isAdmin = ['super_admin', 'admin', 'operations_manager'].includes(user.role)
+  const isVendorOwner = user.role === 'vendor'
+  const isVendorStaff = user.role === 'vendor_staff'
   const [editOpen, setEditOpen]     = useState(false)
   const [heroIdx, setHeroIdx]       = useState(0)
+  const [rejectReason, setRejectReason] = useState('')
 
   const { data: loc, isLoading }    = useLocation(locationId!)
   const deleteMutation              = useDeleteLocation()
+  const uploadMenuDocument = useUploadLocationMenuDocument({ vendorScoped: isVendorOwner || isVendorStaff })
+  const approveMutation = useApproveLocation()
+  const rejectMutation = useRejectLocation()
 
   if (isLoading) {
     return (
@@ -417,6 +447,13 @@ export default function LocationDetailPage() {
 
   const pictures = loc.pictures ?? []
   const hero = pictures[heroIdx] ?? null
+  const canEditLocation = isAdmin || (isVendorOwner && loc.vendorId === user.id)
+  const canDeleteLocation = isAdmin
+  const canModerateLocation = ['super_admin', 'admin'].includes(user.role)
+  const canManageHostesses = (
+    ['super_admin', 'admin'].includes(user.role) ||
+    (isVendorOwner && loc.vendorId === user.id)
+  ) && Boolean(loc.bookingEnabled)
 
   async function handleDelete() {
     try {
@@ -425,6 +462,41 @@ export default function LocationDetailPage() {
       navigate('/dashboard/events?section=locations')
     } catch {
       toast({ title: 'Failed to delete location', variant: 'destructive' })
+    }
+  }
+
+  async function handleMenuDocumentChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      await uploadMenuDocument.mutateAsync({ id: loc!.id, file })
+      toast({ title: 'Menu document uploaded', description: loc!.vendorId ? 'Location has been sent back for approval.' : undefined })
+    } catch (error) {
+      toast({ title: 'Could not upload menu', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
+    }
+  }
+
+  async function approve() {
+    try {
+      await approveMutation.mutateAsync(loc!.id)
+      toast({ title: 'Location approved' })
+    } catch (error) {
+      toast({ title: 'Could not approve location', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
+    }
+  }
+
+  async function reject() {
+    if (!rejectReason.trim()) {
+      toast({ title: 'Rejection reason required', variant: 'destructive' })
+      return
+    }
+    try {
+      await rejectMutation.mutateAsync({ id: loc!.id, reason: rejectReason.trim() })
+      setRejectReason('')
+      toast({ title: 'Location rejected' })
+    } catch (error) {
+      toast({ title: 'Could not reject location', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
     }
   }
 
@@ -444,36 +516,40 @@ export default function LocationDetailPage() {
             Back to Locations
           </button>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={() => setEditOpen(true)}
-              aria-label="Open edit form"
-              className="gap-2 rounded-full bg-neon-pink px-5 text-white hover:bg-neon-pink/90"
-            >
-              <Pencil className="h-4 w-4" />
-              Edit Location
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="gap-2 rounded-full border-red-500/25 px-5 text-red-400 hover:bg-red-500/10 hover:text-red-300">
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete "{loc.name}"?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This permanently removes the location and cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white">
+            {canEditLocation && (
+              <Button
+                onClick={() => setEditOpen(true)}
+                aria-label="Open edit form"
+                className="gap-2 rounded-full bg-neon-pink px-5 text-white hover:bg-neon-pink/90"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Location
+              </Button>
+            )}
+            {canDeleteLocation && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="gap-2 rounded-full border-red-500/25 px-5 text-red-400 hover:bg-red-500/10 hover:text-red-300">
+                    <Trash2 className="h-4 w-4" />
                     Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-admin-dialog border border-admin-dialog shadow-2xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete "{loc.name}"?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes the location and cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white">
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 
@@ -570,7 +646,64 @@ export default function LocationDetailPage() {
           </aside>
         </section>
 
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-admin-30">Approval</p>
+                <h2 className="mt-2 font-heading text-xl font-black text-foreground">Location review status</h2>
+                <p className="mt-2 text-sm leading-6 text-admin-50">
+                  Vendor locations become public and usable for event setup only after approval.
+                </p>
+              </div>
+              <Badge className={approvalBadgeClass(loc.approvalStatus)}>{approvalLabel(loc.approvalStatus)}</Badge>
+            </div>
+            {loc.rejectionReason && (
+              <p className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">{loc.rejectionReason}</p>
+            )}
+            {canModerateLocation && loc.vendorId && (
+              <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                <Input value={rejectReason} onChange={event => setRejectReason(event.target.value)} placeholder="Reason if rejecting" className="border-admin bg-admin-input" />
+                <Button onClick={approve} disabled={approveMutation.isPending} className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
+                  <ShieldCheck className="h-4 w-4" />
+                  Approve
+                </Button>
+                <Button onClick={reject} disabled={rejectMutation.isPending} variant="outline" className="gap-2 border-red-500/30 text-red-300 hover:bg-red-500/10">
+                  <ShieldX className="h-4 w-4" />
+                  Reject
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 font-heading text-lg font-black text-foreground">
+                  <FileText className="h-5 w-5 text-neon-pink" />
+                  Full menu
+                </h2>
+                <p className="mt-1 text-sm text-admin-40">PDF or image shown on the public booking page.</p>
+              </div>
+              {canEditLocation && (
+                <label className="inline-flex h-10 cursor-pointer items-center rounded-full border border-admin bg-admin-input px-4 text-sm font-semibold text-admin-60 hover:border-neon-pink/40 hover:text-neon-pink">
+                  Upload
+                  <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={handleMenuDocumentChange} />
+                </label>
+              )}
+            </div>
+            {loc.menuDocumentUrl ? (
+              <a href={loc.menuDocumentUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex max-w-full break-all text-sm font-semibold text-neon-pink hover:underline">
+                {loc.menuDocumentName ?? 'Open menu document'}
+              </a>
+            ) : (
+              <p className="mt-4 rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No menu document uploaded yet.</p>
+            )}
+          </div>
+        </section>
+
         <ReservationSetupPanel location={loc} />
+        {canManageHostesses && <BookingAttendantsPanel location={loc} />}
       </div>
     </AdminLayout>
   )

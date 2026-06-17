@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -393,7 +393,11 @@ export default function EventFormPage() {
   const { fields: menuFields, append: appendMenu, remove: removeMenu } = useFieldArray({ control, name: 'menuItems' })
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({ control, name: 'schedules' })
   const formValues = watch()
-  const selectedLocation = locationsData?.find(location => location.id === formValues.locationId)
+  const eligibleLocations = useMemo(() => {
+    const rows = locationsData ?? []
+    return rows.filter(location => !location.vendorId || location.approvalStatus === 'APPROVED')
+  }, [locationsData])
+  const selectedLocation = eligibleLocations.find(location => location.id === formValues.locationId)
 
   function addTierToWave(waveIndex: number) {
     const waves = [...(formValues.ticketWaves ?? [])]
@@ -906,7 +910,7 @@ export default function EventFormPage() {
                     control={control}
                     name="locationId"
                     render={({ field }) => (
-                      <LocationPicker value={field.value} onChange={field.onChange} locations={locationsData ?? []} />
+                      <LocationPicker value={field.value} onChange={field.onChange} locations={eligibleLocations} />
                     )}
                   />
                   {errors.locationId && <p className="text-xs text-red-400">{errors.locationId.message}</p>}

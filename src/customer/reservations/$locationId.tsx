@@ -11,7 +11,7 @@ import {
   type ReservationVenue,
 } from '@glee/api'
 import { Badge, Button, Input, Separator, Skeleton, useToast } from '@glee/ui'
-import { ChevronLeft, Clock, MapPin, ShieldCheck, Users, X } from 'lucide-react'
+import { ChevronLeft, Clock, ExternalLink, FileText, MapPin, ShieldCheck, Users, X } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 import {
@@ -287,6 +287,29 @@ export default function CustomerReservationVenuePage() {
           </div>
           {venue.description && <p className="px-5 pb-5 pt-1 text-sm leading-6 text-white/58 sm:px-6">{venue.description}</p>}
         </section>
+
+        {venue.menuDocumentUrl && (
+          <section className="rounded-3xl border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.22)] sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <FileText className="h-4 w-4 text-neon-pink" />
+                  Full menu
+                </p>
+                <p className="mt-1 text-xs text-white/45">Review the full menu before booking. Food and drinks are saved as a pre-order note and are not charged now.</p>
+              </div>
+              <a
+                href={venue.menuDocumentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-neon-pink/35 px-4 py-2 text-sm font-semibold text-neon-pink transition hover:bg-neon-pink/10"
+              >
+                {venue.menuDocumentName ?? 'Open menu'}
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          </section>
+        )}
 
         <section className="space-y-4 rounded-3xl bg-white/[0.08] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.22)] sm:p-5">
           <div className="space-y-4">

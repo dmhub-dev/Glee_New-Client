@@ -81,9 +81,65 @@ export interface ReservationVenue {
   bookingRules?: string | null
   cancellationCutoffHours: number
   timezone?: string | null
+  menuDocumentUrl?: string | null
+  menuDocumentType?: string | null
+  menuDocumentName?: string | null
   reservationSlots?: ReservationSlot[]
   reservationTables?: LocationTable[]
   menuItems?: LocationMenuItem[]
+}
+
+export interface BookingAttendant {
+  id: string
+  locationId: string
+  name: string
+  email: string
+  status: 'INVITED' | 'ACTIVE' | 'REVOKED' | 'EXPIRED' | string
+  sessionActive: boolean
+  lastLoginAt?: string | null
+  revokedAt?: string | null
+  createdAt?: string
+  attemptCount?: number
+  pin?: string
+  inviteUrl?: string
+}
+
+export interface BookingAttendantLocation {
+  id: string
+  name: string
+  address?: string | null
+}
+
+export interface BookingAttendantAccessResult {
+  token: string
+  expiresAt: string
+  attendant: Pick<BookingAttendant, 'id' | 'name' | 'email' | 'status'>
+  location: BookingAttendantLocation
+}
+
+export interface BookingAttendantDeskResult {
+  attendant: Pick<BookingAttendant, 'id' | 'name' | 'email' | 'status'>
+  location: BookingAttendantLocation
+  canCheckIn: boolean
+}
+
+export interface BookingAttendantReservation {
+  id: string
+  reference: string
+  status: ReservationStatus
+  guestCount: number
+  tableCategory: string
+  minimumSpend: string | number
+  depositAmount: string | number
+  startDateTime: string
+  endDateTime: string
+  preOrderMenu?: ReservationPreOrderMenuItem[] | null
+  table?: { id: string; name: string; category?: string | null } | null
+  customer: {
+    name: string
+    email?: string | null
+    phone?: string | null
+  }
 }
 
 export interface AvailabilityCategory {
@@ -293,6 +349,7 @@ export const reservationKeys = {
   locationSlots: (locationId: string) => ['reservations', 'locations', locationId, 'slots'] as const,
   locationMenuItems: (locationId: string) => ['reservations', 'locations', locationId, 'menu-items'] as const,
   adminEventSlots: (eventId: string) => ['reservations', 'admin', 'events', eventId, 'slots'] as const,
+  bookingAttendants: (locationId: string) => ['reservations', 'locations', locationId, 'booking-attendants'] as const,
 }
 
 export function reservationVerificationStorageKey(reference: string) {
@@ -523,6 +580,85 @@ export async function updateAdminEventReservationSlot(eventId: string, slotId: s
   return response.data
 }
 
+export function getBookingAttendants(locationId: string): Promise<BookingAttendant[]> {
+  return apiFetch<{ success: boolean; data: BookingAttendant[] }>(
+    `/api/v1/admin/locations/${locationId}/booking-attendants`,
+  ).then(r => r.data ?? [])
+}
+
+export function createBookingAttendant(params: { locationId: string; name: string; email: string }): Promise<BookingAttendant> {
+  return apiFetch<{ success: boolean; data: BookingAttendant }>(
+    `/api/v1/admin/locations/${params.locationId}/booking-attendants`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ name: params.name, email: params.email }),
+    },
+  ).then(r => r.data)
+}
+
+export function resetBookingAttendantSession(params: { locationId: string; id: string }): Promise<void> {
+  return apiFetch(`/api/v1/admin/locations/${params.locationId}/booking-attendants/${params.id}/reset-session`, {
+    method: 'PATCH',
+  })
+}
+
+export function revokeBookingAttendant(params: { locationId: string; id: string }): Promise<void> {
+  return apiFetch(`/api/v1/admin/locations/${params.locationId}/booking-attendants/${params.id}/revoke`, {
+    method: 'PATCH',
+  })
+}
+
+export function accessBookingAttendantDesk(params: {
+  token: string
+  name: string
+  email: string
+  pin: string
+}): Promise<BookingAttendantAccessResult> {
+  return apiFetch<{ success: boolean; data: BookingAttendantAccessResult }>('/api/v1/booking-attendants/access', {
+    method: 'POST',
+    body: JSON.stringify(params),
+    skipAuth: true,
+  }).then(r => r.data)
+}
+
+export function getBookingAttendantDesk(sessionToken: string): Promise<BookingAttendantDeskResult> {
+  return apiFetch<{ success: boolean; data: BookingAttendantDeskResult }>('/api/v1/booking-attendants/me', {
+    skipAuth: true,
+    headers: { 'x-attendant-token': sessionToken },
+  }).then(r => r.data)
+}
+
+export function getBookingAttendantReservations(sessionToken: string, params: { date?: string; search?: string } = {}): Promise<BookingAttendantReservation[]> {
+  const query = new URLSearchParams()
+  if (params.date) query.set('date', params.date)
+  if (params.search?.trim()) query.set('search', params.search.trim())
+  return apiFetch<{ success: boolean; data: BookingAttendantReservation[] }>(
+    withQuery('/api/v1/booking-attendants/reservations', query),
+    { skipAuth: true, headers: { 'x-attendant-token': sessionToken } },
+  ).then(r => r.data ?? [])
+}
+
+export function bookingAttendantCheckIn(params: {
+  sessionToken: string
+  reservationRef: string
+  source?: 'QR' | 'MANUAL'
+}): Promise<BookingAttendantReservation> {
+  return apiFetch<{ success: boolean; data: BookingAttendantReservation }>('/api/v1/booking-attendants/check-in', {
+    method: 'POST',
+    body: JSON.stringify({ reservationRef: params.reservationRef, source: params.source ?? 'MANUAL' }),
+    skipAuth: true,
+    headers: { 'x-attendant-token': params.sessionToken },
+  }).then(r => r.data)
+}
+
+export function bookingAttendantLogout(sessionToken: string): Promise<void> {
+  return apiFetch('/api/v1/booking-attendants/logout', {
+    method: 'POST',
+    skipAuth: true,
+    headers: { 'x-attendant-token': sessionToken },
+  })
+}
+
 export function useReservationVenues(filters: ReservationVenuesFilters = {}) {
   return useQuery({ queryKey: reservationKeys.venues(filters), queryFn: () => getReservationVenues(filters) })
 }
@@ -717,5 +853,37 @@ export function useUpdateAdminEventReservationSlot() {
       queryClient.invalidateQueries({ queryKey: reservationKeys.adminEventSlots(slot.eventId) })
       queryClient.invalidateQueries({ queryKey: reservationKeys.eventSlots(slot.eventId) })
     },
+  })
+}
+
+export function useBookingAttendants(locationId?: string) {
+  return useQuery({
+    queryKey: reservationKeys.bookingAttendants(locationId ?? ''),
+    queryFn: () => getBookingAttendants(locationId as string),
+    enabled: Boolean(locationId),
+  })
+}
+
+export function useCreateBookingAttendant(locationId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createBookingAttendant,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: reservationKeys.bookingAttendants(locationId ?? '') }),
+  })
+}
+
+export function useResetBookingAttendantSession(locationId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: resetBookingAttendantSession,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: reservationKeys.bookingAttendants(locationId ?? '') }),
+  })
+}
+
+export function useRevokeBookingAttendant(locationId?: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: revokeBookingAttendant,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: reservationKeys.bookingAttendants(locationId ?? '') }),
   })
 }

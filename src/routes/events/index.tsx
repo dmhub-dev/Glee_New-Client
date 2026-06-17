@@ -65,6 +65,18 @@ function venueTypeLabel(value?: string | null) {
   return 'Other'
 }
 
+function locationApprovalLabel(status?: Location['approvalStatus']) {
+  if (status === 'APPROVED') return 'Approved'
+  if (status === 'REJECTED') return 'Rejected'
+  return 'Pending'
+}
+
+function locationApprovalClass(status?: Location['approvalStatus']) {
+  if (status === 'APPROVED') return 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300'
+  if (status === 'REJECTED') return 'border-red-500/25 bg-red-500/15 text-red-300'
+  return 'border-amber-500/25 bg-amber-500/15 text-amber-300'
+}
+
 function formatListDate(startDate: string, startTime: string, endDate?: string): string {
   const datePart = formatDateRange(
     startDate,
@@ -141,7 +153,7 @@ function LocationReferenceGrid({
       <div className="flex flex-col gap-3 rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-heading text-base font-bold text-foreground">Event Locations</h2>
-          <p className="mt-1 text-sm text-admin-40">Use Glee-approved locations for your events. Vendors cannot create or modify platform locations.</p>
+          <p className="mt-1 text-sm text-admin-40">Use platform locations or your approved vendor locations for events. New vendor locations stay pending until Glee approves them.</p>
         </div>
         {allowCreate && (
           <Button onClick={() => navigate('/dashboard/locations/new')} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
@@ -175,6 +187,11 @@ function LocationReferenceGrid({
                   <span className="rounded-full border border-neon-pink/25 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-neon-pink backdrop-blur">
                     {venueTypeLabel(location.venueType)}
                   </span>
+                  {location.vendorId && (
+                    <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur', locationApprovalClass(location.approvalStatus))}>
+                      {locationApprovalLabel(location.approvalStatus)}
+                    </span>
+                  )}
                 </div>
                 <span className={cn(
                   'absolute bottom-3 right-3 rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur',
@@ -285,7 +302,7 @@ export default function EventsListPage() {
           <CategoryReferenceGrid categories={categories ?? []} isLoading={categoriesLoading} />
         ) : <CategoriesTab />)}
         {activeSection === 'locations' && (isVendorRole ? (
-          <LocationReferenceGrid locations={locations ?? []} isLoading={locationsLoading} />
+          <LocationReferenceGrid locations={locations ?? []} isLoading={locationsLoading} allowCreate={canCreateEvents} />
         ) : <LocationsTab />)}
         {activeSection === 'events' && (
           <>

@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Building2,
   Check,
+  FileText,
   ImagePlus,
   MapPin,
   ParkingCircle,
@@ -170,6 +171,7 @@ export default function NewLocationPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [photos, setPhotos] = useState<{ file: File; preview: string }[]>([])
+  const [menuDocument, setMenuDocument] = useState<File | null>(null)
   const [tables, setTables] = useState<TableDraft[]>([])
   const [slots, setSlots] = useState<Array<UpsertReservationSlotPayload & { id: string }>>([])
 
@@ -315,6 +317,7 @@ export default function NewLocationPage() {
           timezone: formValues.timezone || 'Africa/Nairobi',
         },
         pictures: photos.map(photo => photo.file),
+        menuDocument,
       })
 
       if (formValues.bookingEnabled) {
@@ -390,6 +393,24 @@ export default function NewLocationPage() {
                   <Textarea id="location-description" {...register('description')} rows={4} placeholder="Ambience, access notes, guest experience, and important venue details." className="resize-none border-admin-md bg-admin-input" />
                 </FieldError>
               </div>
+            </section>
+
+            <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">
+              <div>
+                <h2 className="font-heading text-sm font-bold text-foreground">Full Menu</h2>
+                <p className="mt-1 text-xs text-admin-40">Upload a PDF or image menu for review and for guests booking tables.</p>
+              </div>
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-admin bg-admin-overlay px-4 py-8 text-center transition hover:border-neon-pink/40">
+                <FileText className="h-6 w-6 text-neon-pink" />
+                <span className="mt-2 text-sm font-semibold text-foreground">{menuDocument?.name ?? 'Choose menu PDF or image'}</span>
+                <span className="mt-1 text-xs text-admin-40">PDF, JPG, PNG, or WebP</span>
+                <input
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={event => setMenuDocument(event.target.files?.[0] ?? null)}
+                />
+              </label>
             </section>
 
             <section className="space-y-4 rounded-2xl border border-admin bg-admin-surface p-5">

@@ -27,6 +27,7 @@ const EventTicketConfirmPage = lazy(() => import('../public/routes/payment/Event
 const ReservationCallbackPage = lazy(() => import('../public/routes/reservations/ReservationCallback'))
 const PublicReservationDetailPage = lazy(() => import('../public/routes/reservations/$token'))
 const TicketAttendantAccessPage = lazy(() => import('../public/routes/ticket-attendant/access'))
+const BookingAttendantAccessPage = lazy(() => import('../public/routes/booking-attendant/access'))
 const PublicTicketPassPage = lazy(() => import('../public/routes/tickets/$token'))
 const PrivacyPolicyPage   = lazy(() => import('../public/routes/legal/privacy-policy'))
 const TermsPage           = lazy(() => import('../public/routes/legal/terms'))
@@ -71,7 +72,8 @@ const EVENT_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
 const BOOKINGS_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'customer_support']
 const BOOKING_EVENT_ROLES: UserRole[] = ['vendor', 'vendor_staff', 'admin', 'customer_support']
 const RESERVATION_ROLES: UserRole[] = [...ADMIN_ROLES, 'operations_manager', 'vendor', 'vendor_staff']
-const LOCATION_ROLES: UserRole[] = [...ADMIN_ROLES]
+const LOCATION_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff']
+const LOCATION_CREATE_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor']
 const MENU_PRICING_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff']
 const SALES_REPORT_ROLES: UserRole[] = [...ADMIN_ROLES, 'vendor', 'vendor_staff', 'finance']
 const FINANCIALS_ROLES: UserRole[] = [...ADMIN_ROLES, 'finance']
@@ -108,6 +110,7 @@ export default function App() {
         <Route path="/reservation/:token" element={<PublicReservationDetailPage />} />
         <Route path="/reservations" element={<CustomerReservationsPage />} />
         <Route path="/ticket-attendant/access" element={<TicketAttendantAccessPage />} />
+        <Route path="/booking-attendant/access" element={<BookingAttendantAccessPage />} />
         <Route path="/t/:token" element={<PublicTicketPassPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
@@ -260,7 +263,7 @@ export default function App() {
         <Route
           path="/dashboard/locations/new"
           element={
-            <ProtectedRoute roles={LOCATION_ROLES}>
+            <ProtectedRoute roles={LOCATION_CREATE_ROLES}>
               <NewLocationPage />
             </ProtectedRoute>
           }
