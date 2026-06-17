@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Badge, Skeleton } from '@glee/ui'
 import { CalendarCheck, MapPin } from 'lucide-react'
 import type { ReservationVenue } from '@glee/api'
+import { RotatingMediaCover, normalizeMediaImages } from '../media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 
@@ -15,8 +16,8 @@ function venueTypeLabel(venue: ReservationVenue) {
   return 'Restaurant/Hotel'
 }
 
-function venueImage(venue: ReservationVenue) {
-  return venue.pictures?.[0] ?? PLACEHOLDER
+function venueImages(venue: ReservationVenue) {
+  return normalizeMediaImages(venue.pictures, PLACEHOLDER)
 }
 
 function VenueCard({
@@ -36,12 +37,7 @@ function VenueCard({
         onClick={() => navigate(getVenuePath(venue.id))}
         className="group relative h-[350px] w-full overflow-hidden rounded-2xl border border-white/10 text-left shadow-[0_18px_48px_rgba(0,0,0,0.42)] transition hover:border-neon-pink/45"
       >
-        <img
-          src={venueImage(venue)}
-          alt={venue.name}
-          className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-          onError={event => { event.currentTarget.src = PLACEHOLDER }}
-        />
+        <RotatingMediaCover images={venueImages(venue)} alt={venue.name} fallback={PLACEHOLDER} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
         <Badge className="absolute left-3 top-3 border-0 bg-white/20 text-white backdrop-blur-md">
           {venueTypeLabel(venue)}
@@ -70,12 +66,7 @@ function VenueCard({
       className="group flex overflow-hidden rounded-2xl border border-white/15 bg-white/[0.10] p-3 text-left transition-all duration-300 hover:border-neon-pink/50 hover:bg-white/[0.14] hover:shadow-neon sm:h-[318px] sm:flex-col sm:p-0 lg:h-[300px]"
     >
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg sm:h-44 sm:w-full sm:rounded-none lg:h-40">
-        <img
-          src={venueImage(venue)}
-          alt={venue.name}
-          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          onError={event => { event.currentTarget.src = PLACEHOLDER }}
-        />
+        <RotatingMediaCover images={venueImages(venue)} alt={venue.name} fallback={PLACEHOLDER} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       </div>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-1.5 px-3 py-1 sm:p-3">

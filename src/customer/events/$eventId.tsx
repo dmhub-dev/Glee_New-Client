@@ -12,6 +12,7 @@ import {
   tableBookingDeposit,
   type CheckoutTableBookingSelection,
 } from '../../components/events/eventCheckoutTableBookingUtils'
+import { AutoMediaHero, normalizeMediaImages } from '../../components/media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 type FeeType = 'PERCENTAGE' | 'FIXED'
@@ -181,7 +182,7 @@ export default function CustomerEventDetailPage() {
   const walletCanPayFull = walletBalance >= total
   const installmentDueNow = selectedInstallmentPlan?.dueNow ?? 0
   const walletCanStartInstallment = installmentOptions.length > 0 && (!selectedInstallmentPlan || walletBalance >= selectedInstallmentPlan.dueNow)
-  const posterSrc = event?.flyerPortraitUrl ?? event?.flyerSquareUrl ?? PLACEHOLDER
+  const eventImages = normalizeMediaImages(event?.images ?? [event?.flyerPortraitUrl, event?.flyerSquareUrl], PLACEHOLDER)
   const isSoldOut = event?.status === 'sold_out' || Boolean(activeWaveTiers.length && activeWaveTiers.every(tier => tier.quantityRemaining <= 0))
   const selectedTierSoldOut = !selectedTier || selectedTier.quantityRemaining <= 0
   const anyTierSelected = Object.values(tierQtys).some(q => q > 0)
@@ -277,15 +278,13 @@ export default function CustomerEventDetailPage() {
           </button>
         </div>
 
-        <section className="relative h-[46vh] min-h-[360px] overflow-hidden">
-          <img
-            src={posterSrc}
-            alt={event.title}
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050017] via-[#050017]/35 to-black/20" />
-        </section>
+        <AutoMediaHero
+          images={eventImages}
+          alt={event.title}
+          fallback={PLACEHOLDER}
+          className="h-[46vh] min-h-[360px]"
+          overlayClassName="bg-gradient-to-t from-[#050017] via-[#050017]/35 to-black/20"
+        />
 
         <div className="relative z-10 mx-auto -mt-16 w-full max-w-7xl space-y-5 px-4 lg:px-8">
           <section className="space-y-4">

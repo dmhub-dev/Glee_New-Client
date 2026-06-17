@@ -16,6 +16,7 @@ import {
   selectedTableBookingPayload,
   type CheckoutTableBookingSelection,
 } from '../../../components/events/eventCheckoutTableBookingUtils'
+import { AutoMediaHero, normalizeMediaImages } from '../../../components/media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 const PUBLIC_DETAIL_STATUSES = ['active', 'live', 'cancelled', 'sold_out']
@@ -147,7 +148,7 @@ export default function EventDetailPage() {
   const eventStartTime = formatTimeOnly(event.startTime, { hour: '2-digit', minute: '2-digit', hour12: true })
   const eventEndTime = event.endTime ? formatTimeOnly(event.endTime, { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
   const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
-  const posterSrc = event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
+  const eventImages = normalizeMediaImages(event.images ?? [event.flyerPortraitUrl, event.flyerSquareUrl], PLACEHOLDER)
   const activeWaveTiers = (() => {
     if (event.ticketWaves?.length) {
       const activeWave = event.ticketWaves.find(w => w.status === 'active')
@@ -181,14 +182,13 @@ export default function EventDetailPage() {
       </div>
 
       {/* Hero */}
-      <section className="relative h-[45vh] min-h-[360px] w-full overflow-hidden sm:h-[52vh] sm:min-h-[430px]">
-        <img
-          src={posterSrc}
-          alt={event.title}
-          className="h-full w-full object-cover"
-          onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#10101d] via-black/28 to-black/5" />
+      <AutoMediaHero
+        images={eventImages}
+        alt={event.title}
+        fallback={PLACEHOLDER}
+        className="h-[45vh] min-h-[360px] w-full sm:h-[52vh] sm:min-h-[430px]"
+        overlayClassName="bg-gradient-to-t from-[#10101d] via-black/28 to-black/5"
+      >
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-md px-5 pb-6 md:max-w-3xl lg:max-w-5xl">
           <div className="max-w-xl">
             <span className="inline-flex rounded-full bg-neon-pink px-3 py-1 text-xs font-black uppercase tracking-wide text-white shadow-neon">
@@ -199,10 +199,9 @@ export default function EventDetailPage() {
             </h1>
           </div>
         </div>
-      </section>
+      </AutoMediaHero>
 
       <div className="relative z-10 mx-auto -mt-5 flex max-w-md flex-col gap-6 px-5 md:max-w-3xl lg:max-w-5xl">
-
         {/* Info grid */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-white/15 bg-white/[0.10] p-4 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-md">
@@ -503,9 +502,9 @@ export default function EventDetailPage() {
             <div className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-4">
               {/* Event identity row */}
               <div className="flex items-center gap-3">
-                {(event.flyerPortraitUrl ?? event.flyerSquareUrl) && (
+                {eventImages[0] && (
                   <img
-                    src={event.flyerPortraitUrl ?? event.flyerSquareUrl}
+                    src={eventImages[0]}
                     alt={event.title}
                     className="h-16 w-12 rounded-lg object-cover shrink-0 border border-white/10"
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}

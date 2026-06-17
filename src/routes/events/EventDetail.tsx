@@ -50,6 +50,7 @@ import EventDetailTabs from './EventDetailTabs'
 import EventEarningsPanel from './EventEarningsPanel'
 import { EventChatPanel } from '../../components/chat/EventChatPanel'
 import EventReservationSlotsPanel from './EventReservationSlotsPanel'
+import { AutoMediaHero, normalizeMediaImages } from '../../components/media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 
@@ -313,6 +314,7 @@ export default function EventDetailPage() {
   const totalPurchaseRevenue = purchasedTickets.reduce((sum, ticket) => sum + Number(ticket.totalPrice ?? ticket.payment?.amount ?? 0), 0)
   const menuRevenue = Math.max(0, totalPurchaseRevenue - ticketRevenue)
   const scheduleGroups = getScheduleGroups(event.schedules ?? [])
+  const eventImages = normalizeMediaImages(event.images ?? [event.flyerPortraitUrl, event.flyerSquareUrl], PLACEHOLDER)
 
   return (
     <AdminLayout title="Event Details">
@@ -453,18 +455,17 @@ export default function EventDetailPage() {
           <div className="lg:col-span-2 space-y-5">
 
             {/* Hero image */}
-            <div className="relative h-56 sm:h-72 rounded-2xl overflow-hidden bg-admin-overlay">
-              <img
-                src={event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER}
-                alt={event.title}
-                className="w-full h-full object-cover"
-                onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+            <AutoMediaHero
+              images={eventImages}
+              alt={event.title}
+              fallback={PLACEHOLDER}
+              className="h-56 rounded-2xl sm:h-72"
+              overlayClassName="bg-gradient-to-t from-black/60 via-black/10 to-transparent"
+            >
               <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-full px-2.5 py-1">
                 {event.venueId}
               </div>
-            </div>
+            </AutoMediaHero>
 
             {/* Title + stats */}
             <div className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">

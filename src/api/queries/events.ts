@@ -104,6 +104,18 @@ const WAVE_STATUS_TO_CLIENT: Record<string, 'upcoming' | 'active' | 'completed' 
 
 // ── Mapper ─────────────────────────────────────────────────────────────────────
 
+function normalizeEventImages(images: Array<string | null | undefined> = []) {
+  const seen = new Set<string>()
+  return images
+    .map(image => image?.trim())
+    .filter((image): image is string => Boolean(image))
+    .filter(image => {
+      if (seen.has(image)) return false
+      seen.add(image)
+      return true
+    })
+}
+
 function mapBackendToEvent(raw: BackendEvent): Event {
   const start = splitBackendDateTime(raw.startDate)
   const end   = splitBackendDateTime(raw.endDate)
@@ -111,7 +123,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     ?? raw.locationName
     ?? [raw.city, raw.state, raw.country].filter(Boolean).join(', '))
     || undefined
-  const photos = raw.photos ?? raw.bannerImages ?? []
+  const photos = normalizeEventImages(raw.photos?.length ? raw.photos : raw.bannerImages)
 
   const mapTicketCategory = (tc: BackendTicketCategory, wave?: BackendTicketWave) => ({
         id:                tc.id,
@@ -174,6 +186,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     })) ?? [],
     flyerSquareUrl:   photos[0] ?? undefined,
     flyerPortraitUrl: photos[1] ?? photos[0] ?? undefined,
+    images:           photos,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
     ticketWaves,
     activeTicketWave,

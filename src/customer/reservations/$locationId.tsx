@@ -21,6 +21,7 @@ import {
   selectedReservationMenuRows,
   type ReservationMenuSelectableItem,
 } from '../../components/reservations/reservationMenuUtils'
+import { AutoMediaHero, normalizeMediaImages } from '../../components/media/MediaGallery'
 
 function money(value: string | number | undefined) {
   return `KSh ${Math.max(0, Number(value ?? 0)).toLocaleString()}`
@@ -230,7 +231,7 @@ export default function CustomerReservationVenuePage() {
   }
 
   const Shell = isAuthenticated ? CustomerLayout : PublicReservationShell
-  const heroImage = venue?.pictures?.[0]
+  const venueImages = normalizeMediaImages(venue?.pictures ?? [], '/glee-image-fallback.svg')
 
   if (isLoading) {
     return (
@@ -271,17 +272,13 @@ export default function CustomerReservationVenuePage() {
         )}
 
         <section className="overflow-hidden rounded-3xl bg-white/[0.08] shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
-          <div className="relative aspect-[16/9] max-h-[28rem] bg-white/8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,45,143,0.22),transparent_34%),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.12),transparent_24%),linear-gradient(135deg,#09011d_0%,#14072f_48%,#050017_100%)]" aria-hidden="true" />
-            {heroImage && (
-              <img
-                src={heroImage}
-                alt={venue.name}
-                className="relative h-full w-full object-cover"
-                onError={event => { event.currentTarget.style.display = 'none' }}
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050017] via-[#050017]/35 to-transparent" />
+          <AutoMediaHero
+            images={venueImages}
+            alt={venue.name}
+            fallback="/glee-image-fallback.svg"
+            className="aspect-[16/9] max-h-[28rem] bg-white/8"
+            overlayClassName="bg-gradient-to-t from-[#050017] via-[#050017]/35 to-transparent"
+          >
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
               <Badge className="border-neon-pink/30 bg-neon-pink/15 text-neon-pink">{venueTypeLabel(venue.venueType)}</Badge>
               <h1 className="mt-3 max-w-4xl font-heading text-3xl font-black leading-tight text-white sm:text-5xl">{venue.name}</h1>
@@ -290,7 +287,7 @@ export default function CustomerReservationVenuePage() {
                 <span className="truncate">{venue.address}</span>
               </p>
             </div>
-          </div>
+          </AutoMediaHero>
           {venue.description && <p className="px-5 pb-5 pt-1 text-sm leading-6 text-white/58 sm:px-6">{venue.description}</p>}
         </section>
 
@@ -520,9 +517,9 @@ export default function CustomerReservationVenuePage() {
             <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-5">
               <p className="text-sm font-semibold text-white">Order summary</p>
               <div className="flex items-start gap-3">
-                {heroImage && (
+                {venueImages[0] && (
                   <img
-                    src={heroImage}
+                    src={venueImages[0]}
                     alt={venue.name}
                     className="h-16 w-16 shrink-0 rounded-lg border border-white/10 object-cover"
                     onError={event => { event.currentTarget.style.display = 'none' }}

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { Event } from '@glee/types'
 import { Button, Skeleton } from '@glee/ui'
 import { formatDateRange, formatTimeOnly } from '@glee/utils'
+import { RotatingMediaCover, normalizeMediaImages } from '../../../components/media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 
@@ -54,6 +55,7 @@ export default function FeaturedCarousel({ events, isLoading }: FeaturedCarousel
           {events.map((e, i) => {
             const active = i === current
             const lowestPrice = Math.min(...e.ticketTiers.map(tier => tier.price))
+            const mediaImages = normalizeMediaImages(e.images ?? [e.flyerPortraitUrl, e.flyerSquareUrl], PLACEHOLDER)
             return (
               <div
                 key={e.id}
@@ -75,12 +77,7 @@ export default function FeaturedCarousel({ events, isLoading }: FeaturedCarousel
                   active ? 'opacity-100' : 'opacity-0',
                 ].join(' ')}
               >
-                <img
-                  src={e.flyerPortraitUrl ?? e.flyerSquareUrl ?? PLACEHOLDER}
-                  alt={e.title}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  onError={ev => { (ev.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-                />
+                <RotatingMediaCover images={mediaImages} alt={e.title} fallback={PLACEHOLDER} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
                 <div className="absolute left-3 top-3 rounded-full bg-white/20 px-3 py-1 text-xs font-black uppercase tracking-wide text-white backdrop-blur-md">
                   {e.categoryName ?? 'Event'}

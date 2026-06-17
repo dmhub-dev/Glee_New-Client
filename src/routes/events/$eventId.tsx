@@ -538,8 +538,12 @@ export default function EventFormPage() {
           })
         : [newSchedule()],
     })
-    if (existingEvent.flyerSquareUrl)   setLandscapes([{ url: existingEvent.flyerSquareUrl }])
-    if (existingEvent.flyerPortraitUrl) setPortraits([{ url: existingEvent.flyerPortraitUrl }])
+    const existingImages = existingEvent.images?.length
+      ? existingEvent.images
+      : [existingEvent.flyerSquareUrl, existingEvent.flyerPortraitUrl].filter((url): url is string => Boolean(url))
+    setLandscapes(existingImages.slice(0, 2).map(url => ({ url })))
+    setPortraits(existingImages.slice(2, 4).map(url => ({ url })))
+    setMediums(existingImages.slice(4, 6).map(url => ({ url })))
   }, [existingEvent, categoriesData, reset])
 
   const POSTER_SETTERS = {
@@ -647,6 +651,12 @@ export default function EventFormPage() {
     description: t.description,
   }))
 
+  const previewImages = [
+    ...landscapes.map(poster => poster.url),
+    ...portraits.map(poster => poster.url),
+    ...mediums.map(poster => poster.url),
+  ]
+
   const previewEvent: Event = {
     id: 'preview',
     vendorId: 'admin-001',
@@ -667,8 +677,9 @@ export default function EventFormPage() {
       startDate: `${s.startDate}T${s.startTime}:00`,
       endDate: `${s.endDate}T${s.endTime}:00`,
     })),
-    flyerSquareUrl:   landscapes[0]?.url ?? undefined,
-    flyerPortraitUrl: portraits[0]?.url ?? undefined,
+    images:           previewImages,
+    flyerSquareUrl:   previewImages[0] ?? undefined,
+    flyerPortraitUrl: previewImages[1] ?? previewImages[0] ?? undefined,
     ticketTiers: previewTicketTiers,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -957,16 +968,16 @@ export default function EventFormPage() {
             {/* Media */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-heading font-bold text-sm text-foreground">Event Posters</h2>
-                <span className="text-[11px] text-admin-30">JPEG, PNG, WebP · max 5MB · 2 per format</span>
+                <h2 className="font-heading font-bold text-sm text-foreground">Event Gallery</h2>
+                <span className="text-[11px] text-admin-30">JPEG, PNG, WebP · max 5MB · first image is the cover</span>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 {(
                   [
-                    { key: 'landscape', label: 'Landscape', dim: '1920×1080', list: landscapes },
-                    { key: 'portrait',  label: 'Portrait',  dim: '1080×1920', list: portraits  },
-                    { key: 'medium',    label: 'Medium',    dim: '1200×900',  list: mediums    },
+                    { key: 'landscape', label: 'Cover + gallery', dim: 'Images 1-2', list: landscapes },
+                    { key: 'portrait',  label: 'Gallery',         dim: 'Images 3-4', list: portraits  },
+                    { key: 'medium',    label: 'More images',     dim: 'Images 5-6', list: mediums    },
                   ] as const
                 ).map(({ key, label, dim, list }) => (
                   <div key={key} className="space-y-1.5">
@@ -978,6 +989,11 @@ export default function EventFormPage() {
                       {list.map(({ url }, i) => (
                         <div key={i} className="relative group h-14 flex-1 rounded-lg overflow-hidden bg-admin-overlay border border-admin">
                           <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
+                          {key === 'landscape' && i === 0 && (
+                            <span className="absolute bottom-0.5 left-0.5 rounded-full bg-neon-pink px-1.5 py-0.5 text-[8px] font-black uppercase text-white">
+                              Cover
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => handlePosterRemove(key, i)}

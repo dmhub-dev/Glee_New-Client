@@ -51,6 +51,7 @@ export interface Event {
   activeTicketWave?: TicketWave
   menuItems?: EventMenuItem[]
   schedules?: EventSchedule[]
+  images?: string[]
   flyerPortraitUrl?: string
   flyerSquareUrl?: string
   status: 'draft' | 'pending_approval' | 'active' | 'live' | 'ended' | 'postponed' | 'cancelled' | 'rejected' | 'sold_out'

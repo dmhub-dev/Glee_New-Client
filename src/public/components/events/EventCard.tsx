@@ -3,6 +3,7 @@ import { MapPin } from 'lucide-react'
 import type { Event } from '@glee/types'
 import { Button } from '@glee/ui'
 import { formatDateRange, formatTimeOnly } from '@glee/utils'
+import { RotatingMediaCover, normalizeMediaImages } from '../../../components/media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 
@@ -32,6 +33,7 @@ export default function EventCard({ event }: EventCardProps) {
   const navigate = useNavigate()
   const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
   const price = lowestAvailablePrice(event)
+  const mediaImages = normalizeMediaImages(event.images ?? [event.flyerSquareUrl, event.flyerPortraitUrl], PLACEHOLDER)
 
   return (
     <div
@@ -46,12 +48,7 @@ export default function EventCard({ event }: EventCardProps) {
       }}
     >
       <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg sm:h-44 sm:w-full sm:rounded-none lg:h-40">
-        <img
-          src={event.flyerSquareUrl ?? PLACEHOLDER}
-          alt={event.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-        />
+        <RotatingMediaCover images={mediaImages} alt={event.title} fallback={PLACEHOLDER} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       </div>
 

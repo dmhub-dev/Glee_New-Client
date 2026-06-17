@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Event } from '@glee/types'
 import { cn, Progress } from '@glee/ui'
 import { Pencil, Trash2, MapPin } from 'lucide-react'
+import { RotatingMediaCover, normalizeMediaImages } from '../media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 
@@ -52,6 +53,7 @@ export default function AdminEventCard({ event, onDelete, canDelete = true }: Ad
   const status = STATUS_CONFIG[event.status] ?? STATUS_CONFIG.draft
   const soldPercent = ticketsSoldPercent(event)
   const categoryLabel = event.categoryName ?? 'Uncategorized'
+  const mediaImages = normalizeMediaImages(event.images ?? [event.flyerSquareUrl, event.flyerPortraitUrl], PLACEHOLDER)
 
   return (
     <div
@@ -67,12 +69,7 @@ export default function AdminEventCard({ event, onDelete, canDelete = true }: Ad
       onMouseLeave={() => setHovered(false)}
     >
       <div className="relative h-44 overflow-hidden">
-        <img
-          src={event.flyerSquareUrl ?? PLACEHOLDER}
-          alt={event.title}
-          className={cn('w-full h-full object-cover transition-transform duration-300', hovered && 'scale-105')}
-          onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-        />
+        <RotatingMediaCover images={mediaImages} alt={event.title} fallback={PLACEHOLDER} imageClassName={cn(hovered && 'scale-105')} />
         {/* Category badge */}
         <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-full px-2 py-0.5 max-w-[45%] truncate">
           {categoryLabel}

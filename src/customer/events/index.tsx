@@ -9,6 +9,7 @@ import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search } from '
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 import { VenueCarouselSection, VenueListSection, isClubOrRestaurantVenue } from '../../components/reservations/VenueShowcase'
+import { RotatingMediaCover, normalizeMediaImages } from '../../components/media/MediaGallery'
 
 type StatusFilter = 'active' | 'live' | 'sold_out' | 'cancelled'
 type ExploreContentType = 'events' | 'venues'
@@ -30,8 +31,8 @@ function lowestPrice(event: Event): number {
   return Math.min(...event.ticketTiers.map(t => t.price))
 }
 
-function eventImage(event: Event) {
-  return event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
+function eventImages(event: Event) {
+  return normalizeMediaImages(event.images ?? [event.flyerPortraitUrl, event.flyerSquareUrl], PLACEHOLDER)
 }
 
 function eventDate(event: Event) {
@@ -445,7 +446,7 @@ function EventList({ events, showCategory = true }: { events: Event[]; showCateg
           className="group flex w-full cursor-pointer gap-4 rounded-xl border border-white/5 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
         >
           <div className="h-24 w-24 shrink-0 overflow-hidden rounded-lg">
-            <img src={event.flyerSquareUrl ?? eventImage(event)} alt={event.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
+            <RotatingMediaCover images={eventImages(event)} alt={event.title} fallback={PLACEHOLDER} imageClassName="group-hover:scale-110" />
           </div>
           <div className="flex flex-1 flex-col justify-between py-1">
             <div>
@@ -507,7 +508,7 @@ function AutoCarousel({ events }: { events: Event[] }) {
             <div key={event.id} className="mr-4 min-w-0 flex-[0_0_85%] md:flex-[0_0_48%] xl:flex-[0_0_32%]">
               <button type="button" onClick={() => navigate(`/app/events/${event.id}`)} className="group relative h-[350px] w-full cursor-pointer overflow-hidden rounded-2xl border border-white/5 text-left xl:h-[420px]">
                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#050017] via-transparent to-transparent" />
-                <img src={eventImage(event)} alt={event.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }} />
+                <RotatingMediaCover images={eventImages(event)} alt={event.title} fallback={PLACEHOLDER} />
                 <div className="absolute left-3 top-3 z-20">
                   <Badge className="border-0 bg-white/20 text-white backdrop-blur-md hover:bg-white/30">
                     {categoryLabel(event)}

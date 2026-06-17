@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation as useRouterLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -33,9 +33,10 @@ import BookingAttendantsPanel from './BookingAttendantsPanel'
 import { useAdminUser } from '../../app/providers'
 import { BookingChatPanel } from '../../components/chat/BookingChatPanel'
 import { normalizedReservationPreOrderMenu } from '../../components/reservations/reservationMenuUtils'
+import { AutoMediaHero, normalizeMediaImages } from '../../components/media/MediaGallery'
 import {
   ArrowLeft, Pencil, Trash2, MapPin, Users, Building2, Wind, ParkingCircle,
-  CalendarCheck, FileText, Image, ImagePlus, Save, ShieldCheck, ShieldX, X as XIcon,
+  CalendarCheck, FileText, ImagePlus, Save, ShieldCheck, ShieldX, X as XIcon,
   ArrowUpDown, CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Search, Table2,
 } from 'lucide-react'
 import { cn } from '@glee/ui'
@@ -56,6 +57,10 @@ const LOCATION_DETAIL_TABS: Array<{ label: string; value: LocationDetailTab }> =
   { label: 'Booking Chats', value: 'chats' },
   { label: 'Settings', value: 'settings' },
 ]
+
+function isLocationDetailTab(value: unknown): value is LocationDetailTab {
+  return typeof value === 'string' && LOCATION_DETAIL_TABS.some(tab => tab.value === value)
+}
 
 const BOOKING_STATUS_FILTERS: Array<{ label: string; value: BookingStatusFilter }> = [
   { label: 'All', value: 'ALL' },
@@ -566,21 +571,27 @@ function PreviewStat({ label, value }: { label: string; value: string }) {
 export default function LocationDetailPage() {
   const { locationId } = useParams<{ locationId: string }>()
   const navigate       = useNavigate()
+  const routerLocation = useRouterLocation()
   const { toast }      = useToast()
   const user = useAdminUser()
   const isAdmin = ['super_admin', 'admin', 'operations_manager'].includes(user.role)
   const isVendorOwner = user.role === 'vendor'
   const isVendorStaff = user.role === 'vendor_staff'
+  const routeState = routerLocation.state as { tab?: unknown } | null
+  const requestedTab = isLocationDetailTab(routeState?.tab) ? routeState.tab : null
   const [editOpen, setEditOpen]     = useState(false)
-  const [heroIdx, setHeroIdx]       = useState(0)
   const [rejectReason, setRejectReason] = useState('')
-  const [activeTab, setActiveTab] = useState<LocationDetailTab>('overview')
+  const [activeTab, setActiveTab] = useState<LocationDetailTab>(() => requestedTab ?? 'overview')
 
   const { data: loc, isLoading }    = useLocation(locationId!)
   const deleteMutation              = useDeleteLocation()
   const uploadMenuDocument = useUploadLocationMenuDocument({ vendorScoped: isVendorOwner || isVendorStaff })
   const approveMutation = useApproveLocation()
   const rejectMutation = useRejectLocation()
+
+  useEffect(() => {
+    if (requestedTab) setActiveTab(requestedTab)
+  }, [requestedTab])
 
   if (isLoading) {
     return (
@@ -606,7 +617,6 @@ export default function LocationDetailPage() {
   }
 
   const pictures = loc.pictures ?? []
-  const hero = pictures[heroIdx] ?? null
   const canEditLocation = isAdmin || (isVendorOwner && loc.vendorId === user.id)
   const canDeleteLocation = isAdmin
   const canModerateLocation = ['super_admin', 'admin'].includes(user.role)
@@ -744,10 +754,7 @@ export default function LocationDetailPage() {
         {activeTab === 'overview' && (
           <LocationOverviewTab
             location={loc}
-            hero={hero}
             pictures={pictures}
-            heroIdx={heroIdx}
-            onSelectHero={setHeroIdx}
           />
         )}
 
@@ -830,17 +837,13 @@ function LocationDetailTabs({
 
 function LocationOverviewTab({
   location,
-  hero,
   pictures,
-  heroIdx,
-  onSelectHero,
 }: {
   location: Location
-  hero: string | null
   pictures: string[]
-  heroIdx: number
-  onSelectHero: (index: number) => void
 }) {
+  const locationImages = normalizeMediaImages(pictures, PLACEHOLDER)
+
   return (
     <section className="space-y-5">
       <TabPageHeader
@@ -850,21 +853,13 @@ function LocationOverviewTab({
       />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_380px]">
       <div className="space-y-5">
-        <div className="relative h-[320px] overflow-hidden rounded-2xl border border-admin bg-admin-overlay shadow-admin lg:h-[460px]">
-          {hero ? (
-            <img
-              src={hero}
-              alt={location.name}
-              className="h-full w-full object-cover"
-              onError={event => { event.currentTarget.src = PLACEHOLDER }}
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-neon-pink/5 to-admin-overlay">
-              <Image className="h-10 w-10 text-admin-20" />
-              <p className="text-xs text-admin-30">No photos yet</p>
-            </div>
-          )}
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/75 to-transparent" />
+        <AutoMediaHero
+          images={locationImages}
+          alt={location.name}
+          fallback={PLACEHOLDER}
+          className="h-[320px] rounded-2xl border border-admin shadow-admin lg:h-[460px]"
+          overlayClassName="bg-gradient-to-t from-black/75 to-transparent"
+        >
           <div className="absolute bottom-5 left-5 right-5">
             <Badge className="mb-3 border-neon-pink/25 bg-neon-pink/15 text-neon-pink">{venueTypeLabel(location.venueType)}</Badge>
             <h1 className="font-heading text-2xl font-black text-white md:text-4xl">{location.name}</h1>
@@ -873,25 +868,7 @@ function LocationOverviewTab({
               {location.address}
             </p>
           </div>
-        </div>
-
-        {pictures.length > 1 && (
-          <div className="grid grid-cols-4 gap-3 md:grid-cols-6">
-            {pictures.map((src, index) => (
-              <button
-                key={src}
-                type="button"
-                onClick={() => onSelectHero(index)}
-                className={cn(
-                  'aspect-[4/3] overflow-hidden rounded-xl border-2 transition-all',
-                  heroIdx === index ? 'border-neon-pink' : 'border-transparent hover:border-admin-md',
-                )}
-              >
-                <img src={src} alt="" className="h-full w-full object-cover transition-transform duration-200 hover:scale-105" onError={event => { event.currentTarget.src = PLACEHOLDER }} />
-              </button>
-            ))}
-          </div>
-        )}
+        </AutoMediaHero>
 
         <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
           <h2 className="font-heading text-base font-black text-foreground">About Location</h2>
