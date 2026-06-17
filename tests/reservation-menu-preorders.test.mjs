@@ -290,6 +290,24 @@ test('standalone venue booking menu quantity buttons have item-specific accessib
   assert.match(source, /aria-label=\{`Increase \$\{item\.name\} quantity`\}/)
 })
 
+test('standalone venue booking checkout keeps backdrop behind guest form', async () => {
+  const source = await loadStandaloneReservationSource()
+  const checkoutOverlay = source.slice(
+    source.indexOf('{checkoutOpen && selectedCategory &&'),
+    source.indexOf('{venue.bookingRules &&'),
+  )
+
+  assert.match(checkoutOverlay, /aria-label=["']Close checkout["'][\s\S]*className=["']absolute inset-0 z-0["']/)
+  assert.match(checkoutOverlay, /className=["']relative z-10[\s\S]*max-w-2xl/)
+  assert.ok(
+    checkoutOverlay.indexOf('className="absolute inset-0 z-0"') < checkoutOverlay.indexOf('className="relative z-10'),
+    'backdrop should render before the raised checkout panel',
+  )
+  assert.match(checkoutOverlay, /value=\{guestName\}[\s\S]*onChange=\{event => setGuestName/)
+  assert.match(checkoutOverlay, /value=\{guestEmail\}[\s\S]*onChange=\{event => setGuestEmail/)
+  assert.match(checkoutOverlay, /value=\{guestPhone\}[\s\S]*onChange=\{event => setGuestPhone/)
+})
+
 test('event reservation panel accepts menu items and sends selected preOrderMenu', async () => {
   const source = await loadEventReservationPanelSource()
   const handler = extractNamedFunctionSource(source, 'EventReservationPanel')

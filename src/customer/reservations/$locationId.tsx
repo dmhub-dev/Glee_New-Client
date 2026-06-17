@@ -491,11 +491,11 @@ export default function CustomerReservationVenuePage() {
           <button
             type="button"
             aria-label="Close checkout"
-            className="absolute inset-0"
+            className="absolute inset-0 z-0"
             disabled={createReservation.isPending}
             onClick={() => setCheckoutOpen(false)}
           />
-          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-white/15 bg-[#0f0f15] p-6 text-white shadow-[0_26px_90px_rgba(0,0,0,0.5)] sm:p-8">
+          <div className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border border-white/15 bg-[#0f0f15] p-6 text-white shadow-[0_26px_90px_rgba(0,0,0,0.5)] sm:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neon-pink">Checkout</p>
