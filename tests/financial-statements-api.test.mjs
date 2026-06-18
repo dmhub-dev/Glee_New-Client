@@ -11,9 +11,12 @@ test('financial statement API exposes role-scoped event and location endpoints',
   const index = await read('src/api/index.ts')
 
   assert.match(source, /FinancialStatementTargetType/)
+  assert.match(source, /FinancialStatementPeriodPreset/)
   assert.match(source, /getFinancialStatement/)
   assert.match(source, /regenerateFinancialStatement/)
   assert.match(source, /downloadFinancialStatementPdf/)
+  assert.match(source, /periodDate/)
+  assert.match(source, /statementQuery/)
   assert.match(source, /\/api\/v1\/admin\/events\/\$\{targetId\}\/financial-statement/)
   assert.match(source, /\/api\/v1\/vendor\/events\/\$\{targetId\}\/financial-statement/)
   assert.match(source, /\/api\/v1\/admin\/locations\/\$\{targetId\}\/financial-statement/)

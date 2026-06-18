@@ -4,6 +4,8 @@ import {
   downloadFinancialStatementPdf,
   useFinancialStatement,
   useRegenerateFinancialStatement,
+  type FinancialStatementPeriodOptions,
+  type FinancialStatementPeriodPreset,
   type FinancialStatementScope,
   type FinancialStatementTargetType,
 } from '@glee/api'
@@ -24,8 +26,17 @@ export default function FinancialStatementPanel({
   title?: string
 }) {
   const { toast } = useToast()
-  const statement = useFinancialStatement(targetType, targetId, scope, Boolean(targetId))
-  const regenerate = useRegenerateFinancialStatement(targetType, targetId, scope)
+  const [locationPeriod, setLocationPeriod] = useState<FinancialStatementPeriodPreset>('ALL_TIME')
+  const [periodDate, setPeriodDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const periodOptions: FinancialStatementPeriodOptions | undefined =
+    targetType === 'LOCATION'
+      ? {
+          period: locationPeriod,
+          periodDate: locationPeriod === 'ALL_TIME' ? undefined : periodDate,
+        }
+      : undefined
+  const statement = useFinancialStatement(targetType, targetId, scope, Boolean(targetId), periodOptions)
+  const regenerate = useRegenerateFinancialStatement(targetType, targetId, scope, periodOptions)
   const [isPreparingPdf, setIsPreparingPdf] = useState(false)
   const data = statement.data
 
@@ -37,7 +48,7 @@ export default function FinancialStatementPanel({
       if (canGenerate) {
         await regenerate.mutateAsync()
       }
-      await downloadFinancialStatementPdf(targetType, targetId, scope)
+      await downloadFinancialStatementPdf(targetType, targetId, scope, periodOptions)
       toast({ title: canGenerate ? 'Financial statement generated and downloaded' : 'Financial statement downloaded' })
     } catch (error) {
       toast({
@@ -61,10 +72,35 @@ export default function FinancialStatementPanel({
             {title}
           </h2>
           <p className="mt-1 text-sm text-admin-40">
-            {data ? `Version ${data.version} generated ${formatDateTime(data.generatedAt)}` : 'No statement generated yet.'}
+            {data
+              ? `Version ${data.version} generated ${formatDateTime(data.generatedAt)}${data.reportPeriod?.label ? ` · ${data.reportPeriod.label}` : ''}`
+              : 'No statement generated yet.'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {targetType === 'LOCATION' && (
+            <>
+              <select
+                value={locationPeriod}
+                onChange={event => setLocationPeriod(event.target.value as FinancialStatementPeriodPreset)}
+                disabled={isPreparingPdf}
+                className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-admin-90 outline-none transition focus:border-neon-pink"
+              >
+                <option value="ALL_TIME">All time</option>
+                <option value="WEEKLY">Weekly report</option>
+                <option value="MONTHLY">Monthly report</option>
+              </select>
+              {locationPeriod !== 'ALL_TIME' && (
+                <input
+                  type="date"
+                  value={periodDate}
+                  onChange={event => setPeriodDate(event.target.value)}
+                  disabled={isPreparingPdf}
+                  className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-admin-90 outline-none transition focus:border-neon-pink"
+                />
+              )}
+            </>
+          )}
           <Button
             onClick={handlePreparePdf}
             disabled={isPreparingPdf || !targetId || (!canGenerate && !data)}

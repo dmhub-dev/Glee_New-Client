@@ -7,6 +7,12 @@ const BASE: string = (import.meta as any).env?.VITE_API_BASE_URL ?? ''
 export type FinancialStatementTargetType = 'EVENT' | 'LOCATION'
 export type FinancialStatementScope = 'admin' | 'vendor'
 export type FinancialStatementVisibility = 'ADMIN' | 'VENDOR'
+export type FinancialStatementPeriodPreset = 'ALL_TIME' | 'WEEKLY' | 'MONTHLY'
+
+export interface FinancialStatementPeriodOptions {
+  period?: FinancialStatementPeriodPreset
+  periodDate?: string
+}
 
 export interface FinancialStatementSummary {
   grossTicketSales?: number
@@ -58,6 +64,13 @@ export interface FinancialStatementSnapshot {
   currency: 'KES'
   title: string
   generatedAt: string
+  reportPeriod?: {
+    preset: FinancialStatementPeriodPreset
+    label: string
+    startsAt?: string | null
+    endsAt?: string | null
+    anchorDate?: string | null
+  }
   subject: FinancialStatementSubject
   summary: FinancialStatementSummary
   lineItems: FinancialStatementLineItem[]
@@ -67,8 +80,12 @@ export interface FinancialStatementSnapshot {
 type ApiEnvelope<T> = { success: boolean; data: T; message?: string }
 
 export const financialStatementKeys = {
-  byTarget: (scope: FinancialStatementScope, targetType: FinancialStatementTargetType, targetId: string) =>
-    ['financial-statements', scope, targetType, targetId] as const,
+  byTarget: (
+    scope: FinancialStatementScope,
+    targetType: FinancialStatementTargetType,
+    targetId: string,
+    options?: FinancialStatementPeriodOptions,
+  ) => ['financial-statements', scope, targetType, targetId, options?.period ?? 'ALL_TIME', options?.periodDate ?? ''] as const,
 }
 
 const statementPathBuilders: Record<FinancialStatementScope, Record<FinancialStatementTargetType, (targetId: string) => string>> = {
@@ -84,6 +101,14 @@ const statementPathBuilders: Record<FinancialStatementScope, Record<FinancialSta
 
 function statementBasePath(scope: FinancialStatementScope, targetType: FinancialStatementTargetType, targetId: string) {
   return statementPathBuilders[scope][targetType](targetId)
+}
+
+function statementQuery(options?: FinancialStatementPeriodOptions) {
+  const params = new URLSearchParams()
+  if (options?.period) params.set('period', options.period)
+  if (options?.periodDate) params.set('periodDate', options.periodDate)
+  const query = params.toString()
+  return query ? `?${query}` : ''
 }
 
 function fallbackFinancialStatementPdfFilename(
@@ -136,27 +161,35 @@ export async function getFinancialStatement(
   targetType: FinancialStatementTargetType,
   targetId: string,
   scope: FinancialStatementScope,
+  options?: FinancialStatementPeriodOptions,
 ): Promise<FinancialStatementSnapshot | null> {
-  return apiFetch<ApiEnvelope<FinancialStatementSnapshot | null>>(statementBasePath(scope, targetType, targetId)).then(res => res.data)
+  return apiFetch<ApiEnvelope<FinancialStatementSnapshot | null>>(
+    statementBasePath(scope, targetType, targetId) + statementQuery(options),
+  ).then(res => res.data)
 }
 
 export async function regenerateFinancialStatement(
   targetType: FinancialStatementTargetType,
   targetId: string,
   scope: FinancialStatementScope,
+  options?: FinancialStatementPeriodOptions,
 ): Promise<FinancialStatementSnapshot> {
-  return apiFetch<ApiEnvelope<FinancialStatementSnapshot>>(statementBasePath(scope, targetType, targetId) + '/regenerate', {
-    method: 'POST',
-  }).then(res => res.data)
+  return apiFetch<ApiEnvelope<FinancialStatementSnapshot>>(
+    statementBasePath(scope, targetType, targetId) + '/regenerate' + statementQuery(options),
+    {
+      method: 'POST',
+    },
+  ).then(res => res.data)
 }
 
 export async function downloadFinancialStatementPdf(
   targetType: FinancialStatementTargetType,
   targetId: string,
   scope: FinancialStatementScope,
+  options?: FinancialStatementPeriodOptions,
 ): Promise<void> {
   const accessToken = tokens.getAccess()
-  const response = await fetch(`${BASE}${statementBasePath(scope, targetType, targetId)}/download`, {
+  const response = await fetch(`${BASE}${statementBasePath(scope, targetType, targetId)}/download${statementQuery(options)}`, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   })
 
@@ -187,10 +220,11 @@ export function useFinancialStatement(
   targetId: string,
   scope: FinancialStatementScope,
   enabled = true,
+  options?: FinancialStatementPeriodOptions,
 ) {
   return useQuery({
-    queryKey: financialStatementKeys.byTarget(scope, targetType, targetId),
-    queryFn: () => getFinancialStatement(targetType, targetId, scope),
+    queryKey: financialStatementKeys.byTarget(scope, targetType, targetId, options),
+    queryFn: () => getFinancialStatement(targetType, targetId, scope, options),
     enabled: enabled && Boolean(targetId),
   })
 }
@@ -199,13 +233,14 @@ export function useRegenerateFinancialStatement(
   targetType: FinancialStatementTargetType,
   targetId: string,
   scope: FinancialStatementScope,
+  options?: FinancialStatementPeriodOptions,
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => regenerateFinancialStatement(targetType, targetId, scope),
+    mutationFn: () => regenerateFinancialStatement(targetType, targetId, scope, options),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: financialStatementKeys.byTarget(scope, targetType, targetId) })
+      queryClient.invalidateQueries({ queryKey: financialStatementKeys.byTarget(scope, targetType, targetId, options) })
     },
   })
 }
