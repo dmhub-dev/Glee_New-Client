@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button, Input, Skeleton, useToast } from '@glee/ui'
+import { Badge, Button, EmptyState, Input, Skeleton, useToast } from '@glee/ui'
 import { CalendarClock, CreditCard, Table2, Users, Wallet } from 'lucide-react'
 import {
   reservationCheckoutContextStorageKey,
@@ -157,7 +157,21 @@ export default function EventReservationPanel({ eventId, menuItems = [] }: Event
     }
   }
 
-  if (isLoading || slots.length === 0) return null
+  if (isLoading) return <Skeleton className="h-48 rounded-3xl bg-white/10" />
+
+  if (slots.length === 0) {
+    return (
+      <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
+        <EmptyState
+          icon={<Table2 className="h-6 w-6" />}
+          title="Table reservations are not open for this event"
+          description="Check the event details again later or continue with ticket checkout."
+          variant="customer"
+          className="min-h-40 border-white/10 bg-black/20"
+        />
+      </section>
+    )
+  }
 
   return (
     <section className="rounded-3xl border border-white/12 bg-white/[0.08] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
@@ -208,9 +222,13 @@ export default function EventReservationPanel({ eventId, menuItems = [] }: Event
           {availability.isLoading ? (
             <Skeleton className="h-32 rounded-2xl bg-white/10" />
           ) : categories.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/55">
-              No tables are available for this guest count and slot.
-            </div>
+            <EmptyState
+              icon={<Table2 className="h-6 w-6" />}
+              title="No tables for this group size"
+              description="Choose another slot or adjust the guest count to see available tables."
+              variant="customer"
+              className="min-h-40 border-white/10 bg-black/20"
+            />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {categories.map(category => {
@@ -327,7 +345,13 @@ export default function EventReservationPanel({ eventId, menuItems = [] }: Event
             onClick={reserveTable}
             className="mt-4 h-12 w-full rounded-full bg-neon-pink text-white hover:bg-neon-pink/90 disabled:bg-white/15 disabled:text-white/35"
           >
-            {createReservation.isPending ? 'Reserving...' : paymentMethod === 'WALLET' ? 'Pay With Wallet' : 'Proceed to Pay'}
+            {createReservation.isPending
+              ? 'Reserving...'
+              : !selectedCategory
+                ? 'Select a table'
+                : paymentMethod === 'WALLET'
+                  ? 'Pay with wallet'
+                  : 'Pay deposit'}
           </Button>
         </aside>
       </div>

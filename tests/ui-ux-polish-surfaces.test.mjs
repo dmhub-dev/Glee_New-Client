@@ -94,3 +94,19 @@ test('event detail checkout CTAs use consistent conversion copy and mobile-safe 
   assert.doesNotMatch(publicDetail, /selectedItems\.length === 0 \? 'Select a Ticket' : 'Buy Tickets'/)
   assert.doesNotMatch(customerDetail, /canPurchase \? 'Pay Now' :/)
 })
+
+test('event reservation panel has directional empty states and deposit-focused CTAs', async () => {
+  const source = await readSource('src/customer/events/EventReservationPanel.tsx')
+
+  assertTranspiles(source, 'EventReservationPanel.tsx')
+  assert.match(source, /import \{[^}]*EmptyState[^}]*\} from '@glee\/ui'/)
+  assert.match(source, /Table reservations are not open for this event/)
+  assert.match(source, /No tables for this group size/)
+  assert.match(source, /Choose another slot or adjust the guest count/)
+  assert.match(source, /Select a table/)
+  assert.match(source, /Pay deposit/)
+  assert.match(source, /Pay with wallet/)
+  assert.doesNotMatch(source, /if \(isLoading \|\| slots\.length === 0\) return null/)
+  assert.doesNotMatch(source, /Proceed to Pay/)
+  assert.doesNotMatch(source, /Pay With Wallet/)
+})
