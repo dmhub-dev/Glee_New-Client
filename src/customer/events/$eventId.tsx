@@ -6,6 +6,7 @@ import { formatDateOnly, formatTimeOnly, splitBackendDateTime } from '@glee/util
 import { Calendar, CheckCircle2, MapPin, Share2, ShoppingBag, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import EventCheckoutTableBooking from '../../components/events/EventCheckoutTableBooking'
+import EventReservationPanel from './EventReservationPanel'
 import {
   combinedCheckoutTotal,
   selectedTableBookingPayload,
@@ -443,6 +444,8 @@ export default function CustomerEventDetailPage() {
             </section>
 
             <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
+
+            <EventReservationPanel eventId={event.id} menuItems={event.menuItems} />
 
             {/* Menu add-on items — public style */}
             {showMenuAddons && (event.menuItems ?? []).length > 0 && (

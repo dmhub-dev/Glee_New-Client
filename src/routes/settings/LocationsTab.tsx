@@ -226,7 +226,7 @@ function LocationCommandCard({
   const menuLabel = hasMenu(location) ? 'Menu uploaded' : 'Menu missing'
 
   return (
-    <article
+    <div
       data-testid="location-command-card"
       role="button"
       tabIndex={0}
@@ -360,7 +360,7 @@ function LocationCommandCard({
           </Button>
         </div>
       </div>
-    </article>
+    </div>
   )
 }
 

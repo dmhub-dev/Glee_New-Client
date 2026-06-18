@@ -16,6 +16,7 @@ import {
   selectedTableBookingPayload,
   type CheckoutTableBookingSelection,
 } from '../../../components/events/eventCheckoutTableBookingUtils'
+import EventReservationPanel from '../../../customer/events/EventReservationPanel'
 import { AutoMediaHero, normalizeMediaImages } from '../../../components/media/MediaGallery'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
@@ -448,6 +449,8 @@ export default function EventDetailPage() {
             </div>
           )}
         </section>
+
+        <EventReservationPanel eventId={event.id} menuItems={event.menuItems} />
 
       </div>
 

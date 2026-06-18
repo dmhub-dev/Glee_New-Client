@@ -151,6 +151,7 @@ export default function EventDetailPage() {
   const location = useLocation()
   const user = useAdminUser()
   const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
+  const canManageEventLifecycle = !isVendorRole
   const canDeleteEvent = user.role !== 'vendor_staff'
   const { data: event, isLoading } = useAdminEvent(eventId ?? '', { vendorScoped: isVendorRole })
   const updateMutation = useUpdateEvent({ vendorScoped: isVendorRole })
@@ -336,34 +337,35 @@ export default function EventDetailPage() {
               {status.label}
             </span>
 
-            {/* Change status dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setStatusOpen(o => !o)}
-                className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-admin-overlay border border-admin text-admin-60 hover:text-foreground hover:bg-admin-overlay-lg transition-colors"
-              >
-                Change Status
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
-              {statusOpen && (
-                <>
-                  <button type="button" aria-label="Close status menu" className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-20 bg-admin-surface border border-admin rounded-xl shadow-admin-card overflow-hidden min-w-[180px]">
-                    {STATUS_OPTIONS.filter(o => o.value !== event.status).map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => handleStatusChange(opt.value)}
-                        className="w-full text-left px-4 py-2.5 text-sm text-admin-60 hover:text-foreground hover:bg-admin-overlay transition-colors"
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            {canManageEventLifecycle && (
+              <div className="relative">
+                <button
+                  onClick={() => setStatusOpen(o => !o)}
+                  className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full bg-admin-overlay border border-admin text-admin-60 hover:text-foreground hover:bg-admin-overlay-lg transition-colors"
+                >
+                  Change Status
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+                {statusOpen && (
+                  <>
+                    <button type="button" aria-label="Close status menu" className="fixed inset-0 z-10" onClick={() => setStatusOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 z-20 bg-admin-surface border border-admin rounded-xl shadow-admin-card overflow-hidden min-w-[180px]">
+                      {STATUS_OPTIONS.filter(o => o.value !== event.status).map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => handleStatusChange(opt.value)}
+                          className="w-full text-left px-4 py-2.5 text-sm text-admin-60 hover:text-foreground hover:bg-admin-overlay transition-colors"
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
-            {(event.status === 'active' || event.status === 'live') && (
+            {canManageEventLifecycle && (event.status === 'active' || event.status === 'live') && (
               <button
                 onClick={() => handleLifecycle(event.status === 'active' ? 'start' : 'end')}
                 disabled={startEventMutation.isPending || endEventMutation.isPending}

@@ -81,7 +81,10 @@ export default function MenuPricingPage() {
 
   const clubLocations = useMemo(() => (locations ?? []).filter(location => normalizeVenueKind(location) === 'clubs'), [locations])
   const restaurantLocations = useMemo(() => (locations ?? []).filter(location => normalizeVenueKind(location) === 'restaurants'), [locations])
-  const activeVenueLocations = activeTab === 'clubs' ? clubLocations : activeTab === 'restaurants' ? restaurantLocations : []
+  const activeVenueLocations = useMemo(
+    () => activeTab === 'clubs' ? clubLocations : activeTab === 'restaurants' ? restaurantLocations : [],
+    [activeTab, clubLocations, restaurantLocations],
+  )
   const selectedLocation = useMemo(
     () => activeVenueLocations.find(location => location.id === selectedLocationId) ?? activeVenueLocations[0],
     [activeVenueLocations, selectedLocationId],
@@ -237,7 +240,7 @@ export default function MenuPricingPage() {
             onMenuFormChange={setMenuForm}
             onCreateMenuItem={handleCreateLocationMenuItem}
             createPending={createLocationMenuItem.isPending}
-            updatePending={updateLocationMenuItem.isPending}
+            updateLocationMenuItem={updateLocationMenuItem}
             onToggleMenuItem={handleToggleLocationMenuItem}
             uploadPending={uploadMenuDocument.isPending}
             onMenuDocumentChange={handleMenuDocumentChange}
@@ -381,7 +384,7 @@ function VenueMenuItemsTab({
   onMenuFormChange,
   onCreateMenuItem,
   createPending,
-  updatePending,
+  updateLocationMenuItem,
   onToggleMenuItem,
   uploadPending,
   onMenuDocumentChange,
@@ -398,7 +401,7 @@ function VenueMenuItemsTab({
   onMenuFormChange: (form: { name: string; category: string; price: string; description: string }) => void
   onCreateMenuItem: () => void
   createPending: boolean
-  updatePending: boolean
+  updateLocationMenuItem: { isPending: boolean }
   onToggleMenuItem: (itemId: string, isActive: boolean) => void
   uploadPending: boolean
   onMenuDocumentChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -490,7 +493,7 @@ function VenueMenuItemsTab({
         <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-heading text-lg font-black text-foreground">{selectedLocation?.name ?? venueKindLabel(kind)} catalogue</h2>
+              <h2 className="font-heading text-lg font-black text-foreground">Venue Menu Items</h2>
               <p className="mt-1 text-sm text-admin-40">{menuItems.length.toLocaleString()} item{menuItems.length === 1 ? '' : 's'} in this view.</p>
             </div>
             <Badge className="w-fit border-neon-pink/25 bg-neon-pink/10 text-neon-pink">{venueKindLabel(kind)}</Badge>
@@ -507,7 +510,7 @@ function VenueMenuItemsTab({
               <LocationMenuItemCard
                 key={item.id}
                 item={item}
-                updatePending={updatePending}
+                updateLocationMenuItem={updateLocationMenuItem}
                 onToggle={() => onToggleMenuItem(item.id, item.isActive)}
               />
             ))}
@@ -586,11 +589,11 @@ function MenuDocumentPreview({
 
 function LocationMenuItemCard({
   item,
-  updatePending,
+  updateLocationMenuItem,
   onToggle,
 }: {
   item: LocationMenuItem
-  updatePending: boolean
+  updateLocationMenuItem: { isPending: boolean }
   onToggle: () => void
 }) {
   return (
@@ -607,7 +610,7 @@ function LocationMenuItemCard({
         <Badge className={item.isActive ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' : 'border-admin bg-admin-input text-admin-50'}>
           {item.isActive ? 'Active' : 'Inactive'}
         </Badge>
-        <Button size="sm" variant="ghost" aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.name}`} disabled={updatePending} onClick={onToggle} className="gap-1.5 text-xs text-admin-60 hover:bg-admin-input">
+        <Button size="sm" variant="ghost" aria-label={`${item.isActive ? 'Deactivate' : 'Activate'} ${item.name}`} disabled={updateLocationMenuItem.isPending} onClick={onToggle} className="gap-1.5 text-xs text-admin-60 hover:bg-admin-input">
           <Save className="h-3.5 w-3.5" />
           {item.isActive ? 'Deactivate' : 'Activate'}
         </Button>
