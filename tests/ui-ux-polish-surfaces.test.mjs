@@ -110,3 +110,16 @@ test('event reservation panel has directional empty states and deposit-focused C
   assert.doesNotMatch(source, /Proceed to Pay/)
   assert.doesNotMatch(source, /Pay With Wallet/)
 })
+
+test('admin event list uses shared admin empty states for no-data and no-results', async () => {
+  const source = await readSource('src/routes/events/index.tsx')
+
+  assertTranspiles(source, 'admin-events-index.tsx')
+  assert.match(source, /import \{[\s\S]*EmptyState[\s\S]*\} from '@glee\/ui'/)
+  assert.match(source, /variant="admin"/)
+  assert.match(source, /No events match your search/)
+  assert.match(source, /No events in this status/)
+  assert.match(source, /Create event/)
+  assert.match(source, /Clear search/)
+  assert.doesNotMatch(source, /Create your first event →/)
+})

@@ -17,8 +17,9 @@ import {
   Input,
   Progress,
   Button,
+  EmptyState,
 } from '@glee/ui'
-import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2, Tags, MapPinned } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, MapPin, Calendar, CalendarX2, Ticket, Pencil, Trash2, Tags, MapPinned } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { formatDateRange, formatTimeOnly } from '@glee/utils'
 import type { Event } from '@glee/types'
@@ -279,6 +280,11 @@ export default function EventsListPage() {
     () => events?.find(event => event.id === pendingDeleteId) ?? null,
     [events, pendingDeleteId],
   )
+  const activeTabLabel = STATUS_TABS.find(tab => tab.key === activeTab)?.label.toLowerCase() ?? 'selected'
+  const emptyTitle = search ? 'No events match your search' : 'No events in this status'
+  const emptyDescription = search
+    ? `No events matched "${search}". Clear search or try another term.`
+    : `There are no ${activeTabLabel} events to show right now.`
 
   const handleDelete = (id: string) => {
     setPendingDeleteId(id)
@@ -409,19 +415,22 @@ export default function EventsListPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-14 h-14 rounded-2xl bg-neon-pink/10 flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-6 h-6 text-neon-pink/50" />
-            </div>
-            <p className="text-admin-40 text-sm mb-3">
-              {search ? `No events matching "${search}"` : `No ${STATUS_TABS.find(t => t.key === activeTab)?.label.toLowerCase()} events`}
-            </p>
-            {activeTab === 'active' && !search && canCreateEvents && (
-              <button onClick={() => navigate('/dashboard/events/new')} className="text-sm text-neon-pink hover:underline font-medium">
-                Create your first event →
-              </button>
-            )}
-          </div>
+          <EmptyState
+            icon={<CalendarX2 className="h-6 w-6" />}
+            title={emptyTitle}
+            description={emptyDescription}
+            variant="admin"
+            action={search ? (
+              <Button type="button" variant="outline" onClick={() => setSearch('')} className="rounded-full border-admin bg-admin-overlay text-foreground hover:bg-admin-overlay-lg">
+                Clear search
+              </Button>
+            ) : activeTab === 'active' && canCreateEvents ? (
+              <Button type="button" onClick={() => navigate('/dashboard/events/new')} className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Create event
+              </Button>
+            ) : undefined}
+          />
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {filtered.map(event => (
