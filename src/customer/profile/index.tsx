@@ -10,7 +10,7 @@ import {
   useSecurityInfo,
   useToggle2FA,
   useUpdateNotificationPreferences,
-  useUpdatePasswordRotationDays,
+  useUpdatePasswordRotationPreference,
   useUpdateProfile,
   useUploadAvatar,
 } from '@glee/api'
@@ -27,6 +27,14 @@ const PASSWORD_ROTATION_OPTIONS: Array<{ days: PasswordRotationDays; label: stri
   { days: 60, label: 'Every 60 days' },
 ]
 
+function isPasswordRotationDays(value: number | undefined): value is PasswordRotationDays {
+  return PASSWORD_ROTATION_OPTIONS.some(option => option.days === value)
+}
+
+function getPasswordRotationDays(value: number | undefined): PasswordRotationDays {
+  return isPasswordRotationDays(value) ? value : 30
+}
+
 export default function CustomerProfilePage() {
   const navigate = useNavigate()
   const { logout } = useAuth()
@@ -39,7 +47,7 @@ export default function CustomerProfilePage() {
   const updatePrefs = useUpdateNotificationPreferences()
   const toggle2fa = useToggle2FA()
   const changePassword = useChangePassword()
-  const updateRotation = useUpdatePasswordRotationDays()
+  const updateRotation = useUpdatePasswordRotationPreference()
   const { toast } = useToast()
   const [editProfileOpen, setEditProfileOpen] = useState(false)
   const [securityOpen, setSecurityOpen] = useState(false)
@@ -72,7 +80,8 @@ export default function CustomerProfilePage() {
     .slice(0, 2)
     .toUpperCase()
   const totalTickets = ticketGroups.reduce((sum, group) => sum + group.noOfTicketsPurchased, 0)
-  const passwordRotationDays = security?.passwordRotationDays ?? profile?.passwordRotationDays ?? 30
+  const passwordRotationDays = getPasswordRotationDays(security?.passwordRotationDays ?? profile?.passwordRotationDays)
+  const passwordRotationEnabled = security?.passwordRotationEnabled ?? profile?.passwordRotationEnabled ?? false
   const passwordExpiresAt = security?.passwordExpiresAt ?? profile?.passwordExpiresAt
   const lastLogin = security?.lastLoginAt
     ? new Date(security.lastLoginAt).toLocaleString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -115,12 +124,21 @@ export default function CustomerProfilePage() {
     }
   }
 
+  async function handleRotationToggle(enabled: boolean) {
+    try {
+      await updateRotation.mutateAsync(enabled ? { enabled: true, days: passwordRotationDays } : { enabled: false })
+      toast({ title: enabled ? 'Password rotation enabled' : 'Password rotation disabled' })
+    } catch (error) {
+      toast({ title: 'Password rotation update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
+    }
+  }
+
   async function handleRotationChange(value: string) {
     const selected = PASSWORD_ROTATION_OPTIONS.find(option => String(option.days) === value)
     if (!selected) return
 
     try {
-      await updateRotation.mutateAsync(selected.days)
+      await updateRotation.mutateAsync({ enabled: true, days: selected.days })
       toast({ title: 'Password rotation updated' })
     } catch (error) {
       toast({ title: 'Password rotation update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
@@ -277,18 +295,29 @@ export default function CustomerProfilePage() {
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/[0.07] p-4">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neon-pink/15 text-neon-pink">
-                  <KeyRound className="h-5 w-5" />
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div className="flex gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-neon-pink/15 text-neon-pink">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white">Password change frequency</p>
+                    <p className="mt-1 text-sm leading-5 text-white/55">
+                      {passwordRotationEnabled
+                        ? passwordExpiresAt
+                          ? `Next change required ${new Date(passwordExpiresAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}.`
+                          : 'Selected timeline starts from your last password update.'
+                        : 'Disabled - enable to request periodic password changes.'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-white">Password rotation</p>
-                  <p className="mt-1 text-sm leading-5 text-white/55">
-                    {passwordExpiresAt ? `Next change required ${new Date(passwordExpiresAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}.` : 'Choose how often password changes should be requested.'}
-                  </p>
-                </div>
+                <Switch
+                  checked={security?.passwordRotationEnabled ?? false}
+                  onCheckedChange={handleRotationToggle}
+                  disabled={updateRotation.isPending}
+                />
               </div>
-              <Select value={String(passwordRotationDays)} onValueChange={handleRotationChange} disabled={updateRotation.isPending}>
+              <Select value={String(passwordRotationDays)} onValueChange={handleRotationChange} disabled={!security?.passwordRotationEnabled || updateRotation.isPending}>
                 <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-[#120a2b] text-white focus:ring-neon-pink/50">
                   <SelectValue placeholder="Select rotation" />
                 </SelectTrigger>

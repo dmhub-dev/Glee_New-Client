@@ -17,7 +17,7 @@ import {
   useToggle2FA,
   useRevokeSession,
   useRevokeAllOtherSessions,
-  useUpdatePasswordRotationDays,
+  useUpdatePasswordRotationPreference,
 } from '@glee/api'
 import { formatDistanceToNow } from 'date-fns'
 import { useAuth } from '../../../lib/auth/AuthContext'
@@ -29,6 +29,14 @@ const PASSWORD_ROTATION_OPTIONS: Array<{ days: PasswordRotationDays; label: stri
   { days: 45, label: 'Every 45 days' },
   { days: 60, label: 'Every 60 days' },
 ]
+
+function isPasswordRotationDays(value: number | undefined): value is PasswordRotationDays {
+  return PASSWORD_ROTATION_OPTIONS.some(option => option.days === value)
+}
+
+function getPasswordRotationDays(value: number | undefined): PasswordRotationDays {
+  return isPasswordRotationDays(value) ? value : 30
+}
 
 function DeviceIcon({ device }: { device: string }) {
   const lower = device.toLowerCase()
@@ -48,9 +56,10 @@ export function SecuritySection() {
   const toggle2FA       = useToggle2FA()
   const revokeSession   = useRevokeSession()
   const revokeAll       = useRevokeAllOtherSessions()
-  const updateRotation  = useUpdatePasswordRotationDays()
+  const updateRotation  = useUpdatePasswordRotationPreference()
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const isDashboardRole = user?.role !== 'user'
+  const selectedRotationDays = getPasswordRotationDays(security?.passwordRotationDays)
 
   async function handle2FAToggle(enabled: boolean) {
     try {
@@ -82,12 +91,21 @@ export function SecuritySection() {
     }
   }
 
+  async function handleRotationToggle(enabled: boolean) {
+    try {
+      await updateRotation.mutateAsync(enabled ? { enabled: true, days: selectedRotationDays } : { enabled: false })
+      toast({ title: enabled ? 'Password change frequency enabled' : 'Password change frequency disabled' })
+    } catch {
+      toast({ title: 'Failed to update password change frequency', variant: 'destructive' })
+    }
+  }
+
   async function handleRotationChange(value: string) {
     const selected = PASSWORD_ROTATION_OPTIONS.find(option => String(option.days) === value)
     if (!selected) return
 
     try {
-      await updateRotation.mutateAsync(selected.days)
+      await updateRotation.mutateAsync({ enabled: true, days: selected.days })
       toast({ title: 'Password change frequency updated' })
     } catch {
       toast({ title: 'Failed to update password change frequency', variant: 'destructive' })
@@ -102,7 +120,7 @@ export function SecuritySection() {
       </div>
 
       <div className="divide-y divide-admin">
-        {isDashboardRole && !isLoading && security?.passwordChangeRequired && (
+        {isDashboardRole && !isLoading && security?.passwordRotationEnabled && security?.passwordChangeRequired && (
           <div className="px-6 py-4 flex items-start gap-3 bg-amber-500/10 border-b border-amber-500/20">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
@@ -137,39 +155,58 @@ export function SecuritySection() {
         </div>
 
         {isDashboardRole && (
-          <div className="px-6 py-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <KeyRound className="w-4 h-4 text-admin-40 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-admin-80">Password change frequency</p>
-                <p className="text-xs text-admin-50">
-                  {security?.passwordExpiresAt
-                    ? `Next required change ${formatDistanceToNow(new Date(security.passwordExpiresAt), { addSuffix: true })}`
-                    : 'Choose how often dashboard users must update their password'}
-                </p>
+          <>
+            <div className="px-6 py-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <KeyRound className="w-4 h-4 text-admin-40 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-admin-80">Password change frequency</p>
+                  <p className="text-xs text-admin-50">
+                    {isLoading
+                      ? 'Loading...'
+                      : security?.passwordRotationEnabled
+                        ? security?.passwordExpiresAt
+                          ? `Next required change ${formatDistanceToNow(new Date(security.passwordExpiresAt), { addSuffix: true })}`
+                          : 'Selected timeline starts from your last password update.'
+                        : 'Disabled - enable to request periodic password changes.'}
+                  </p>
+                </div>
               </div>
+              {isLoading ? (
+                <Skeleton className="h-5 w-10 rounded-full" />
+              ) : (
+                <Switch
+                  checked={security?.passwordRotationEnabled ?? false}
+                  onCheckedChange={handleRotationToggle}
+                  disabled={updateRotation.isPending}
+                  className="data-[state=checked]:bg-neon-pink shrink-0"
+                />
+              )}
             </div>
-            {isLoading ? (
-              <Skeleton className="h-10 w-44 rounded-md" />
-            ) : (
-              <Select
-                value={String(security?.passwordRotationDays ?? 30)}
-                onValueChange={handleRotationChange}
-                disabled={updateRotation.isPending}
-              >
-                <SelectTrigger className="w-44 bg-admin-input border-admin">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PASSWORD_ROTATION_OPTIONS.map(option => (
-                    <SelectItem key={option.days} value={String(option.days)}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+
+            <div className="px-6 pb-4 sm:pl-[52px]">
+              {isLoading ? (
+                <Skeleton className="h-10 w-44 rounded-md" />
+              ) : (
+                <Select
+                  value={String(selectedRotationDays)}
+                  onValueChange={handleRotationChange}
+                  disabled={!security?.passwordRotationEnabled || updateRotation.isPending}
+                >
+                  <SelectTrigger className="w-44 bg-admin-input border-admin">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PASSWORD_ROTATION_OPTIONS.map(option => (
+                      <SelectItem key={option.days} value={String(option.days)}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </>
         )}
 
         {/* 2FA */}
