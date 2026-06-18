@@ -13,6 +13,7 @@ export interface ProfileData {
   address?: string
   profileStatus?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -30,6 +31,7 @@ interface BackendMeUser {
   address?: string | null
   profileStatus?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -61,6 +63,7 @@ export interface SecurityInfo {
   lastLoginIp: string | null
   activeSessions: ActiveSession[]
   passwordChangeRequired: boolean
+  passwordRotationEnabled: boolean
   passwordRotationDays: number
   passwordChangedAt: string | null
   passwordExpiresAt: string | null
@@ -138,6 +141,7 @@ export function getProfile(): Promise<ProfileData> {
       address: r.data.address ?? '',
       profileStatus: r.data.profileStatus ?? true,
       passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+      passwordRotationEnabled: r.data.passwordRotationEnabled ?? false,
       passwordRotationDays: r.data.passwordRotationDays ?? 30,
       passwordChangedAt: r.data.passwordChangedAt ?? null,
       passwordExpiresAt: r.data.passwordExpiresAt ?? null,
@@ -176,6 +180,7 @@ export function getSecurityInfo(): Promise<SecurityInfo> {
       lastLoginIp: r.data.lastLoginIp ?? null,
       activeSessions: r.data.activeSessions ?? [],
       passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+      passwordRotationEnabled: r.data.passwordRotationEnabled ?? false,
       passwordRotationDays: r.data.passwordRotationDays ?? 30,
       passwordChangedAt: r.data.passwordChangedAt ?? null,
       passwordExpiresAt: r.data.passwordExpiresAt ?? null,
@@ -188,6 +193,7 @@ export function getSecurityInfo(): Promise<SecurityInfo> {
         lastLoginIp: null,
         activeSessions: [],
         passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+        passwordRotationEnabled: r.data.passwordRotationEnabled ?? false,
         passwordRotationDays: r.data.passwordRotationDays ?? 30,
         passwordChangedAt: r.data.passwordChangedAt ?? null,
         passwordExpiresAt: r.data.passwordExpiresAt ?? null,
@@ -209,10 +215,15 @@ export function disableTwoFactor(): Promise<void> {
   })
 }
 
-export function updatePasswordRotationDays(days: number): Promise<SecurityInfo> {
+export interface UpdatePasswordRotationPreferenceDto {
+  enabled: boolean
+  days?: number
+}
+
+export function updatePasswordRotationPreference(dto: UpdatePasswordRotationPreferenceDto): Promise<SecurityInfo> {
   return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me/password-rotation', {
     method: 'PATCH',
-    body: JSON.stringify({ days }),
+    body: JSON.stringify(dto),
   }).then(() => getSecurityInfo())
 }
 
@@ -290,10 +301,21 @@ export function useToggle2FA() {
   })
 }
 
+export function useUpdatePasswordRotationPreference() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (dto: UpdatePasswordRotationPreferenceDto) => updatePasswordRotationPreference(dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: profileKeys.security })
+      qc.invalidateQueries({ queryKey: profileKeys.me })
+    },
+  })
+}
+
 export function useUpdatePasswordRotationDays() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (days: number) => updatePasswordRotationDays(days),
+    mutationFn: (days: number) => updatePasswordRotationPreference({ enabled: true, days }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: profileKeys.security })
       qc.invalidateQueries({ queryKey: profileKeys.me })

@@ -10,6 +10,7 @@ export interface AuthUser {
   profileStatus?: boolean
   twoFactorEnabled?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -54,6 +55,7 @@ interface BackendUser {
   twoFactorEnabled?: boolean
   profileStatus?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -87,6 +89,7 @@ function toAuthUser(raw: BackendUser): AuthUser {
     profileStatus: raw.profileStatus ?? true,
     twoFactorEnabled: raw.twoFactorEnabled ?? false,
     passwordChangeRequired: raw.passwordChangeRequired ?? false,
+    passwordRotationEnabled: raw.passwordRotationEnabled ?? false,
     passwordRotationDays: raw.passwordRotationDays,
     passwordChangedAt: raw.passwordChangedAt ?? null,
     passwordExpiresAt: raw.passwordExpiresAt ?? null,

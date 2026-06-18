@@ -143,3 +143,78 @@ test('notification preference updates preserve requested changes when backend re
     { path: '/api/v1/profile/me/notifications', method: 'GET' },
   ])
 })
+
+test('security info normalizes missing password rotation enabled to false', async () => {
+  const profile = await loadProfileQueries(async path => {
+    assert.equal(path, '/api/v1/profile/me/security')
+    return {
+      success: true,
+      data: {
+        twoFactorEnabled: true,
+        passwordRotationDays: 30,
+        passwordChangeRequired: true,
+        passwordChangedAt: '2026-01-01T00:00:00.000Z',
+        passwordExpiresAt: '2026-01-31T00:00:00.000Z',
+      },
+    }
+  })
+
+  assert.deepEqual(await profile.getSecurityInfo(), {
+    twoFactorEnabled: true,
+    lastLoginAt: null,
+    lastLoginIp: null,
+    activeSessions: [],
+    passwordRotationEnabled: false,
+    passwordChangeRequired: true,
+    passwordRotationDays: 30,
+    passwordChangedAt: '2026-01-01T00:00:00.000Z',
+    passwordExpiresAt: '2026-01-31T00:00:00.000Z',
+  })
+})
+
+test('password rotation preference update sends enabled state and optional days', async () => {
+  const calls = []
+  const profile = await loadProfileQueries(async (path, options) => {
+    calls.push({
+      path,
+      method: options?.method ?? 'GET',
+      body: options?.body ? JSON.parse(options.body) : undefined,
+    })
+    if (options?.method === 'PATCH') return { success: true, data: {} }
+    return {
+      success: true,
+      data: {
+        twoFactorEnabled: false,
+        passwordRotationEnabled: true,
+        passwordRotationDays: 14,
+        passwordChangeRequired: false,
+      },
+    }
+  })
+
+  await profile.updatePasswordRotationPreference({ enabled: true, days: 14 })
+  await profile.updatePasswordRotationPreference({ enabled: false })
+
+  assert.deepEqual(calls, [
+    {
+      path: '/api/v1/me/password-rotation',
+      method: 'PATCH',
+      body: { enabled: true, days: 14 },
+    },
+    {
+      path: '/api/v1/profile/me/security',
+      method: 'GET',
+      body: undefined,
+    },
+    {
+      path: '/api/v1/me/password-rotation',
+      method: 'PATCH',
+      body: { enabled: false },
+    },
+    {
+      path: '/api/v1/profile/me/security',
+      method: 'GET',
+      body: undefined,
+    },
+  ])
+})
