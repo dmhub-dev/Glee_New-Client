@@ -1,10 +1,15 @@
+import type { ReactNode } from 'react'
 import type { Event } from '@glee/types'
-import { Skeleton } from '@glee/ui'
+import { EmptyState, Skeleton } from '@glee/ui'
+import { CalendarX2 } from 'lucide-react'
 import EventCard from './EventCard'
 
 interface EventGridProps {
   events: Event[]
   isLoading?: boolean
+  emptyTitle?: string
+  emptyDescription?: string
+  emptyAction?: ReactNode
 }
 
 function CardSkeleton() {
@@ -21,7 +26,7 @@ function CardSkeleton() {
   )
 }
 
-export default function EventGrid({ events, isLoading }: EventGridProps) {
+export default function EventGrid({ events, isLoading, emptyTitle, emptyDescription, emptyAction }: EventGridProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(210px,230px))] lg:justify-start">
@@ -32,10 +37,13 @@ export default function EventGrid({ events, isLoading }: EventGridProps) {
 
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-muted-foreground text-lg">No upcoming events right now.</p>
-        <p className="text-muted-foreground text-sm mt-1">Check back soon.</p>
-      </div>
+      <EmptyState
+        icon={<CalendarX2 className="h-6 w-6" />}
+        title={emptyTitle ?? 'No upcoming events right now'}
+        description={emptyDescription ?? 'Check back soon for new Glee experiences.'}
+        action={emptyAction}
+        variant="customer"
+      />
     )
   }
 

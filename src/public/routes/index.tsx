@@ -101,6 +101,14 @@ export default function LandingPage() {
     setStatusMenuOpen(false)
   }
 
+  const clearFilters = () => {
+    setSearchInput('')
+    setSearch('')
+    setCategoryId(undefined)
+    setStatusFilter('active')
+    setStatusMenuOpen(false)
+  }
+
   return (
     <PageWrapper
       fullWidthContent={
@@ -240,7 +248,21 @@ export default function LandingPage() {
                   </button>
                 </div>
               </div>
-              <EventGrid events={listedEvents} isLoading={isLoading} />
+              <EventGrid
+                events={listedEvents}
+                isLoading={isLoading}
+                emptyTitle={search || categoryId ? 'No events match your search' : 'No active events right now'}
+                emptyDescription={search || categoryId ? 'Clear filters to see more events.' : 'New Glee events will appear here as soon as they go live.'}
+                emptyAction={(search || categoryId || statusFilter !== 'active') ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white shadow-neon transition-colors hover:bg-neon-pink/90"
+                  >
+                    Clear filters
+                  </button>
+                ) : undefined}
+              />
 
               {search && (
                 <VenueListSection

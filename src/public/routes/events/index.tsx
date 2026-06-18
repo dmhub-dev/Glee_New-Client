@@ -91,6 +91,15 @@ export default function PublicEventsPage() {
     setStatusMenuOpen(false)
   }
 
+  const clearFilters = () => {
+    setPage(1)
+    setSearchInput('')
+    setSearch('')
+    setCategoryId(undefined)
+    setStatusFilter('active')
+    setStatusMenuOpen(false)
+  }
+
   return (
     <PageWrapper
       fullWidthContent={
@@ -212,7 +221,21 @@ export default function PublicEventsPage() {
                 <h2 className="font-heading text-lg font-black text-white">{resultTitle}</h2>
                 {page > 1 && <span className="text-xs font-semibold text-white/60">Page {page}</span>}
               </div>
-              <EventGrid events={listedEvents} isLoading={isLoading} />
+              <EventGrid
+                events={listedEvents}
+                isLoading={isLoading}
+                emptyTitle={search || categoryId || statusFilter !== 'active' ? 'No events match your filters' : 'No active events right now'}
+                emptyDescription={search || categoryId || statusFilter !== 'active' ? 'Clear filters to return to active events.' : 'New Glee events will appear here as soon as they go live.'}
+                emptyAction={(search || categoryId || statusFilter !== 'active') ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white shadow-neon transition-colors hover:bg-neon-pink/90"
+                  >
+                    Clear filters
+                  </button>
+                ) : undefined}
+              />
               <div className="mt-auto flex items-center justify-end gap-2 pt-6">
                 <button
                   type="button"
