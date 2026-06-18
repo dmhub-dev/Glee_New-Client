@@ -215,10 +215,11 @@ export function disableTwoFactor(): Promise<void> {
   })
 }
 
-export interface UpdatePasswordRotationPreferenceDto {
-  enabled: boolean
-  days?: number
-}
+export type PasswordRotationDays = 7 | 14 | 30 | 45 | 60
+
+export type UpdatePasswordRotationPreferenceDto =
+  | { enabled: true; days: PasswordRotationDays }
+  | { enabled: false; days?: never }
 
 export function updatePasswordRotationPreference(dto: UpdatePasswordRotationPreferenceDto): Promise<SecurityInfo> {
   return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me/password-rotation', {
@@ -315,7 +316,7 @@ export function useUpdatePasswordRotationPreference() {
 export function useUpdatePasswordRotationDays() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (days: number) => updatePasswordRotationPreference({ enabled: true, days }),
+    mutationFn: (days: number) => updatePasswordRotationPreference({ enabled: true, days: days as PasswordRotationDays }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: profileKeys.security })
       qc.invalidateQueries({ queryKey: profileKeys.me })

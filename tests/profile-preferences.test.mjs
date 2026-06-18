@@ -218,3 +218,38 @@ test('password rotation preference update sends enabled state and optional days'
     },
   ])
 })
+
+test('password rotation preference DTO restricts enabled state and allowed days', async () => {
+  const source = await readFile(new URL('../src/api/queries/profile.ts', import.meta.url), 'utf8')
+  const sourceFile = ts.createSourceFile('profile.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+
+  const exportedTypeAliases = new Map()
+  for (const statement of sourceFile.statements) {
+    if (
+      ts.isTypeAliasDeclaration(statement) &&
+      statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)
+    ) {
+      exportedTypeAliases.set(statement.name.text, statement.type)
+    }
+  }
+
+  const daysType = exportedTypeAliases.get('PasswordRotationDays')
+  assert.ok(daysType, 'PasswordRotationDays should be exported as a type alias')
+  assert.ok(ts.isUnionTypeNode(daysType), 'PasswordRotationDays should be a union')
+  assert.deepEqual(daysType.types.map(type => Number(type.getText(sourceFile))), [7, 14, 30, 45, 60])
+
+  const dtoType = exportedTypeAliases.get('UpdatePasswordRotationPreferenceDto')
+  assert.ok(dtoType, 'UpdatePasswordRotationPreferenceDto should be exported as a type alias')
+  assert.ok(ts.isUnionTypeNode(dtoType), 'UpdatePasswordRotationPreferenceDto should be a discriminated union')
+  assert.equal(dtoType.types.length, 2)
+
+  const unionMembers = dtoType.types.map(type => type.getText(sourceFile).replace(/\s+/g, ' '))
+  assert.ok(
+    unionMembers.some(member => member === '{ enabled: true; days: PasswordRotationDays }'),
+    'enabled rotation should require PasswordRotationDays',
+  )
+  assert.ok(
+    unionMembers.some(member => member === '{ enabled: false; days?: never }'),
+    'disabled rotation should forbid days',
+  )
+})
