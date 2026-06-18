@@ -264,9 +264,10 @@ const purchase = usePurchaseTicket()
 The shared API client:
 
 - prepends `VITE_API_BASE_URL`
-- attaches bearer tokens by default
+- attaches the in-memory bearer access token by default
+- sends credentials so the backend httpOnly refresh cookie is available
 - supports `skipAuth` for public endpoints
-- refreshes access tokens on `401`
+- refreshes access tokens on `401` through the backend cookie session
 - throws `ApiError` for failed responses
 
 ## Environment Variables

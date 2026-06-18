@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { tokens } from '../../utils'
-import { apiFetch } from '../client'
+import { apiFetch, refreshAccessToken } from '../client'
 
 const BASE: string = (import.meta as any).env?.VITE_API_BASE_URL ?? ''
 
@@ -188,23 +188,31 @@ export async function downloadFinancialStatementPdf(
   scope: FinancialStatementScope,
   options?: FinancialStatementPeriodOptions,
 ): Promise<void> {
-  const accessToken = tokens.getAccess()
-  const response = await fetch(`${BASE}${statementBasePath(scope, targetType, targetId)}/download${statementQuery(options)}`, {
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-  })
+  const endpointUrl = `${BASE}${statementBasePath(scope, targetType, targetId)}/download${statementQuery(options)}`
+  const fetchPdf = (accessToken: string | null) =>
+    fetch(endpointUrl, {
+      credentials: 'include',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
+
+  let response = await fetchPdf(tokens.getAccess())
+  if (response.status === 401) {
+    const accessToken = await refreshAccessToken()
+    if (accessToken) response = await fetchPdf(accessToken)
+  }
 
   if (!response.ok) {
     throw new Error(await response.text())
   }
 
   const blob = await response.blob()
-  const url = URL.createObjectURL(blob)
+  const blobUrl = URL.createObjectURL(blob)
   const link = document.createElement('a')
   const fallbackFilename = fallbackFinancialStatementPdfFilename(
     targetType,
     targetId,
   )
-  link.href = url
+  link.href = blobUrl
   link.download = resolveFinancialStatementPdfFilename(
     response.headers.get('content-disposition'),
     fallbackFilename,
@@ -212,7 +220,7 @@ export async function downloadFinancialStatementPdf(
   document.body.appendChild(link)
   link.click()
   link.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0)
 }
 
 export function useFinancialStatement(

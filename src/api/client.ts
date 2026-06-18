@@ -38,19 +38,16 @@ async function errorMessageFromResponse(res: Response): Promise<string> {
 
 let refreshPromise: Promise<string | null> | null = null
 
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = tokens.getRefresh()
-  if (!refreshToken) return null
+export async function refreshAccessToken(): Promise<string | null> {
   try {
     const res = await fetch(`${BASE}/api/v1/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     })
     if (!res.ok) { tokens.clear(); return null }
-    const data = await res.json() as { accessToken: string; refreshToken: string }
+    const data = await parseResponseBody<{ accessToken?: string }>(res)
+    if (!data?.accessToken) { tokens.clear(); return null }
     tokens.setAccess(data.accessToken)
-    if (data.refreshToken) tokens.setRefresh(data.refreshToken)
     return data.accessToken
   } catch {
     tokens.clear()
@@ -76,7 +73,11 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     if (token) headers['Authorization'] = `Bearer ${token}`
   }
 
-  let res = await fetch(`${BASE}${path}`, { ...init, headers })
+  let res = await fetch(`${BASE}${path}`, {
+    ...init,
+    credentials: init.credentials ?? 'include',
+    headers,
+  })
 
   if (res.status === 401 && !skipAuth) {
     if (!refreshPromise) {
@@ -85,7 +86,11 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     const newToken = await refreshPromise
     if (newToken) {
       headers['Authorization'] = `Bearer ${newToken}`
-      res = await fetch(`${BASE}${path}`, { ...init, headers })
+      res = await fetch(`${BASE}${path}`, {
+        ...init,
+        credentials: init.credentials ?? 'include',
+        headers,
+      })
     }
   }
 

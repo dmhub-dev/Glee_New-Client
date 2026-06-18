@@ -1,6 +1,5 @@
 import type { UserRole } from '../../types'
-import { apiFetch } from '../client'
-import { tokens } from '../../utils'
+import { apiFetch, refreshAccessToken } from '../client'
 
 export interface AuthUser {
   id: string
@@ -18,7 +17,6 @@ export interface AuthUser {
 
 export interface LoginResponse {
   accessToken: string
-  refreshToken: string
   user: AuthUser
 }
 
@@ -71,7 +69,6 @@ interface BackendLoginResponse {
   }
   user: BackendUser
   accessToken: string
-  refreshToken: string
 }
 
 interface BackendMeResponse {
@@ -112,7 +109,6 @@ export function apiLogin(email: string, password: string): Promise<LoginResult> 
     }
     return {
       accessToken: raw.accessToken,
-      refreshToken: raw.refreshToken,
       user: toAuthUser(raw.user),
     }
   })
@@ -125,7 +121,6 @@ export function apiVerifyLoginTwoFactor(email: string, otp: string): Promise<Log
     skipAuth: true,
   }).then(raw => ({
     accessToken: raw.accessToken,
-    refreshToken: raw.refreshToken,
     user: toAuthUser(raw.user),
   }))
 }
@@ -190,11 +185,13 @@ export function apiAcceptInvitation(token: string, password: string): Promise<vo
 }
 
 export function apiLogout(): Promise<void> {
-  const refreshToken = tokens.getRefresh()
   return apiFetch<void>('/api/v1/logout', {
     method: 'POST',
-    body: JSON.stringify(refreshToken ? { refreshToken } : {}),
   })
+}
+
+export function apiRefreshSession(): Promise<string | null> {
+  return refreshAccessToken()
 }
 
 export function apiMe(): Promise<AuthUser> {
