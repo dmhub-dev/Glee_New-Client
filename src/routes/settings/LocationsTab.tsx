@@ -671,7 +671,7 @@ export default function LocationsTab() {
   const navigate    = useNavigate()
   const { toast }   = useToast()
   const user = useAdminUser()
-  const canManageLocations = user.role !== 'vendor_staff'
+  const canManageLocations = user.role !== 'vendor_staff' && user.role !== 'finance'
   const [editTarget, setEditTarget] = useState<Location | null>(null)
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<LocationFilter>('ALL')

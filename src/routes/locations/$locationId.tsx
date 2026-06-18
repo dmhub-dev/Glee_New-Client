@@ -577,6 +577,7 @@ export default function LocationDetailPage() {
   const { toast }      = useToast()
   const user = useAdminUser()
   const isAdmin = ['super_admin', 'admin', 'operations_manager'].includes(user.role)
+  const isFinance = user.role === 'finance'
   const isVendorOwner = user.role === 'vendor'
   const isVendorStaff = user.role === 'vendor_staff'
   const routeState = routerLocation.state as { tab?: unknown } | null
@@ -622,6 +623,7 @@ export default function LocationDetailPage() {
   const canEditLocation = isAdmin || (isVendorOwner && loc.vendorId === user.id)
   const canDeleteLocation = isAdmin
   const canModerateLocation = ['super_admin', 'admin'].includes(user.role)
+  const canViewAdminFinancialStatements = isAdmin || isFinance
   const canManageHostesses = (
     ['super_admin', 'admin'].includes(user.role) ||
     (isVendorOwner && loc.vendorId === user.id)
@@ -792,8 +794,8 @@ export default function LocationDetailPage() {
           <FinancialStatementPanel
             targetType="LOCATION"
             targetId={loc.id}
-            scope={isAdmin ? 'admin' : 'vendor'}
-            canGenerate={isAdmin || (isVendorOwner && loc.vendorId === user.id)}
+            scope={canViewAdminFinancialStatements ? 'admin' : 'vendor'}
+            canGenerate={canViewAdminFinancialStatements || (isVendorOwner && loc.vendorId === user.id)}
             title="Location Financial Statement"
           />
         )}

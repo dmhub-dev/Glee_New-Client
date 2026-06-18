@@ -10,6 +10,7 @@ test('event earnings and location detail expose financial statement controls', a
   const panel = await read('src/routes/financials/components/FinancialStatementPanel.tsx')
   const eventPanel = await read('src/routes/events/EventEarningsPanel.tsx')
   const locationDetail = await read('src/routes/locations/$locationId.tsx')
+  const app = await read('src/app/App.tsx')
 
   assert.match(panel, /Financial Statement/)
   assert.match(panel, /Regenerate/)
@@ -20,4 +21,8 @@ test('event earnings and location detail expose financial statement controls', a
   assert.match(eventPanel, /targetType="EVENT"/)
   assert.match(locationDetail, /Statements/)
   assert.match(locationDetail, /targetType="LOCATION"/)
+  assert.match(app, /const\s+LOCATION_ROLES:\s*UserRole\[\]\s*=\s*\[\.\.\.ADMIN_ROLES,\s*['"]finance['"],\s*['"]vendor['"],\s*['"]vendor_staff['"]\]/)
+  assert.match(locationDetail, /const\s+canViewAdminFinancialStatements\s*=\s*isAdmin\s*\|\|\s*isFinance/)
+  assert.match(locationDetail, /scope=\{canViewAdminFinancialStatements\s*\?\s*['"]admin['"]\s*:\s*['"]vendor['"]\}/)
+  assert.match(locationDetail, /canGenerate=\{canViewAdminFinancialStatements\s*\|\|\s*\(isVendorOwner\s*&&\s*loc\.vendorId\s*===\s*user\.id\)\}/)
 })

@@ -67,3 +67,12 @@ test('location cards show booking, menu, approval, and quick actions', async () 
   assert.match(source, /navigate\(`\/dashboard\/locations\/\$\{location\.id\}`,\s*\{\s*state:\s*\{\s*tab:\s*['"]bookings['"]\s*\}\s*\}\)/)
   assert.match(source, /navigate\(['"]\/dashboard\/menu-pricing['"]\)/)
 })
+
+test('finance users can view locations without create or edit controls', async () => {
+  const source = await readLocationsTabSource()
+
+  assertTranspiles(source)
+  assert.match(source, /const\s+canManageLocations\s*=\s*user\.role\s*!==\s*['"]vendor_staff['"]\s*&&\s*user\.role\s*!==\s*['"]finance['"]/)
+  assert.match(source, /\{canManageLocations\s*&&\s*\(/)
+  assert.match(source, /canManageLocations=\{canManageLocations\}/)
+})
