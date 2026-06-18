@@ -86,6 +86,52 @@ function statementBasePath(scope: FinancialStatementScope, targetType: Financial
   return statementPathBuilders[scope][targetType](targetId)
 }
 
+function fallbackFinancialStatementPdfFilename(
+  targetType: FinancialStatementTargetType,
+  targetId: string,
+) {
+  return `${targetType.toLowerCase()}-${targetId}-financial-statement.pdf`
+}
+
+export function resolveFinancialStatementPdfFilename(
+  contentDisposition: string | null,
+  fallbackFilename: string,
+) {
+  if (!contentDisposition) return fallbackFilename
+
+  const encodedMatch = contentDisposition.match(
+    /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i,
+  )
+  if (encodedMatch?.[1]) {
+    const encodedFilename = encodedMatch[1].trim().replace(/^"|"$/g, '')
+    try {
+      return sanitizePdfFilename(
+        decodeURIComponent(encodedFilename),
+        fallbackFilename,
+      )
+    } catch {
+      return sanitizePdfFilename(encodedFilename, fallbackFilename)
+    }
+  }
+
+  const quotedMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"/i)
+  if (quotedMatch?.[1]) {
+    return sanitizePdfFilename(quotedMatch[1], fallbackFilename)
+  }
+
+  const plainMatch = contentDisposition.match(/filename\s*=\s*([^;]+)/i)
+  return sanitizePdfFilename(plainMatch?.[1], fallbackFilename)
+}
+
+function sanitizePdfFilename(
+  filename: string | undefined,
+  fallbackFilename: string,
+) {
+  const cleaned = filename?.replace(/[/\\?%*:|"<>]/g, '-').trim()
+  if (!cleaned) return fallbackFilename
+  return cleaned.toLowerCase().endsWith('.pdf') ? cleaned : `${cleaned}.pdf`
+}
+
 export async function getFinancialStatement(
   targetType: FinancialStatementTargetType,
   targetId: string,
@@ -121,8 +167,15 @@ export async function downloadFinancialStatementPdf(
   const blob = await response.blob()
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
+  const fallbackFilename = fallbackFinancialStatementPdfFilename(
+    targetType,
+    targetId,
+  )
   link.href = url
-  link.download = `${targetType.toLowerCase()}-${targetId}-financial-statement.pdf`
+  link.download = resolveFinancialStatementPdfFilename(
+    response.headers.get('content-disposition'),
+    fallbackFilename,
+  )
   document.body.appendChild(link)
   link.click()
   link.remove()

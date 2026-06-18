@@ -20,3 +20,14 @@ test('financial statement API exposes role-scoped event and location endpoints',
   assert.match(source, /\/api\/v1\/vendor\/locations\/\$\{targetId\}\/financial-statement/)
   assert.match(index, /export \* from ['"]\.\/queries\/financial-statements['"]/)
 })
+
+test('financial statement PDF downloads use the backend filename when provided', async () => {
+  const source = await read('src/api/queries/financial-statements.ts')
+
+  assert.match(source, /headers\.get\(['"]content-disposition['"]\)/)
+  assert.match(source, /filename\\\*/i)
+  assert.doesNotMatch(
+    source,
+    /link\.download\s*=\s*`\$\{targetType\.toLowerCase\(\)\}-\$\{targetId\}-financial-statement\.pdf`/,
+  )
+})
