@@ -304,7 +304,7 @@ export default function EventsListPage() {
       subtitle={isVendorRole ? 'Create events and reference approved categories and locations' : 'Manage event inventory, categories, and locations from one place'}
     >
       <div className="space-y-4">
-        <div className="flex gap-1 overflow-x-auto border-b border-admin">
+        <div className="flex gap-1 overflow-x-auto border-b border-admin [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {EVENT_SECTIONS.map(section => {
             const Icon = section.icon
             return (
@@ -378,7 +378,7 @@ export default function EventsListPage() {
         </div>
 
         {/* Status tabs */}
-        <div className="flex gap-0 border-b border-admin overflow-x-auto">
+        <div className="flex gap-0 overflow-x-auto border-b border-admin [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {STATUS_TABS.map(tab => (
             <button
               key={tab.key}

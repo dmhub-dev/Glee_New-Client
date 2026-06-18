@@ -123,3 +123,17 @@ test('admin event list uses shared admin empty states for no-data and no-results
   assert.match(source, /Clear search/)
   assert.doesNotMatch(source, /Create your first event →/)
 })
+
+test('admin event mobile tab rows hide horizontal scrollbars', async () => {
+  const source = await readSource('src/routes/events/index.tsx')
+
+  assertTranspiles(source, 'admin-events-index.tsx')
+  assert.ok(
+    (source.match(/\[scrollbar-width:none\]/g) ?? []).length >= 2,
+    'section and status tab rows should hide Firefox scrollbars',
+  )
+  assert.ok(
+    (source.match(/\[&::-webkit-scrollbar\]:hidden/g) ?? []).length >= 2,
+    'section and status tab rows should hide WebKit scrollbars',
+  )
+})
