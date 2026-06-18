@@ -1,4 +1,5 @@
-import { Download, FileText, RefreshCw } from 'lucide-react'
+import { Download, FileText, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 import {
   downloadFinancialStatementPdf,
   useFinancialStatement,
@@ -25,30 +26,27 @@ export default function FinancialStatementPanel({
   const { toast } = useToast()
   const statement = useFinancialStatement(targetType, targetId, scope, Boolean(targetId))
   const regenerate = useRegenerateFinancialStatement(targetType, targetId, scope)
+  const [isPreparingPdf, setIsPreparingPdf] = useState(false)
   const data = statement.data
 
-  async function handleRegenerate() {
+  async function handlePreparePdf() {
+    if (!targetId) return
+
+    setIsPreparingPdf(true)
     try {
-      await regenerate.mutateAsync()
-      toast({ title: 'Financial statement regenerated' })
+      if (canGenerate) {
+        await regenerate.mutateAsync()
+      }
+      await downloadFinancialStatementPdf(targetType, targetId, scope)
+      toast({ title: canGenerate ? 'Financial statement generated and downloaded' : 'Financial statement downloaded' })
     } catch (error) {
       toast({
-        title: 'Could not regenerate statement',
+        title: canGenerate ? 'Could not generate statement' : 'Could not download statement',
         description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive',
       })
-    }
-  }
-
-  async function handleDownload() {
-    try {
-      await downloadFinancialStatementPdf(targetType, targetId, scope)
-    } catch (error) {
-      toast({
-        title: 'Could not download statement',
-        description: error instanceof Error ? error.message : 'Please regenerate it first.',
-        variant: 'destructive',
-      })
+    } finally {
+      setIsPreparingPdf(false)
     }
   }
 
@@ -67,15 +65,13 @@ export default function FinancialStatementPanel({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canGenerate && (
-            <Button onClick={handleRegenerate} disabled={regenerate.isPending || !targetId} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
-              <RefreshCw className="h-4 w-4" />
-              {regenerate.isPending ? 'Regenerating...' : 'Regenerate'}
-            </Button>
-          )}
-          <Button onClick={handleDownload} disabled={!data} variant="outline" className="gap-2 border-admin text-admin-60 hover:bg-admin-input">
-            <Download className="h-4 w-4" />
-            Download PDF
+          <Button
+            onClick={handlePreparePdf}
+            disabled={isPreparingPdf || !targetId || (!canGenerate && !data)}
+            className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90"
+          >
+            {isPreparingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {isPreparingPdf ? 'Preparing PDF...' : canGenerate ? 'Generate & Download PDF' : 'Download PDF'}
           </Button>
         </div>
       </div>
@@ -92,7 +88,7 @@ export default function FinancialStatementPanel({
         </div>
       ) : (
         <p className="mt-5 rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
-          {canGenerate ? 'Regenerate a statement to snapshot current earnings, payouts, deposits, and notes.' : 'A statement has not been generated for this record yet.'}
+          {canGenerate ? 'Generate a statement to snapshot current earnings, payouts, deposits, and notes.' : 'A statement has not been generated for this record yet.'}
         </p>
       )}
     </section>

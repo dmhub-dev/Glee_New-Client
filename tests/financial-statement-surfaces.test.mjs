@@ -13,8 +13,9 @@ test('event earnings and location detail expose financial statement controls', a
   const app = await read('src/app/App.tsx')
 
   assert.match(panel, /Financial Statement/)
-  assert.match(panel, /Regenerate/)
-  assert.match(panel, /Download PDF/)
+  assert.match(panel, /Generate & Download PDF/)
+  assert.match(panel, /Preparing PDF\.\.\./)
+  assert.doesNotMatch(panel, /handleRegenerate/)
   assert.match(panel, /useFinancialStatement/)
   assert.match(panel, /useRegenerateFinancialStatement/)
   assert.match(panel, /downloadFinancialStatementPdf/)
