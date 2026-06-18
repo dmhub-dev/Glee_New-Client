@@ -658,7 +658,7 @@ export default function CustomerEventDetailPage() {
               }}
               className="w-full rounded-2xl border border-white/10 bg-white/[0.07] p-4 text-left transition hover:border-neon-pink/40 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-45"
             >
-              <p className="font-semibold text-white">Pay in Installments</p>
+              <p className="font-semibold text-white">Pay in installments</p>
               <p className="mt-1 text-sm text-white/55">
                 {installmentOptions.length ? `Reserve now from ${money(installmentDueNow)} due today.` : 'Installments are closed for this event.'}
               </p>
@@ -728,7 +728,7 @@ export default function CustomerEventDetailPage() {
       <Dialog open={installmentModalOpen} onOpenChange={setInstallmentModalOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto border-white/15 bg-[#151523] text-white sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Pay in Installments</DialogTitle>
+            <DialogTitle className="text-white">Pay in installments</DialogTitle>
             <DialogDescription className="text-white/60">
               Reserve your ticket now, then complete the remaining payments before the event.
             </DialogDescription>

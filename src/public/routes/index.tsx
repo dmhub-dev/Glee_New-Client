@@ -94,6 +94,7 @@ export default function LandingPage() {
     : categoryId
       ? categoryLabels.find(category => category.id === categoryId)?.name ?? 'Filtered Events'
       : `${statusLabel} Events`
+  const hasEventFilters = Boolean(search || categoryId || statusFilter !== 'active')
 
   const selectStatus = (status: PublicStatusFilter) => {
     setCategoryId(undefined)
@@ -251,9 +252,9 @@ export default function LandingPage() {
               <EventGrid
                 events={listedEvents}
                 isLoading={isLoading}
-                emptyTitle={search || categoryId ? 'No events match your search' : 'No active events right now'}
-                emptyDescription={search || categoryId ? 'Clear filters to see more events.' : 'New Glee events will appear here as soon as they go live.'}
-                emptyAction={(search || categoryId || statusFilter !== 'active') ? (
+                emptyTitle={hasEventFilters ? 'No events match your search' : 'No active events right now'}
+                emptyDescription={hasEventFilters ? 'Clear filters to see more events.' : 'New Glee events will appear here as soon as they go live.'}
+                emptyAction={hasEventFilters ? (
                   <button
                     type="button"
                     onClick={clearFilters}

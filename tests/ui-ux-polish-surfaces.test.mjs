@@ -56,6 +56,8 @@ test('public event grids use shared empty states with recovery actions', async (
   assert.match(grid, /<EmptyState/)
   assert.match(grid, /title=\{emptyTitle/)
   assert.match(landing, /const clearFilters = \(\) => \{/)
+  assert.match(landing, /const hasEventFilters = Boolean\(search \|\| categoryId \|\| statusFilter !== 'active'\)/)
+  assert.match(landing, /emptyTitle=\{hasEventFilters \? 'No events match your search' : 'No active events right now'\}/)
   assert.match(events, /const clearFilters = \(\) => \{/)
   assert.match(landing, literal('No events match your search'))
   assert.match(events, literal('No events match your filters'))
@@ -91,8 +93,10 @@ test('event detail checkout CTAs use consistent conversion copy and mobile-safe 
   assert.match(publicDetail, /max-h-\[calc\(100dvh-1rem\)\]/)
   assert.match(publicDetail, /overflow-hidden/)
   assert.match(publicDetail, /overflow-y-auto/)
+  assert.match(customerDetail, literal('Pay in installments'))
   assert.doesNotMatch(publicDetail, /selectedItems\.length === 0 \? 'Select a Ticket' : 'Buy Tickets'/)
   assert.doesNotMatch(customerDetail, /canPurchase \? 'Pay Now' :/)
+  assert.doesNotMatch(customerDetail, literal('Pay in Installments'))
 })
 
 test('event reservation panel has directional empty states and deposit-focused CTAs', async () => {
