@@ -62,3 +62,18 @@ test('public event grids use shared empty states with recovery actions', async (
   assert.match(landing, literal('Clear filters'))
   assert.match(events, literal('Clear filters'))
 })
+
+test('customer discovery uses shared loading and empty states', async () => {
+  const source = await readSource('src/customer/events/index.tsx')
+
+  assertTranspiles(source, 'customer-events-index.tsx')
+  assert.match(source, /import \{[^}]*EmptyState[^}]*LoadingPanel[^}]*\} from '@glee\/ui'/)
+  assert.match(source, /<LoadingPanel label="Searching events"/)
+  assert.match(source, /<LoadingPanel label="Loading clubs and restaurants"/)
+  assert.match(source, /<EmptyState[\s\S]*No events match your search/)
+  assert.match(source, /<EmptyState[\s\S]*No clubs or restaurants match your search/)
+  assert.match(source, /<EmptyState[\s\S]*No events match your filters/)
+  assert.doesNotMatch(source, />Loading events\.\.\.</)
+  assert.doesNotMatch(source, />No events found matching your criteria\.</)
+  assert.match(source, /Clear filters/)
+})

@@ -3,9 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import useEmblaCarousel from 'embla-carousel-react'
 import type { Event } from '@glee/types'
 import { useEvents, useReservationVenues } from '@glee/api'
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Input, cn } from '@glee/ui'
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button, EmptyState, Input, LoadingPanel, cn } from '@glee/ui'
 import { formatDateOnly, formatTimeOnly, parseDateOnly } from '@glee/utils'
-import { Bell, Check, ChevronLeft, ChevronRight, Filter, MapPin, Search } from 'lucide-react'
+import { Bell, CalendarX2, Check, ChevronLeft, ChevronRight, Filter, MapPinned, MapPin, Search } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 import { VenueCarouselSection, VenueListSection, isClubOrRestaurantVenue } from '../../components/reservations/VenueShowcase'
@@ -303,28 +303,36 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           {/* Searching on home page — show results, skip carousel */}
           {!isExplore && query ? (
             isLoading ? (
-              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-                <p className="text-white/55">Searching...</p>
-              </div>
+              <LoadingPanel label="Searching events" variant="customer" />
             ) : filteredEvents.length === 0 ? (
-              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-                <p className="text-white/55">No events found for "{query}".</p>
-                <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>Clear search</Button>
-              </div>
+              <EmptyState
+                icon={<CalendarX2 className="h-6 w-6" />}
+                title={`No events match your search`}
+                description={`Clear search to browse active events.`}
+                action={
+                  <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                }
+                variant="customer"
+              />
             ) : (
               <EventList events={filteredEvents} showCategory={false} />
             )
           ) : isVenueExplore && isReservationVenuesLoading ? (
-            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-              <p className="text-white/55">Loading clubs and restaurants...</p>
-            </div>
+            <LoadingPanel label="Loading clubs and restaurants" variant="customer" />
           ) : isVenueExplore && visibleReservationVenues.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-              <p className="text-white/55">No clubs or restaurants found matching your criteria.</p>
-              <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
-                Clear Search
-              </Button>
-            </div>
+            <EmptyState
+              icon={<MapPinned className="h-6 w-6" />}
+              title="No clubs or restaurants match your search"
+              description="Clear search to browse available table spots."
+              action={
+                <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+              variant="customer"
+            />
           ) : isVenueExplore ? (
             <VenueListSection
               venues={reservationVenues}
@@ -336,26 +344,30 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
               showHeader={false}
             />
           ) : isExplore && isLoading ? (
-            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-              <p className="text-white/55">Loading events...</p>
-            </div>
+            <LoadingPanel label="Loading events" variant="customer" />
           ) : isExplore && filteredEvents.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-              <p className="text-white/55">No events found matching your criteria.</p>
-              <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            </div>
+            <EmptyState
+              icon={<CalendarX2 className="h-6 w-6" />}
+              title="No events match your filters"
+              description="Clear filters to return to active events."
+              action={
+                <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              }
+              variant="customer"
+            />
           ) : isExplore ? (
             <EventList events={filteredEvents} showCategory={false} />
           ) : isCarouselLoading ? (
-            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-              <p className="text-white/55">Loading events...</p>
-            </div>
+            <LoadingPanel label="Loading events" variant="customer" />
           ) : carouselEvents.length === 0 ? (
-            <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-              <p className="text-white/55">No featured events right now.</p>
-            </div>
+            <EmptyState
+              icon={<CalendarX2 className="h-6 w-6" />}
+              title="No featured events right now"
+              description="New Glee events will appear here as soon as they go live."
+              variant="customer"
+            />
           ) : (
             <AutoCarousel events={carouselEvents.slice(0, 5)} />
           )}
@@ -383,16 +395,19 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-white">{sectionTitle === 'Trending This Weekend' ? 'More Events' : sectionTitle}</h2>
             {isLoading ? (
-              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-                <p className="text-white/55">Loading events...</p>
-              </div>
+              <LoadingPanel label="Loading events" variant="customer" />
             ) : filteredEvents.length === 0 ? (
-              <div className="rounded-2xl border border-white/5 bg-white/5 py-10 text-center">
-                <p className="text-white/55">No events found matching your criteria.</p>
-                <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
-                  Clear Filters
-                </Button>
-              </div>
+              <EmptyState
+                icon={<CalendarX2 className="h-6 w-6" />}
+                title="No events match your filters"
+                description="Clear filters to return to active events."
+                action={
+                  <Button variant="link" className="text-neon-pink active:scale-95" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                }
+                variant="customer"
+              />
             ) : (
               <EventList events={filteredEvents.slice(0, 5)} showCategory={false} />
             )}
