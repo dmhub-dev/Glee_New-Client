@@ -455,7 +455,7 @@ export default function EventDetailPage() {
       </div>
 
       {/* Sticky bottom action bar */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-glee-bg/90 px-4 py-3 backdrop-blur-xl">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-glee-bg/90 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-3 md:max-w-3xl lg:max-w-5xl">
           <div className="min-w-0 pr-2">
             <p className="text-xs text-white/45">{selectedItems.length > 0 ? 'Order total' : 'Starting from'}</p>
@@ -475,14 +475,14 @@ export default function EventDetailPage() {
             onClick={() => setCheckoutOpen(true)}
             className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none sm:ml-0 sm:px-7"
           >
-            {!isPurchasable ? 'Unavailable' : selectedItems.length === 0 ? 'Select a Ticket' : 'Buy Tickets'}
+            {!isPurchasable ? 'Unavailable' : selectedItems.length === 0 ? 'Select tickets' : 'Continue to payment'}
           </Button>
         </div>
       </div>
 
       {/* Checkout overlay */}
       {checkoutOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-4">
           <button
             type="button"
             aria-label="Close checkout"
@@ -490,8 +490,8 @@ export default function EventDetailPage() {
             disabled={isProcessing}
             onClick={() => setCheckoutOpen(false)}
           />
-          <div className="bg-[#0f0f15] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto p-8 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+          <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#0f0f15] sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4 sm:px-8">
               <h2 className="font-heading font-bold text-2xl text-white">Complete Your Order</h2>
               <button
                 onClick={() => !isProcessing && setCheckoutOpen(false)}
@@ -501,147 +501,149 @@ export default function EventDetailPage() {
               </button>
             </div>
 
-            {/* Order summary */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-4">
-              {/* Event identity row */}
-              <div className="flex items-center gap-3">
-                {eventImages[0] && (
-                  <img
-                    src={eventImages[0]}
-                    alt={event.title}
-                    className="h-16 w-12 rounded-lg object-cover shrink-0 border border-white/10"
-                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                  />
-                )}
-                <div className="min-w-0">
-                  <p className="font-semibold text-white leading-tight truncate">{event.title}</p>
-                  <p className="text-xs text-white/45 mt-0.5 truncate">
-                    📍 {locationLabel}
-                  </p>
-                  <p className="text-xs text-white/45 font-mono mt-0.5">
-                    {eventDateShort}
-                    {' · '}
-                    {eventStartTime}
-                  </p>
+            <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-8">
+              {/* Order summary */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-4">
+                {/* Event identity row */}
+                <div className="flex items-center gap-3">
+                  {eventImages[0] && (
+                    <img
+                      src={eventImages[0]}
+                      alt={event.title}
+                      className="h-16 w-12 rounded-lg object-cover shrink-0 border border-white/10"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white leading-tight truncate">{event.title}</p>
+                    <p className="text-xs text-white/45 mt-0.5 truncate">
+                      📍 {locationLabel}
+                    </p>
+                    <p className="text-xs text-white/45 font-mono mt-0.5">
+                      {eventDateShort}
+                      {' · '}
+                      {eventStartTime}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator className="bg-white/10" />
+
+                {/* Line items */}
+                <div className="flex flex-col gap-2">
+                  {selectedItems.map(({ tier, quantity }) => (
+                    <div key={tier.id} className="flex flex-col gap-0.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">{tier.name} × {quantity}</span>
+                        <span className="font-mono text-white">KSh {(tier.price * quantity).toLocaleString()}</span>
+                      </div>
+                      {tier.description && (
+                        <p className="text-xs text-white/35 italic leading-relaxed">{tier.description}</p>
+                      )}
+                    </div>
+                  ))}
+                  {selectedMenuItems.map(({ item, quantity }) => (
+                    <div key={item.id} className="flex items-center justify-between text-sm">
+                      <span className="text-white/70">{item.name} × {quantity}</span>
+                      <span className="font-mono text-white">KSh {(item.price * quantity).toLocaleString()}</span>
+                    </div>
+                  ))}
+                  {tableBooking?.enabled && (
+                    <div className="flex flex-col gap-0.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                        <span className="font-mono text-white">KSh {tableBooking.depositAmount.toLocaleString()}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed text-white/35">
+                        {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend KSh {tableBooking.minimumSpend.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <Separator className="bg-white/10" />
+
+                {/* Total */}
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-white">Total</span>
+                  <span className="font-mono font-bold text-neon-pink text-lg">KSh {totalPrice.toLocaleString()}</span>
                 </div>
               </div>
 
-              <Separator className="bg-white/10" />
+              <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
 
-              {/* Line items */}
-              <div className="flex flex-col gap-2">
-                {selectedItems.map(({ tier, quantity }) => (
-                  <div key={tier.id} className="flex flex-col gap-0.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/70">{tier.name} × {quantity}</span>
-                      <span className="font-mono text-white">KSh {(tier.price * quantity).toLocaleString()}</span>
-                    </div>
-                    {tier.description && (
-                      <p className="text-xs text-white/35 italic leading-relaxed">{tier.description}</p>
+              {/* Buyer form */}
+              <Form {...form}>
+                <div className="flex flex-col gap-5">
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white/70">Full Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Jane Doe"
+                            className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
-                ))}
-                {selectedMenuItems.map(({ item, quantity }) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">{item.name} × {quantity}</span>
-                    <span className="font-mono text-white">KSh {(item.price * quantity).toLocaleString()}</span>
-                  </div>
-                ))}
-                {tableBooking?.enabled && (
-                  <div className="flex flex-col gap-0.5 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
-                      <span className="font-mono text-white">KSh {tableBooking.depositAmount.toLocaleString()}</span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-white/35">
-                      {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend KSh {tableBooking.minimumSpend.toLocaleString()}
-                    </p>
-                  </div>
-                )}
-              </div>
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white/70">Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="jane@example.com"
+                            className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white/70">Phone Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder="+254 700 000 000"
+                            className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </Form>
 
-              <Separator className="bg-white/10" />
-
-              {/* Total */}
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">Total</span>
-                <span className="font-mono font-bold text-neon-pink text-lg">KSh {totalPrice.toLocaleString()}</span>
-              </div>
+              <Button
+                onClick={handlePayNow}
+                disabled={isPreparing || isProcessing}
+                className="rounded-full w-full bg-neon-pink hover:bg-neon-hover text-white font-semibold text-base h-12 shadow-neon disabled:opacity-40 transition-all hover:scale-[1.01] active:scale-[0.99]"
+              >
+                {isPreparing
+                  ? 'Preparing payment...'
+                  : isProcessing
+                    ? 'Opening Paystack...'
+                    : 'Continue to payment'}
+              </Button>
+              <p className="text-xs text-white/30 text-center -mt-2">Secured by Paystack</p>
             </div>
-
-            <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
-
-            {/* Buyer form */}
-            <Form {...form}>
-              <div className="flex flex-col gap-5">
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/70">Full Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Jane Doe"
-                          className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/70">Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="jane@example.com"
-                          className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/70">Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="tel"
-                          placeholder="+254 700 000 000"
-                          className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </Form>
-
-            <Button
-              onClick={handlePayNow}
-              disabled={isPreparing || isProcessing}
-              className="rounded-full w-full bg-neon-pink hover:bg-neon-hover text-white font-semibold text-base h-12 shadow-neon disabled:opacity-40 transition-all hover:scale-[1.01] active:scale-[0.99]"
-            >
-              {isPreparing
-                ? 'Preparing payment…'
-                : isProcessing
-                  ? 'Opening Paystack…'
-                  : 'Proceed to Pay'}
-            </Button>
-            <p className="text-xs text-white/30 text-center -mt-2">Secured by Paystack</p>
           </div>
         </div>
       )}

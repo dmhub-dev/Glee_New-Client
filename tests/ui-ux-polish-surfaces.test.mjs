@@ -77,3 +77,20 @@ test('customer discovery uses shared loading and empty states', async () => {
   assert.doesNotMatch(source, />No events found matching your criteria\.</)
   assert.match(source, /Clear filters/)
 })
+
+test('event detail checkout CTAs use consistent conversion copy and mobile-safe bars', async () => {
+  const publicDetail = await readSource('src/public/routes/events/$eventId.tsx')
+  const customerDetail = await readSource('src/customer/events/$eventId.tsx')
+
+  assertTranspiles(publicDetail, 'public-event-detail.tsx')
+  assertTranspiles(customerDetail, 'customer-event-detail.tsx')
+  assert.match(publicDetail, /Continue to payment/)
+  assert.match(customerDetail, /Continue to payment/)
+  assert.match(publicDetail, /env\(safe-area-inset-bottom\)/)
+  assert.match(customerDetail, /env\(safe-area-inset-bottom\)/)
+  assert.match(publicDetail, /max-h-\[calc\(100dvh-1rem\)\]/)
+  assert.match(publicDetail, /overflow-hidden/)
+  assert.match(publicDetail, /overflow-y-auto/)
+  assert.doesNotMatch(publicDetail, /selectedItems\.length === 0 \? 'Select a Ticket' : 'Buy Tickets'/)
+  assert.doesNotMatch(customerDetail, /canPurchase \? 'Pay Now' :/)
+})

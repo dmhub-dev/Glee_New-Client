@@ -549,7 +549,7 @@ export default function CustomerEventDetailPage() {
             </Tabs>
           </div>
 
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050017]/88 px-4 py-3 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050017]/88 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl">
             <div className="mx-auto flex max-w-7xl items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">Order total</p>
@@ -561,7 +561,7 @@ export default function CustomerEventDetailPage() {
                 className="h-12 rounded-full bg-neon-pink px-6 text-white hover:bg-neon-pink/90 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none"
               >
                 <Ticket className="mr-2 h-4 w-4" />
-                {canPurchase ? 'Pay Now' : isSoldOut ? 'Sold Out' : 'Select a Ticket'}
+                {canPurchase ? 'Continue to payment' : isSoldOut ? 'Sold out' : 'Select tickets'}
               </Button>
             </div>
           </div>
@@ -593,7 +593,7 @@ export default function CustomerEventDetailPage() {
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
         <DialogContent className="mx-auto max-h-[90vh] max-w-sm overflow-y-auto rounded-3xl border-white/15 bg-[#050017] text-white">
           <DialogHeader>
-            <DialogTitle className="text-white">Choose Payment</DialogTitle>
+            <DialogTitle className="text-white">Choose payment</DialogTitle>
             <DialogDescription className="text-white/60">
               Pick how you want to pay for this order.
             </DialogDescription>
@@ -640,7 +640,7 @@ export default function CustomerEventDetailPage() {
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-white">Pay with Wallet</p>
+                  <p className="font-semibold text-white">Pay with wallet</p>
                   <p className="mt-1 text-sm text-white/55">{walletCanPayFull ? `Deduct ${money(total)} from wallet.` : `Need ${money(total - walletBalance)} more.`}</p>
                 </div>
                 <WalletBadge enabled={walletCanPayFull} />
@@ -670,7 +670,7 @@ export default function CustomerEventDetailPage() {
               onClick={() => handlePurchase(false)}
               className="w-full rounded-2xl border border-neon-pink/30 bg-neon-pink p-4 text-left text-white transition hover:bg-neon-pink/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <p className="font-semibold">Pay Directly</p>
+              <p className="font-semibold">Pay directly</p>
               <p className="mt-1 text-sm text-white/75">Use card, M-Pesa, or checkout payment page.</p>
             </button>
           </div>
@@ -718,7 +718,7 @@ export default function CustomerEventDetailPage() {
                 Cancel
               </Button>
               <Button disabled={!canPurchase || purchase.isPending || !walletCanPayFull} onClick={() => handlePurchase(true, 'FULL')} className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
-                {purchase.isPending ? 'Processing...' : 'Confirm Pay'}
+                {purchase.isPending ? 'Processing...' : 'Confirm payment'}
               </Button>
             </div>
           </div>
@@ -877,7 +877,7 @@ export default function CustomerEventDetailPage() {
                 onClick={() => handlePurchase(true, 'INSTALLMENT')}
                 className="bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50"
               >
-                {purchase.isPending ? 'Processing...' : 'Confirm Reservation'}
+                {purchase.isPending ? 'Processing...' : 'Confirm reservation'}
               </Button>
             </div>
           </div>
