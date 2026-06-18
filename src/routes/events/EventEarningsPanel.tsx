@@ -12,6 +12,7 @@ import {
 import type { CommissionType, PayoutTimingType } from '@glee/api'
 import type { Event, UserRole } from '@glee/types'
 import { Button, Input, Skeleton, Textarea, useToast } from '@glee/ui'
+import FinancialStatementPanel from '../financials/components/FinancialStatementPanel'
 import PayoutMetricCard from '../payouts/components/PayoutMetricCard'
 import PayoutRequestTable from '../payouts/components/PayoutRequestTable'
 import { canManageVendorPayouts, canViewAdminPayouts, canViewPayoutEarnings, canViewVendorPayouts, formatKes, formatSignedKes } from '../payouts/utils'
@@ -130,6 +131,14 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
           icon={Percent}
         />
       </div>
+
+      <FinancialStatementPanel
+        targetType="EVENT"
+        targetId={event.id}
+        scope={isAdminView ? 'admin' : 'vendor'}
+        canGenerate={isAdminView || canVendorRequest}
+        title="Event Financial Statement"
+      />
 
       <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
         <h2 className="font-heading text-base font-bold text-foreground">Payout Terms</h2>

@@ -1,0 +1,109 @@
+import { Download, FileText, RefreshCw } from 'lucide-react'
+import {
+  downloadFinancialStatementPdf,
+  useFinancialStatement,
+  useRegenerateFinancialStatement,
+  type FinancialStatementScope,
+  type FinancialStatementTargetType,
+} from '@glee/api'
+import { Button, Skeleton, useToast } from '@glee/ui'
+import { formatDateTime, formatKes } from '../../payouts/utils'
+
+export default function FinancialStatementPanel({
+  targetType,
+  targetId,
+  scope,
+  canGenerate,
+  title = 'Financial Statement',
+}: {
+  targetType: FinancialStatementTargetType
+  targetId: string
+  scope: FinancialStatementScope
+  canGenerate: boolean
+  title?: string
+}) {
+  const { toast } = useToast()
+  const statement = useFinancialStatement(targetType, targetId, scope, Boolean(targetId))
+  const regenerate = useRegenerateFinancialStatement(targetType, targetId, scope)
+  const data = statement.data
+
+  async function handleRegenerate() {
+    try {
+      await regenerate.mutateAsync()
+      toast({ title: 'Financial statement regenerated' })
+    } catch (error) {
+      toast({
+        title: 'Could not regenerate statement',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  async function handleDownload() {
+    try {
+      await downloadFinancialStatementPdf(targetType, targetId, scope)
+    } catch (error) {
+      toast({
+        title: 'Could not download statement',
+        description: error instanceof Error ? error.message : 'Please regenerate it first.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  if (statement.isLoading) return <Skeleton className="h-52 rounded-lg" />
+
+  return (
+    <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-foreground">
+            <FileText className="h-4 w-4 text-neon-pink" />
+            {title}
+          </h2>
+          <p className="mt-1 text-sm text-admin-40">
+            {data ? `Version ${data.version} generated ${formatDateTime(data.generatedAt)}` : 'No statement generated yet.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {canGenerate && (
+            <Button onClick={handleRegenerate} disabled={regenerate.isPending || !targetId} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
+              <RefreshCw className="h-4 w-4" />
+              {regenerate.isPending ? 'Regenerating...' : 'Regenerate'}
+            </Button>
+          )}
+          <Button onClick={handleDownload} disabled={!data} variant="outline" className="gap-2 border-admin text-admin-60 hover:bg-admin-input">
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+        </div>
+      </div>
+
+      {data ? (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatementMetric label="Total revenue" value={formatKes(data.summary.totalRevenue)} />
+          <StatementMetric label="Reservation deposits" value={formatKes(data.summary.reservationDeposits)} />
+          <StatementMetric label="Paid out" value={formatKes(data.summary.paidOutAmount)} />
+          <StatementMetric label="Available payout" value={formatKes(data.summary.availableForPayout)} />
+          {data.summary.gleeCommission !== undefined && (
+            <StatementMetric label="Glee commission" value={formatKes(data.summary.gleeCommission)} />
+          )}
+        </div>
+      ) : (
+        <p className="mt-5 rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
+          {canGenerate ? 'Regenerate a statement to snapshot current earnings, payouts, deposits, and notes.' : 'A statement has not been generated for this record yet.'}
+        </p>
+      )}
+    </section>
+  )
+}
+
+function StatementMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-admin bg-admin-overlay p-3">
+      <p className="text-xs text-admin-40">{label}</p>
+      <p className="mt-1 font-mono text-sm font-semibold text-admin-90">{value}</p>
+    </div>
+  )
+}

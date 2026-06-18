@@ -28,6 +28,7 @@ import {
   type ReservationStatus,
 } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
+import FinancialStatementPanel from '../financials/components/FinancialStatementPanel'
 import ReservationSetupPanel from './ReservationSetupPanel'
 import BookingAttendantsPanel from './BookingAttendantsPanel'
 import { useAdminUser } from '../../app/providers'
@@ -44,7 +45,7 @@ import { cn } from '@glee/ui'
 const MAX_PHOTOS = 6
 const PLACEHOLDER = '/glee-image-fallback.svg'
 type CanonicalVenueType = 'CLUB' | 'RESTAURANT' | 'OTHER'
-type LocationDetailTab = 'overview' | 'bookings' | 'setup' | 'hostesses' | 'chats' | 'settings'
+type LocationDetailTab = 'overview' | 'bookings' | 'setup' | 'hostesses' | 'chats' | 'statements' | 'settings'
 type BookingStatusFilter = 'ALL' | ReservationStatus
 type BookingSortKey = 'customer' | 'email' | 'phone' | 'guests' | 'table' | 'status' | 'paymentMethod' | 'paymentStatus' | 'deposit' | 'minimumSpend' | 'preOrder' | 'startDateTime'
 type SortDirection = 'asc' | 'desc'
@@ -55,6 +56,7 @@ const LOCATION_DETAIL_TABS: Array<{ label: string; value: LocationDetailTab }> =
   { label: 'Tables & Slots', value: 'setup' },
   { label: 'Hostesses', value: 'hostesses' },
   { label: 'Booking Chats', value: 'chats' },
+  { label: 'Statements', value: 'statements' },
   { label: 'Settings', value: 'settings' },
 ]
 
@@ -785,6 +787,16 @@ export default function LocationDetailPage() {
         )}
 
         {activeTab === 'chats' && <LocationBookingChatsPanel location={loc} viewerName={user.name ?? 'Venue team'} />}
+
+        {activeTab === 'statements' && (
+          <FinancialStatementPanel
+            targetType="LOCATION"
+            targetId={loc.id}
+            scope={isAdmin ? 'admin' : 'vendor'}
+            canGenerate={isAdmin || (isVendorOwner && loc.vendorId === user.id)}
+            title="Location Financial Statement"
+          />
+        )}
 
         {activeTab === 'settings' && (
           <LocationSettingsTab
