@@ -253,3 +253,24 @@ test('password rotation preference DTO restricts enabled state and allowed days'
     'disabled rotation should forbid days',
   )
 })
+
+test('password rotation compatibility wrapper only accepts bounded rotation days', async () => {
+  const source = await readFile(new URL('../src/api/queries/profile.ts', import.meta.url), 'utf8')
+  const sourceFile = ts.createSourceFile('profile.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+
+  const wrapper = sourceFile.statements.find(
+    statement => ts.isFunctionDeclaration(statement) && statement.name?.text === 'useUpdatePasswordRotationDays',
+  )
+
+  assert.ok(wrapper, 'useUpdatePasswordRotationDays compatibility wrapper should exist until Task 4 removes it')
+  assert.doesNotMatch(
+    wrapper.getText(sourceFile),
+    /\bdays\s*:\s*number\b/,
+    'compatibility wrapper must not accept arbitrary numeric rotation days',
+  )
+  assert.doesNotMatch(
+    source,
+    /\bas\s+PasswordRotationDays\b/,
+    'profile API must not cast arbitrary values to PasswordRotationDays',
+  )
+})

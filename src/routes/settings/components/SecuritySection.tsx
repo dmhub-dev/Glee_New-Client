@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@glee/ui'
 import {
+  type PasswordRotationDays,
   useSecurityInfo,
   useToggle2FA,
   useRevokeSession,
@@ -21,7 +22,7 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import { useAuth } from '../../../lib/auth/AuthContext'
 
-const PASSWORD_ROTATION_OPTIONS = [
+const PASSWORD_ROTATION_OPTIONS: Array<{ days: PasswordRotationDays; label: string }> = [
   { days: 7, label: 'Every 1 week' },
   { days: 14, label: 'Every 2 weeks' },
   { days: 30, label: 'Every month' },
@@ -82,8 +83,11 @@ export function SecuritySection() {
   }
 
   async function handleRotationChange(value: string) {
+    const selected = PASSWORD_ROTATION_OPTIONS.find(option => String(option.days) === value)
+    if (!selected) return
+
     try {
-      await updateRotation.mutateAsync(Number(value))
+      await updateRotation.mutateAsync(selected.days)
       toast({ title: 'Password change frequency updated' })
     } catch {
       toast({ title: 'Failed to update password change frequency', variant: 'destructive' })

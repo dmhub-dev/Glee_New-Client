@@ -316,7 +316,7 @@ export function useUpdatePasswordRotationPreference() {
 export function useUpdatePasswordRotationDays() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (days: number) => updatePasswordRotationPreference({ enabled: true, days: days as PasswordRotationDays }),
+    mutationFn: (days: PasswordRotationDays) => updatePasswordRotationPreference({ enabled: true, days }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: profileKeys.security })
       qc.invalidateQueries({ queryKey: profileKeys.me })

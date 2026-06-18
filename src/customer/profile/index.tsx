@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  type PasswordRotationDays,
   useChangePassword,
   useMyTickets,
   useNotificationPreferences,
@@ -18,7 +19,7 @@ import { Bell, Camera, Check, ChevronRight, Clock, KeyRound, Lock, LogOut, Penci
 import CustomerLayout from '../CustomerLayout'
 import { useAuth } from '../../lib/auth/AuthContext'
 
-const PASSWORD_ROTATION_OPTIONS = [
+const PASSWORD_ROTATION_OPTIONS: Array<{ days: PasswordRotationDays; label: string }> = [
   { days: 7, label: 'Every 1 week' },
   { days: 14, label: 'Every 2 weeks' },
   { days: 30, label: 'Every month' },
@@ -115,8 +116,11 @@ export default function CustomerProfilePage() {
   }
 
   async function handleRotationChange(value: string) {
+    const selected = PASSWORD_ROTATION_OPTIONS.find(option => String(option.days) === value)
+    if (!selected) return
+
     try {
-      await updateRotation.mutateAsync(Number(value))
+      await updateRotation.mutateAsync(selected.days)
       toast({ title: 'Password rotation updated' })
     } catch (error) {
       toast({ title: 'Password rotation update failed', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' })
