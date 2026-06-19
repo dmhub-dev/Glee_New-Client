@@ -161,7 +161,7 @@ export default function AdminPayoutsPage() {
     <AdminLayout title="Payouts" subtitle="Review vendor payout requests, terms, verification, and paid history">
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {isLoading ? Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />) : (
+          {isLoading ? Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-2xl" />) : (
             <>
               <PayoutMetricCard label="Open Requests" value={totals.open.toLocaleString()} detail={`${requests.length} total requests`} icon={HandCoins} />
               <PayoutMetricCard label="Requested" value={formatKes(totals.requested)} detail="Across payout queue" icon={Banknote} />
@@ -195,7 +195,7 @@ export default function AdminPayoutsPage() {
         </section>
 
         {selectedRequest && (
-          <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+          <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="font-heading text-base font-bold text-foreground">Request Details</h2>
@@ -243,7 +243,7 @@ export default function AdminPayoutsPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-admin-50">Payout Method</Label>
-                <select value={payoutMethod} onChange={event => setPayoutMethod(event.target.value as PayoutMethod)} required className="h-10 w-full rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+                <select value={payoutMethod} onChange={event => setPayoutMethod(event.target.value as PayoutMethod)} required className="h-10 w-full rounded-xl border border-admin bg-admin-input px-3 text-sm text-foreground">
                   <option value="BANK_TRANSFER">Bank Transfer</option>
                   <option value="MOBILE_MONEY">Mobile Money</option>
                 </select>
@@ -263,7 +263,7 @@ export default function AdminPayoutsPage() {
           </section>
         )}
 
-        <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
           <div className="mb-4">
             <h2 className="font-heading text-base font-bold text-foreground">Vendor Terms</h2>
             <p className="mt-1 text-sm text-admin-40">Set required vendor commission defaults before events can be approved.</p>
@@ -271,14 +271,14 @@ export default function AdminPayoutsPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <div className="space-y-1 xl:col-span-2">
               <Label className="text-xs text-admin-50">Vendor</Label>
-              <select value={vendorId} onChange={event => setVendorId(event.target.value)} className="h-10 w-full rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+              <select value={vendorId} onChange={event => setVendorId(event.target.value)} className="h-10 w-full rounded-xl border border-admin bg-admin-input px-3 text-sm text-foreground">
                 <option value="">Select vendor...</option>
                 {vendors.map(vendor => <option key={vendor.id} value={vendor.id}>{vendor.name} · {vendor.email}</option>)}
               </select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-admin-50">Commission Type</Label>
-              <select value={commissionType} onChange={event => setCommissionType(event.target.value as CommissionType)} className="h-10 w-full rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+              <select value={commissionType} onChange={event => setCommissionType(event.target.value as CommissionType)} className="h-10 w-full rounded-xl border border-admin bg-admin-input px-3 text-sm text-foreground">
                 <option value="PERCENTAGE">Percentage</option>
                 <option value="FIXED_PER_TICKET">Fixed Per Ticket</option>
                 <option value="FIXED_PER_EVENT">Fixed Per Event</option>
@@ -294,7 +294,7 @@ export default function AdminPayoutsPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-admin-50">Timing</Label>
-              <select value={payoutTimingType} onChange={event => setPayoutTimingType(event.target.value as PayoutTimingType)} className="h-10 w-full rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+              <select value={payoutTimingType} onChange={event => setPayoutTimingType(event.target.value as PayoutTimingType)} className="h-10 w-full rounded-xl border border-admin bg-admin-input px-3 text-sm text-foreground">
                 <option value="BEFORE_EVENT">Before Event</option>
                 <option value="AFTER_EVENT">After Event</option>
                 <option value="MANUAL_ONLY">Manual Only</option>
@@ -310,7 +310,7 @@ export default function AdminPayoutsPage() {
           </Button>
         </section>
 
-        <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
           <h2 className="font-heading text-base font-bold text-foreground">Profile Verification</h2>
           <p className="mt-1 text-sm text-admin-40">Use the selected vendor to mark payout details verified or rejected when backend profile details are available.</p>
           <div className="mt-4 flex flex-wrap gap-2">

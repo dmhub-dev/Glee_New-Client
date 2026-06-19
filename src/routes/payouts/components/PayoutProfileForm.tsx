@@ -43,7 +43,7 @@ export default function PayoutProfileForm({
   }
 
   return (
-    <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+    <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="font-heading text-base font-bold text-foreground">Payout Profile</h2>

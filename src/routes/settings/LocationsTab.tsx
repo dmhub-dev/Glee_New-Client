@@ -19,10 +19,13 @@ import {
   Pencil, Plus, Trash2, ParkingCircle, Wind, Building2, CalendarCheck,
   MapPin, Users, FileText, ImagePlus, X as XIcon, CheckCircle2,
   Clock3, Search, SlidersHorizontal, Eye, Utensils, AlertCircle,
+  type LucideIcon,
 } from 'lucide-react'
 import { SlidePanel } from '../../components/ui/SlidePanel'
 import { useAdminUser } from '../../app/providers'
 import { RotatingMediaCover, normalizeMediaImages } from '../../components/media/MediaGallery'
+import { AdminAnalyticsCard } from '../../components/admin/AdminAnalyticsCard'
+import { temporaryAnalyticsTrend } from '../../components/admin/temporaryAnalyticsTrend'
 
 const MAX_PHOTOS = 6
 const PLACEHOLDER = '/glee-image-fallback.svg'
@@ -74,7 +77,7 @@ function FeatureToggleCard({
       ].join(' ')}
     >
       <div className={[
-        'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+        'w-8 h-8 rounded-xl flex items-center justify-center shrink-0',
         checked ? 'bg-neon-pink/20 text-neon-pink' : 'bg-admin-surface text-admin-30',
       ].join(' ')}>
         <Icon className="w-4 h-4" />
@@ -180,32 +183,28 @@ function LocationMetricCard({
   hint,
   tone = 'default',
 }: {
-  icon: React.ElementType
+  icon: LucideIcon
   label: string
   value: number
   hint: string
   tone?: 'default' | 'success' | 'warning' | 'pink'
 }) {
-  const toneClass = {
-    default: 'border-admin bg-admin-surface text-admin-40',
-    success: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
-    warning: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
-    pink: 'border-neon-pink/25 bg-neon-pink/10 text-neon-pink',
+  const iconClassName = {
+    default: 'bg-neon-pink/10 text-neon-pink',
+    success: 'bg-emerald-500/10 text-emerald-300',
+    warning: 'bg-amber-500/10 text-amber-300',
+    pink: 'bg-neon-pink/10 text-neon-pink',
   }[tone]
 
   return (
-    <div className="rounded-2xl border border-admin bg-admin-surface p-4 shadow-admin">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-admin-30">{label}</p>
-          <p className="mt-2 font-heading text-2xl font-black text-foreground">{value.toLocaleString()}</p>
-        </div>
-        <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl border', toneClass)}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <p className="mt-3 text-xs text-admin-40">{hint}</p>
-    </div>
+    <AdminAnalyticsCard
+      label={label}
+      value={value.toLocaleString()}
+      detail={hint}
+      icon={Icon}
+      iconClassName={iconClassName}
+      trend={temporaryAnalyticsTrend(label, value)}
+    />
   )
 }
 
@@ -555,7 +554,7 @@ function LocationFormPanel({
                       id="location-venue-type"
                       value={field.value}
                       onChange={event => field.onChange(event.target.value as VenueType)}
-                      className="h-10 w-full rounded-md border border-admin bg-admin-input pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-neon-pink/50"
+                      className="h-10 w-full rounded-xl border border-admin bg-admin-input pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-neon-pink/50"
                     >
                       {VENUE_TYPES.map(type => <option key={type.value} value={type.value}>{type.label}</option>)}
                     </select>

@@ -42,6 +42,8 @@ import {
 } from '@glee/api'
 import { Badge, Progress, Skeleton, cn } from '@glee/ui'
 import type { Event } from '@glee/types'
+import { AdminAnalyticsCard } from '../components/admin/AdminAnalyticsCard'
+import { temporaryAnalyticsTrend } from '../components/admin/temporaryAnalyticsTrend'
 
 const CHART_COLORS = ['#FF2D8F', '#7C3AED', '#14B8A6', '#F59E0B', '#EF4444', '#64748B']
 const TOOLTIP_STYLE = {
@@ -106,25 +108,14 @@ function StatCard({
   onClick?: () => void
 }) {
   return (
-    <button
-      type="button"
+    <AdminAnalyticsCard
+      label={label}
+      value={typeof value === 'number' ? value.toLocaleString() : value}
+      detail={detail}
+      icon={Icon}
+      trend={temporaryAnalyticsTrend(label, value)}
       onClick={onClick}
-      className={cn(
-        'rounded-lg border border-admin bg-admin-surface p-5 text-left shadow-admin transition-colors',
-        onClick && 'hover:border-neon-pink/40 hover:bg-admin-overlay',
-      )}
-    >
-      <div className="flex items-center gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-neon-pink/10">
-          <Icon className="h-5 w-5 text-neon-pink" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-admin-40">{label}</p>
-          <p className="font-heading text-2xl font-black text-foreground">{typeof value === 'number' ? value.toLocaleString() : value}</p>
-          <p className="mt-1 truncate text-xs text-admin-40">{detail}</p>
-        </div>
-      </div>
-    </button>
+    />
   )
 }
 
@@ -237,7 +228,7 @@ export default function DashboardPage() {
         subtitle={isVendorStaff ? `Welcome ${user.name.split(' ')[0]}, handle scoped vendor operations, bookings, and check-ins.` : `Welcome ${user.name.split(' ')[0]}, manage your event business on Glee.`}
       >
         <div className="space-y-5">
-          <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+          <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-neon-pink">{isVendorStaff ? 'Vendor staff workspace' : 'Vendor workspace'}</p>
@@ -291,7 +282,7 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {eventsLoading ? (
-              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)
+              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-2xl" />)
             ) : (
               <>
                 <StatCard label={isVendorStaff ? 'Assigned Events' : 'My Events'} value={eventList.length} detail={`${liveEvents.length} live, ${pendingEvents.length} pending approval`} icon={CalendarDays} onClick={() => navigate('/dashboard/events')} />
@@ -304,7 +295,7 @@ export default function DashboardPage() {
 
           <div className="grid gap-5 xl:grid-cols-3">
             <div className="space-y-5 xl:col-span-2">
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="font-heading text-sm font-bold text-foreground">Event Approval Pipeline</h2>
@@ -322,7 +313,7 @@ export default function DashboardPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="font-heading text-sm font-bold text-foreground">Vendor Operations</h2>
@@ -341,7 +332,7 @@ export default function DashboardPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="font-heading text-sm font-bold text-foreground">Ticket Wave Pipeline</h2>
@@ -367,10 +358,10 @@ export default function DashboardPage() {
                 </div>
                 {eventsLoading ? (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-60 rounded-lg" />)}
+                    {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-60 rounded-2xl" />)}
                   </div>
                 ) : upcomingEvents.length === 0 ? (
-                  <div className="rounded-lg border border-admin bg-admin-surface p-8 text-center">
+                  <div className="rounded-2xl border border-admin bg-admin-surface p-8 text-center">
                     <p className="text-sm font-medium text-admin-70">No live upcoming events yet.</p>
                     {!isVendorStaff && (
                       <button onClick={() => navigate('/dashboard/events/new')} className="mt-2 text-sm font-medium text-neon-pink hover:underline">
@@ -389,7 +380,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-5">
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center gap-2">
                   <Ticket className="h-4 w-4 text-neon-pink" />
                   <h2 className="font-heading text-sm font-bold text-foreground">Ticket Sales</h2>
@@ -403,7 +394,7 @@ export default function DashboardPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center gap-2">
                   {isVendorStaff ? <Ticket className="h-4 w-4 text-neon-pink" /> : <UserPlus className="h-4 w-4 text-neon-pink" />}
                   <h2 className="font-heading text-sm font-bold text-foreground">{isVendorStaff ? 'Staff Task Board' : 'Vendor Growth Checklist'}</h2>
@@ -451,7 +442,7 @@ export default function DashboardPage() {
         <div className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {isLoading ? (
-              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)
+              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-2xl" />)
             ) : (
               <>
                 <StatCard
@@ -488,7 +479,7 @@ export default function DashboardPage() {
 
           <div className="grid gap-5 xl:grid-cols-3">
             <div className="space-y-5 xl:col-span-2">
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="font-heading text-sm font-bold text-foreground">Operations Queue</h2>
@@ -505,7 +496,7 @@ export default function DashboardPage() {
               </section>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                   <div className="mb-4">
                     <h2 className="font-heading text-sm font-bold text-foreground">Event Pipeline</h2>
                     <p className="mt-1 text-xs text-admin-40">Statuses admins need to manage</p>
@@ -521,7 +512,7 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </section>
 
-                <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+                <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                   <div className="mb-4">
                     <h2 className="font-heading text-sm font-bold text-foreground">Reporting Snapshot</h2>
                     <p className="mt-1 text-xs text-admin-40">Operational metrics available without finance ownership controls</p>
@@ -535,7 +526,7 @@ export default function DashboardPage() {
                 </section>
               </div>
 
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="font-heading text-sm font-bold text-foreground">Menu & Pricing Health</h2>
@@ -555,7 +546,7 @@ export default function DashboardPage() {
                         key={event.id}
                         type="button"
                         onClick={() => navigate(`/dashboard/events/${event.id}/edit`)}
-                        className="flex w-full items-center justify-between gap-4 rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+                        className="flex w-full items-center justify-between gap-4 rounded-xl border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-admin-80">{event.title}</p>
@@ -577,14 +568,14 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-5">
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-neon-pink" />
                   <h2 className="font-heading text-sm font-bold text-foreground">Venue Utilization</h2>
                 </div>
                 <div className="space-y-3">
                   {locationsLoading ? (
-                    Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-8 rounded-lg" />)
+                    Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-8 rounded-xl" />)
                   ) : locationUsage.length === 0 ? (
                     <p className="text-sm text-admin-40">No location data yet.</p>
                   ) : locationUsage.map(location => (
@@ -592,7 +583,7 @@ export default function DashboardPage() {
                       key={location.id}
                       type="button"
                       onClick={() => navigate(`/dashboard/locations/${location.id}`)}
-                      className="w-full rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+                      className="w-full rounded-xl border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
                     >
                       <div className="flex items-center justify-between gap-3 text-xs">
                         <span className="truncate text-admin-70">{location.name}</span>
@@ -604,7 +595,7 @@ export default function DashboardPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center gap-2">
                   <Users className="h-4 w-4 text-neon-pink" />
                   <h2 className="font-heading text-sm font-bold text-foreground">Customer & Vendor Data</h2>
@@ -616,20 +607,20 @@ export default function DashboardPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center gap-2">
                   <CalendarClock className="h-4 w-4 text-neon-pink" />
                   <h2 className="font-heading text-sm font-bold text-foreground">Upcoming Events</h2>
                 </div>
                 <div className="space-y-3">
                   {upcomingEvents.length === 0 ? (
-                    <p className="rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No active upcoming events.</p>
+                    <p className="rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No active upcoming events.</p>
                   ) : upcomingEvents.slice(0, 5).map(event => (
                     <button
                       key={event.id}
                       type="button"
                       onClick={() => navigate(`/dashboard/events/${event.id}`)}
-                      className="w-full rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+                      className="w-full rounded-xl border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
                     >
                       <p className="truncate text-sm font-medium text-admin-80">{event.title}</p>
                       <p className="mt-1 text-xs text-admin-40">{event.startDate} · {event.location ?? 'No location'}</p>
@@ -652,7 +643,7 @@ export default function DashboardPage() {
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)
+            Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-2xl" />)
           ) : (
             <>
               {isSuperAdmin ? (
@@ -697,7 +688,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-heading text-sm font-bold text-foreground">Platform Governance</h2>
@@ -716,7 +707,7 @@ export default function DashboardPage() {
         <div className="grid gap-5 xl:grid-cols-3">
           <div className="space-y-5 xl:col-span-2">
             <div className="grid gap-4 lg:grid-cols-2">
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <h2 className="font-heading text-sm font-bold text-foreground">Event Status</h2>
@@ -743,7 +734,7 @@ export default function DashboardPage() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4">
                   <h2 className="font-heading text-sm font-bold text-foreground">Events By Month</h2>
                   <p className="mt-1 text-xs text-admin-40">Scheduled event volume over the last 6 months</p>
@@ -760,7 +751,7 @@ export default function DashboardPage() {
               </section>
             </div>
 
-            <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+            <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <h2 className="font-heading text-sm font-bold text-foreground">Ticket Inventory</h2>
@@ -788,10 +779,10 @@ export default function DashboardPage() {
               </div>
               {eventsLoading ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-60 rounded-lg" />)}
+                  {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-60 rounded-2xl" />)}
                 </div>
               ) : upcomingEvents.length === 0 ? (
-                <div className="rounded-lg border border-admin bg-admin-surface p-8 text-center text-sm text-admin-40">
+                <div className="rounded-2xl border border-admin bg-admin-surface p-8 text-center text-sm text-admin-40">
                   No active upcoming events yet.
                 </div>
               ) : (
@@ -805,7 +796,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-5">
-            <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+            <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-neon-pink" />
                 <h2 className="font-heading text-sm font-bold text-foreground">Users By Role</h2>
@@ -828,14 +819,14 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+            <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
               <div className="mb-4 flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-neon-pink" />
                 <h2 className="font-heading text-sm font-bold text-foreground">Location Usage</h2>
               </div>
               <div className="space-y-3">
                 {locationsLoading ? (
-                  Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-8 rounded-lg" />)
+                  Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-8 rounded-xl" />)
                 ) : locationUsage.length === 0 ? (
                   <p className="text-sm text-admin-40">No location data yet.</p>
                 ) : locationUsage.map(location => (
@@ -843,7 +834,7 @@ export default function DashboardPage() {
                     key={location.id}
                     type="button"
                     onClick={() => navigate(`/dashboard/locations/${location.id}`)}
-                    className="w-full rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+                    className="w-full rounded-xl border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
                   >
                     <div className="flex items-center justify-between gap-3 text-xs">
                       <span className="truncate text-admin-70">{location.name}</span>
@@ -856,7 +847,7 @@ export default function DashboardPage() {
             </section>
 
             {isSuperAdmin ? (
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Activity className="h-4 w-4 text-neon-pink" />
@@ -868,11 +859,11 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   {auditLoading ? (
-                    Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-10 rounded-lg" />)
+                    Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-10 rounded-xl" />)
                   ) : (auditLogs?.items ?? []).length === 0 ? (
-                    <p className="rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No audit logs recorded yet.</p>
+                    <p className="rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">No audit logs recorded yet.</p>
                   ) : (auditLogs?.items ?? []).slice(0, 4).map(log => (
-                    <div key={log.id} className="flex gap-2 rounded-lg border border-admin bg-admin-overlay p-2.5">
+                    <div key={log.id} className="flex gap-2 rounded-xl border border-admin bg-admin-overlay p-2.5">
                       <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neon-pink/10">
                         {log.action.includes('delete') ? (
                           <XCircle className="h-3 w-3 text-red-400" />
@@ -892,7 +883,7 @@ export default function DashboardPage() {
                 </div>
               </section>
             ) : (
-              <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+              <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
                 <div className="mb-4 flex items-center gap-2">
                   <Activity className="h-4 w-4 text-neon-pink" />
                   <h2 className="font-heading text-sm font-bold text-foreground">Admin Focus</h2>
@@ -937,7 +928,7 @@ export default function DashboardPage() {
 
 function InventoryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-admin bg-admin-overlay p-4">
+    <div className="rounded-xl border border-admin bg-admin-overlay p-4">
       <p className="text-xs text-admin-40">{label}</p>
       <p className="mt-1 font-heading text-xl font-black text-foreground">{value.toLocaleString()}</p>
     </div>
@@ -959,7 +950,7 @@ function FocusRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-3 rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+      className="flex w-full items-center justify-between gap-3 rounded-xl border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
     >
       <div>
         <p className="text-sm font-medium text-admin-80">{label}</p>
@@ -972,7 +963,7 @@ function FocusRow({
 
 function ReportMetric({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-lg border border-admin bg-admin-overlay p-3">
+    <div className="rounded-xl border border-admin bg-admin-overlay p-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-admin-80">{label}</p>
         <span className="font-heading text-lg font-black text-neon-pink">{value}</span>
@@ -997,7 +988,7 @@ function DataTile({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+      className="rounded-xl border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
     >
       <p className="text-xs text-admin-40">{label}</p>
       <p className="mt-1 font-heading text-xl font-black text-foreground">{value.toLocaleString()}</p>
@@ -1021,7 +1012,7 @@ function ActionTile({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-lg border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
+      className="rounded-xl border border-admin bg-admin-overlay p-3 text-left hover:border-neon-pink/30"
     >
       <p className="text-sm font-semibold text-admin-80">{label}</p>
       <p className="mt-1 text-xs text-admin-40">{detail}</p>
@@ -1044,21 +1035,13 @@ function SmallSummary({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
+    <AdminAnalyticsCard
+      label={label}
+      value={value.toLocaleString()}
+      detail={detail}
+      icon={Icon}
+      trend={temporaryAnalyticsTrend(label, value)}
       onClick={onClick}
-      className="rounded-lg border border-admin bg-admin-surface p-5 text-left shadow-admin transition-colors hover:border-neon-pink/40 hover:bg-admin-overlay"
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-neon-pink/10">
-          <Icon className="h-4 w-4 text-neon-pink" />
-        </div>
-        <div>
-          <p className="text-xs text-admin-40">{label}</p>
-          <p className="font-heading text-xl font-black text-foreground">{value.toLocaleString()}</p>
-          <p className="mt-1 text-xs text-admin-40">{detail}</p>
-        </div>
-      </div>
-    </button>
+    />
   )
 }

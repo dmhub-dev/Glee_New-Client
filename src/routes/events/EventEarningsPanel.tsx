@@ -105,13 +105,13 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
 
   if (!canViewEarnings) {
     return (
-      <section className="rounded-lg border border-admin bg-admin-surface p-5 text-sm text-admin-40 shadow-admin">
+      <section className="rounded-2xl border border-admin bg-admin-surface p-5 text-sm text-admin-40 shadow-admin-card">
         You do not have access to event payout earnings.
       </section>
     )
   }
 
-  if (isLoading) return <Skeleton className="h-72 rounded-lg" />
+  if (isLoading) return <Skeleton className="h-72 rounded-2xl" />
 
   return (
     <section className="space-y-5">
@@ -140,7 +140,7 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
         title="Event Financial Statement"
       />
 
-      <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+      <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
         <h2 className="font-heading text-base font-bold text-foreground">Payout Terms</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <InfoRow label="Commission Type" value={terms?.commissionType ?? 'Not configured'} />
@@ -151,7 +151,7 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
       </section>
 
       {isVendorView && (
-        <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
           <h2 className="font-heading text-base font-bold text-foreground">Request Payout</h2>
           <p className="mt-1 text-sm text-admin-40">Vendor staff can view this balance but only vendor owners can request payouts.</p>
           <div className="mt-4 flex max-w-md gap-3">
@@ -172,7 +172,7 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
 
       {isAdminView && adminEarnings.data && (
         <>
-          <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+          <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
             <h2 className="font-heading text-base font-bold text-foreground">Admin Earnings Breakdown</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <InfoRow label="Ticket Commission" value={formatKes(adminEarnings.data.ticketCommission)} />
@@ -182,7 +182,7 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
             </div>
           </section>
 
-          <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+          <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
             <h2 className="font-heading text-base font-bold text-foreground">Payout Requests</h2>
             <div className="mt-4">
               <PayoutRequestTable requests={adminEarnings.data.payoutRequests} showAdminColumns />
@@ -190,7 +190,7 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
           </section>
 
           <section className="grid gap-5 lg:grid-cols-2">
-            <div className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+            <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
               <h2 className="font-heading text-base font-bold text-foreground">Add Adjustment</h2>
               <div className="mt-4 space-y-3">
                 <Input
@@ -207,21 +207,21 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
               </div>
             </div>
 
-            <div className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+            <div className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
               <h2 className="font-heading text-base font-bold text-foreground">Event Commission Override</h2>
               {commissionLocked ? (
-                <p className="mt-3 rounded-lg border border-admin bg-admin-overlay px-4 py-3 text-sm text-admin-40">
+                <p className="mt-3 rounded-xl border border-admin bg-admin-overlay px-4 py-3 text-sm text-admin-40">
                   Event commission is locked after the first paid ticket.
                 </p>
               ) : (
                 <div className="mt-4 grid gap-3">
-                  <select value={commissionType} onChange={inputEvent => setCommissionType(inputEvent.target.value as CommissionType)} className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+                  <select value={commissionType} onChange={inputEvent => setCommissionType(inputEvent.target.value as CommissionType)} className="h-10 rounded-xl border border-admin bg-admin-input px-3 text-sm text-foreground">
                     <option value="PERCENTAGE">Percentage</option>
                     <option value="FIXED_PER_TICKET">Fixed Per Ticket</option>
                     <option value="FIXED_PER_EVENT">Fixed Per Event</option>
                   </select>
                   <Input value={commissionValue} onChange={inputEvent => setCommissionValue(inputEvent.target.value)} type="number" placeholder="Value" className="border-admin bg-admin-input" />
-                  <select value={payoutTimingType} onChange={inputEvent => setPayoutTimingType(inputEvent.target.value as PayoutTimingType)} className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground">
+                  <select value={payoutTimingType} onChange={inputEvent => setPayoutTimingType(inputEvent.target.value as PayoutTimingType)} className="h-10 rounded-xl border border-admin bg-admin-input px-3 text-sm text-foreground">
                     <option value="BEFORE_EVENT">Before Event</option>
                     <option value="AFTER_EVENT">After Event</option>
                     <option value="MANUAL_ONLY">Manual Only</option>
@@ -242,7 +242,7 @@ export default function EventEarningsPanel({ event, userRole }: { event: Event; 
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-admin bg-admin-overlay p-3">
+    <div className="rounded-xl border border-admin bg-admin-overlay p-3">
       <p className="text-xs text-admin-40">{label}</p>
       <p className="mt-1 text-sm font-semibold text-admin-90">{value}</p>
     </div>

@@ -67,7 +67,7 @@ export default function VendorPayoutsPage() {
     <AdminLayout title="Payouts" subtitle={canManage ? 'Manage payout profile and request event payouts' : 'Read-only payout status for your vendor account'}>
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {earningsLoading || requestsLoading ? Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />) : (
+          {earningsLoading || requestsLoading ? Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-2xl" />) : (
             <>
               <PayoutMetricCard label="Available" value={formatKes(earnings?.availableForPayout ?? 0)} detail={selectedEvent?.title ?? 'Select an event'} icon={HandCoins} />
               <PayoutMetricCard label="Net Payable" value={formatKes(earnings?.vendorNetPayable ?? 0)} detail="After Glee terms and visible adjustments" icon={WalletCards} />
@@ -91,7 +91,7 @@ export default function VendorPayoutsPage() {
           })}
         />
 
-        <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
           <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="font-heading text-base font-bold text-foreground">Event Earnings</h2>
@@ -100,21 +100,21 @@ export default function VendorPayoutsPage() {
             <select
               value={eventId}
               onChange={event => setSelectedEventId(event.target.value)}
-              className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-foreground"
+              className="h-10 rounded-xl border border-admin bg-admin-input px-3 text-sm text-foreground"
             >
               {events.map(event => <option key={event.id} value={event.id}>{event.title}</option>)}
             </select>
           </div>
-          {eventsLoading || earningsLoading ? <Skeleton className="h-32 rounded-lg" /> : (
+          {eventsLoading || earningsLoading ? <Skeleton className="h-32 rounded-2xl" /> : (
             <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-              <div className="rounded-lg border border-admin bg-admin-overlay p-4">
+              <div className="rounded-xl border border-admin bg-admin-overlay p-4">
                 <p className="text-xs text-admin-40">Available for payout</p>
                 <p className="mt-1 font-heading text-3xl font-black text-neon-pink">{formatKes(earnings?.availableForPayout ?? 0)}</p>
                 <p className="mt-2 text-sm text-admin-40">
                   Paid out: {formatKes(earnings?.paidOutAmount ?? 0)} · Pending: {formatKes(earnings?.pendingPayoutAmount ?? 0)}
                 </p>
               </div>
-              <div className="rounded-lg border border-admin bg-admin-overlay p-4">
+              <div className="rounded-xl border border-admin bg-admin-overlay p-4">
                 <p className="text-sm font-semibold text-admin-90">Request Payout</p>
                 <Input
                   value={requestAmount}

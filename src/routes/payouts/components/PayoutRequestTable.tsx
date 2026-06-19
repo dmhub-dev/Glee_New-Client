@@ -17,7 +17,7 @@ export default function PayoutRequestTable({
   onSelect?: (request: VendorPayoutRequest | AdminPayoutRequest) => void
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-admin bg-admin-surface">
+    <div className="overflow-x-auto rounded-2xl border border-admin bg-admin-surface">
       <table className="w-full min-w-[860px] text-sm">
         <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
           <tr>

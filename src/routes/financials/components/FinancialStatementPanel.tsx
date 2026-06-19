@@ -61,10 +61,10 @@ export default function FinancialStatementPanel({
     }
   }
 
-  if (statement.isLoading) return <Skeleton className="h-52 rounded-lg" />
+  if (statement.isLoading) return <Skeleton className="h-52 rounded-2xl" />
 
   return (
-    <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+    <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="flex items-center gap-2 font-heading text-base font-bold text-foreground">
@@ -84,7 +84,7 @@ export default function FinancialStatementPanel({
                 value={locationPeriod}
                 onChange={event => setLocationPeriod(event.target.value as FinancialStatementPeriodPreset)}
                 disabled={isPreparingPdf}
-                className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-admin-90 outline-none transition focus:border-neon-pink"
+                className="h-10 rounded-xl border border-admin bg-admin-input px-3 text-sm text-admin-90 outline-none transition focus:border-neon-pink"
               >
                 <option value="ALL_TIME">All time</option>
                 <option value="WEEKLY">Weekly report</option>
@@ -96,7 +96,7 @@ export default function FinancialStatementPanel({
                   value={periodDate}
                   onChange={event => setPeriodDate(event.target.value)}
                   disabled={isPreparingPdf}
-                  className="h-10 rounded-md border border-admin bg-admin-input px-3 text-sm text-admin-90 outline-none transition focus:border-neon-pink"
+                  className="h-10 rounded-xl border border-admin bg-admin-input px-3 text-sm text-admin-90 outline-none transition focus:border-neon-pink"
                 />
               )}
             </>
@@ -123,7 +123,7 @@ export default function FinancialStatementPanel({
           )}
         </div>
       ) : (
-        <p className="mt-5 rounded-lg border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
+        <p className="mt-5 rounded-xl border border-admin bg-admin-overlay p-4 text-sm text-admin-40">
           {canGenerate ? 'Generate a statement to snapshot current earnings, payouts, deposits, and notes.' : 'A statement has not been generated for this record yet.'}
         </p>
       )}
@@ -133,7 +133,7 @@ export default function FinancialStatementPanel({
 
 function StatementMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-admin bg-admin-overlay p-3">
+    <div className="rounded-xl border border-admin bg-admin-overlay p-3">
       <p className="text-xs text-admin-40">{label}</p>
       <p className="mt-1 font-mono text-sm font-semibold text-admin-90">{value}</p>
     </div>
