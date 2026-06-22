@@ -9,13 +9,11 @@ import EventGrid from '../components/events/EventGrid'
 import { VenueCarouselSection, VenueListSection } from '../../components/reservations/VenueShowcase'
 
 const PAGE_SIZE = 12
-type PublicStatusFilter = Extract<Event['status'], 'active' | 'live' | 'cancelled' | 'sold_out'>
+type PublicStatusFilter = Extract<Event['status'], 'active' | 'live'>
 
 const STATUS_FILTERS: Array<{ value: PublicStatusFilter; label: string }> = [
   { value: 'active', label: 'Active' },
   { value: 'live', label: 'Live' },
-  { value: 'sold_out', label: 'Sold Out' },
-  { value: 'cancelled', label: 'Cancelled' },
 ]
 
 export default function LandingPage() {
@@ -151,34 +149,14 @@ export default function LandingPage() {
                     aria-label="Filter events by status"
                     aria-expanded={statusMenuOpen}
                     onClick={() => setStatusMenuOpen(value => !value)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.08] text-white transition-colors hover:border-neon-pink/50 hover:bg-white/[0.12] hover:text-neon-pink sm:hidden"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.08] text-white transition-colors hover:border-neon-pink/50 hover:bg-white/[0.12] hover:text-neon-pink"
                   >
                     <Filter className="h-4 w-4" />
                   </button>
-                  <div className="hidden shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/25 p-1 sm:flex">
-                    {STATUS_FILTERS.map(status => {
-                      const active = statusFilter === status.value
-                      return (
-                        <button
-                          key={status.value}
-                          type="button"
-                          onClick={() => selectStatus(status.value)}
-                          className={[
-                            'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
-                            active
-                              ? 'bg-neon-pink text-white shadow-neon'
-                              : 'text-white/65 hover:bg-white/[0.08] hover:text-white',
-                          ].join(' ')}
-                        >
-                          {status.label}
-                        </button>
-                      )
-                    })}
-                  </div>
                 </div>
 
                 {statusMenuOpen && (
-                  <div className="absolute right-0 top-14 z-[80] w-52 overflow-hidden rounded-2xl border border-white/18 bg-[#181827] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)] sm:hidden">
+                  <div className="absolute right-0 top-14 z-[80] w-52 overflow-hidden rounded-2xl border border-white/18 bg-[#181827] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
                     <div className="px-3 pb-2 pt-1 text-[10px] font-black uppercase tracking-widest text-white/70">
                       Status
                     </div>
