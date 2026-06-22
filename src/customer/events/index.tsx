@@ -11,15 +11,13 @@ import { useAuth } from '../../lib/auth/AuthContext'
 import { VenueCarouselSection, VenueListSection, isClubOrRestaurantVenue } from '../../components/reservations/VenueShowcase'
 import { RotatingMediaCover, normalizeMediaImages } from '../../components/media/MediaGallery'
 
-type StatusFilter = 'active' | 'live' | 'sold_out' | 'cancelled'
+type StatusFilter = Extract<Event['status'], 'active' | 'live'>
 type ExploreContentType = 'events' | 'venues'
 
 const PLACEHOLDER = '/glee-image-fallback.svg'
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: 'active', label: 'Active' },
   { value: 'live', label: 'Live' },
-  { value: 'sold_out', label: 'Sold Out' },
-  { value: 'cancelled', label: 'Cancelled' },
 ]
 
 function money(value: number) {
@@ -221,7 +219,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45 transition-colors group-focus-within:text-neon-pink" />
             <Input
               placeholder="Search events, clubs, restaurants..."
-              className="h-11 rounded-xl border-white/10 bg-white/5 pl-9 pr-12 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50 sm:pr-4"
+              className="h-11 rounded-xl border-white/10 bg-white/5 pl-9 pr-12 text-white placeholder:text-white/40 focus-visible:ring-neon-pink/50"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -232,7 +230,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
                 aria-label="Filter events by status"
                 onClick={() => setStatusMenuOpen(open => !open)}
                 className={cn(
-                  'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg transition-colors sm:hidden',
+                  'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg transition-colors',
                   statusMenuOpen ? 'text-neon-pink' : 'text-white/45 hover:text-white',
                 )}
               >
@@ -241,31 +239,8 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
             )}
           </div>
 
-          {/* Desktop: separate pill row */}
-          {!isVenueExplore && <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1 sm:flex">
-            {STATUS_FILTERS.map(filter => (
-              <button
-                key={filter.value}
-                type="button"
-                onClick={() => {
-                  setActiveCategory('All')
-                  setActiveStatus(filter.value)
-                }}
-                className={cn(
-                  'h-9 rounded-lg px-3 text-xs font-semibold transition-all active:scale-95',
-                  activeStatus === filter.value
-                    ? 'bg-neon-pink text-white shadow-[0_0_12px_rgba(255,0,122,0.3)]'
-                    : 'text-white/55 hover:bg-white/10 hover:text-white',
-                )}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>}
-
-          {/* Mobile dropdown */}
           {statusMenuOpen && !isVenueExplore && (
-            <div className="absolute right-4 top-[calc(100%+0.5rem)] z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#160C2C] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.42)] sm:hidden">
+            <div className="absolute right-4 top-[calc(100%+0.5rem)] z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#160C2C] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.42)]">
               {STATUS_FILTERS.map(filter => (
                 <button
                   key={filter.value}
