@@ -60,4 +60,5 @@ test('customer event browsing exposes active and live status dropdown only', asy
   assert.doesNotMatch(source, /transition-colors sm:hidden/)
   assert.doesNotMatch(source, /shadow-\[0_18px_45px_rgba\(0,0,0,0\.42\)\] sm:hidden/)
   assert.match(source, /className="h-11 rounded-xl border-white\/10 bg-white\/5 pl-9 pr-12 text-white placeholder:text-white\/40 focus-visible:ring-neon-pink\/50"/)
+  assert.match(source, /aria-expanded=\{statusMenuOpen\}/)
 })

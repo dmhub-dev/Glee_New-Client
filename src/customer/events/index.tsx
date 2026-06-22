@@ -214,7 +214,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
         {/* Search + status filter */}
         <div ref={statusFilterRef} className="relative flex flex-col gap-2 sm:flex-row sm:items-center">
 
-          {/* Search input — filter icon inside on mobile, clean on desktop */}
+          {/* Search input with status filter trigger */}
           <div className="group relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45 transition-colors group-focus-within:text-neon-pink" />
             <Input
@@ -228,6 +228,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
                 size="icon"
                 variant="ghost"
                 aria-label="Filter events by status"
+                aria-expanded={statusMenuOpen}
                 onClick={() => setStatusMenuOpen(open => !open)}
                 className={cn(
                   'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg transition-colors',
