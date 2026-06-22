@@ -60,7 +60,8 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   const [activeStatus, setActiveStatus] = useState<StatusFilter>('active')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
-  const statusFilterRef = useRef<HTMLDivElement>(null)
+  const statusFilterButtonRef = useRef<HTMLButtonElement>(null)
+  const statusMenuRef = useRef<HTMLDivElement>(null)
   const isExplore = mode === 'explore'
   const contentType: ExploreContentType = isExplore && searchParams.get('type') === 'venues' ? 'venues' : 'events'
   const isVenueExplore = isExplore && contentType === 'venues'
@@ -78,13 +79,17 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
   })
 
   useEffect(() => {
+    if (!statusMenuOpen) return
+
     const handlePointerDown = (event: PointerEvent) => {
-      if (!statusFilterRef.current?.contains(event.target as Node)) setStatusMenuOpen(false)
+      const target = event.target as Node
+      if (statusMenuRef.current?.contains(target) || statusFilterButtonRef.current?.contains(target)) return
+      setStatusMenuOpen(false)
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [])
+  }, [statusMenuOpen])
 
   const categoryFilters = useMemo(() => {
     const categories = new Map<string, string>()
@@ -212,7 +217,7 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
         )}
 
         {/* Search + status filter */}
-        <div ref={statusFilterRef} className="relative flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center">
 
           {/* Search input with status filter trigger */}
           <div className="group relative flex-1">
@@ -225,14 +230,17 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
             />
             {!isVenueExplore && (
               <Button
+                ref={statusFilterButtonRef}
                 size="icon"
                 variant="ghost"
                 aria-label="Filter events by status"
                 aria-expanded={statusMenuOpen}
                 onClick={() => setStatusMenuOpen(open => !open)}
                 className={cn(
-                  'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg transition-colors',
-                  statusMenuOpen ? 'text-neon-pink' : 'text-white/45 hover:text-white',
+                  'absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg border transition-all duration-200 active:scale-95',
+                  statusMenuOpen
+                    ? 'border-neon-pink/55 bg-neon-pink/16 text-neon-pink shadow-[0_0_18px_rgba(255,0,122,0.28)]'
+                    : 'border-transparent text-white/45 hover:border-white/10 hover:bg-white/10 hover:text-white',
                 )}
               >
                 <Filter className="h-4 w-4" />
@@ -241,7 +249,13 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
           </div>
 
           {statusMenuOpen && !isVenueExplore && (
-            <div className="absolute right-4 top-[calc(100%+0.5rem)] z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#160C2C] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.42)]">
+            <div
+              ref={statusMenuRef}
+              className="absolute right-4 top-[calc(100%+0.5rem)] z-20 w-56 overflow-hidden rounded-2xl border border-white/20 bg-[#171426]/95 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.62),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl"
+            >
+              <div className="px-3 pb-2 pt-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/55">
+                Status
+              </div>
               {STATUS_FILTERS.map(filter => (
                 <button
                   key={filter.value}
@@ -252,8 +266,10 @@ function EventsScreen({ mode }: { mode: 'home' | 'explore' }) {
                     setStatusMenuOpen(false)
                   }}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition-colors',
-                    activeStatus === filter.value ? 'bg-neon-pink text-white' : 'text-white/78 hover:bg-white/10',
+                    'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-all duration-200',
+                    activeStatus === filter.value
+                      ? 'bg-neon-pink text-white shadow-[0_0_18px_rgba(255,0,122,0.34)]'
+                      : 'text-white/78 hover:bg-white/[0.08] hover:text-white',
                   )}
                 >
                   {filter.label}
