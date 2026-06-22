@@ -172,7 +172,7 @@ export default function PublicEventsPage() {
                             'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-all duration-200',
                             active
                               ? 'bg-neon-pink text-white shadow-[0_0_18px_rgba(255,0,122,0.34)]'
-                              : 'text-white/78 hover:bg-white/[0.08] hover:text-white',
+                              : 'text-white/90 hover:bg-white/[0.08] hover:text-white',
                           ].join(' ')}
                         >
                           <span>{status.label}</span>

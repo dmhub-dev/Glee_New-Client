@@ -49,7 +49,9 @@ test('public event browsing exposes active and live status dropdown only', async
     assert.match(source, /ref=\{statusMenuRef\}/)
     assert.match(source, /backdrop-blur-xl/)
     assert.match(source, /shadow-\[0_24px_70px_rgba\(0,0,0,0\.62\),0_0_0_1px_rgba\(255,255,255,0\.03\)\]/)
+    assert.match(source, /text-white\/90 hover:bg-white\/\[0\.08\] hover:text-white/)
     assert.doesNotMatch(source, /const statusFilterRef = useRef<HTMLDivElement>\(null\)/)
+    assert.doesNotMatch(source, /text-white\/78/)
   }
 })
 
@@ -78,5 +80,7 @@ test('customer event browsing exposes active and live status dropdown only', asy
   assert.match(source, /ref=\{statusMenuRef\}/)
   assert.match(source, /backdrop-blur-xl/)
   assert.match(source, /shadow-\[0_24px_70px_rgba\(0,0,0,0\.62\),0_0_0_1px_rgba\(255,255,255,0\.03\)\]/)
+  assert.match(source, /text-white\/90 hover:bg-white\/\[0\.08\] hover:text-white/)
   assert.doesNotMatch(source, /const statusFilterRef = useRef<HTMLDivElement>\(null\)/)
+  assert.doesNotMatch(source, /text-white\/78/)
 })
