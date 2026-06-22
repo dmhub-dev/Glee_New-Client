@@ -41,6 +41,15 @@ test('public event browsing exposes active and live status dropdown only', async
     assert.doesNotMatch(source, /hidden shrink-0 items-center gap-1 rounded-full border border-white\/10 bg-black\/25 p-1 sm:flex/)
     assert.doesNotMatch(source, /hover:text-neon-pink sm:hidden/)
     assert.doesNotMatch(source, /shadow-\[0_18px_50px_rgba\(0,0,0,0\.55\)\] sm:hidden/)
+    assert.match(source, /const statusFilterButtonRef = useRef<HTMLButtonElement>\(null\)/)
+    assert.match(source, /const statusMenuRef = useRef<HTMLDivElement>\(null\)/)
+    assert.match(source, /const target = event\.target as Node/)
+    assert.match(source, /statusMenuRef\.current\?\.contains\(target\) \|\| statusFilterButtonRef\.current\?\.contains\(target\)/)
+    assert.match(source, /ref=\{statusFilterButtonRef\}/)
+    assert.match(source, /ref=\{statusMenuRef\}/)
+    assert.match(source, /backdrop-blur-xl/)
+    assert.match(source, /shadow-\[0_24px_70px_rgba\(0,0,0,0\.62\),0_0_0_1px_rgba\(255,255,255,0\.03\)\]/)
+    assert.doesNotMatch(source, /const statusFilterRef = useRef<HTMLDivElement>\(null\)/)
   }
 })
 
