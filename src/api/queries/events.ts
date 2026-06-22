@@ -251,6 +251,35 @@ export interface EventApiPayload {
   posterFiles?: File[]
 }
 
+export type EventAttendeeUpdateChannel = 'EMAIL' | 'SMS'
+
+export interface SendEventAttendeeUpdatePayload {
+  channels: EventAttendeeUpdateChannel[]
+  subject?: string
+  message: string
+}
+
+export interface EventAttendeeUpdateSummary {
+  totalTickets: number
+  uniqueRecipients: number
+  email: {
+    attempted: number
+    sent: number
+    skipped: number
+    failed: number
+  }
+  sms: {
+    provider: string
+    enabled: boolean
+    configured: boolean
+    attempted: number
+    sent: number
+    skipped: number
+    failed: number
+    error?: string
+  }
+}
+
 function combineDateTime(date: string, time?: string) {
   return new Date(`${date}T${time || '00:00'}:00`)
 }
@@ -451,6 +480,18 @@ export async function endAdminEvent(id: string): Promise<Event> {
   return mapBackendToEvent(res.data)
 }
 
+export async function sendEventAttendeeUpdate(
+  id: string,
+  payload: SendEventAttendeeUpdatePayload,
+  vendorScoped = false,
+): Promise<EventAttendeeUpdateSummary> {
+  const res = await apiFetch<{ success: boolean; data: EventAttendeeUpdateSummary }>(
+    `${vendorScoped ? '/api/v2' : '/api/v1'}/admin/event/${id}/attendee-updates`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+  return res.data
+}
+
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 
 export function useEvents(filters?: PublicEventFilters) {
@@ -548,5 +589,12 @@ export function useEndEvent(options?: { vendorScoped?: boolean }) {
       qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) })
       qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id, scope) })
     },
+  })
+}
+
+export function useSendEventAttendeeUpdate(options?: { vendorScoped?: boolean }) {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SendEventAttendeeUpdatePayload }) =>
+      sendEventAttendeeUpdate(id, data, Boolean(options?.vendorScoped)),
   })
 }

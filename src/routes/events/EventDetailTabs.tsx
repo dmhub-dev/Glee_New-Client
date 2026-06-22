@@ -3,13 +3,13 @@ import { cn } from '@glee/ui'
 import type { UserRole } from '@glee/types'
 import { canViewPayoutEarnings } from '../payouts/utils'
 
-type EventDetailTab = 'details' | 'earnings' | 'complimentary' | 'attendants' | 'attendees' | 'chat' | 'reservations'
+type EventDetailTab = 'details' | 'earnings' | 'complimentary' | 'attendants' | 'attendees' | 'updates' | 'chat' | 'reservations'
 
 interface EventDetailTabsProps {
   eventId: string
   activeTab: EventDetailTab
   userRole: UserRole
-  onSelectLocalTab?: (tab: 'details' | 'earnings' | 'complimentary' | 'attendants' | 'chat' | 'reservations') => void
+  onSelectLocalTab?: (tab: 'details' | 'earnings' | 'complimentary' | 'attendants' | 'updates' | 'chat' | 'reservations') => void
 }
 
 export default function EventDetailTabs({ eventId, activeTab, userRole, onSelectLocalTab }: EventDetailTabsProps) {
@@ -18,7 +18,7 @@ export default function EventDetailTabs({ eventId, activeTab, userRole, onSelect
   const canManageAttendants = ['super_admin', 'admin', 'vendor'].includes(userRole)
   const canViewEarnings = canViewPayoutEarnings(userRole)
 
-  function selectLocal(tab: 'details' | 'earnings' | 'complimentary' | 'attendants' | 'chat' | 'reservations') {
+  function selectLocal(tab: 'details' | 'earnings' | 'complimentary' | 'attendants' | 'updates' | 'chat' | 'reservations') {
     if (activeTab === 'attendees') {
       navigate(`/dashboard/events/${eventId}`, tab === 'details' ? undefined : { state: { tab } })
       return
@@ -46,6 +46,11 @@ export default function EventDetailTabs({ eventId, activeTab, userRole, onSelect
           {canManageAttendants && (
             <EventDetailTabButton active={activeTab === 'attendants'} onClick={() => selectLocal('attendants')}>
               Check-in Team
+            </EventDetailTabButton>
+          )}
+          {canIssueComplimentaryTickets && (
+            <EventDetailTabButton active={activeTab === 'updates'} onClick={() => selectLocal('updates')}>
+              Attendee Updates
             </EventDetailTabButton>
           )}
           <EventDetailTabButton active={activeTab === 'attendees'} onClick={() => navigate(`/dashboard/events/${eventId}/attendees`)}>

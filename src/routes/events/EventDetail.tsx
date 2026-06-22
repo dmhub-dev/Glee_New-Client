@@ -48,6 +48,7 @@ import { formatDateOnly, formatDateRange, formatTimeOnly, splitBackendDateTime }
 import type { Event } from '@glee/types'
 import EventDetailTabs from './EventDetailTabs'
 import EventEarningsPanel from './EventEarningsPanel'
+import EventAttendeeUpdatesPanel from './EventAttendeeUpdatesPanel'
 import { EventChatPanel } from '../../components/chat/EventChatPanel'
 import EventReservationSlotsPanel from './EventReservationSlotsPanel'
 import { AutoMediaHero, normalizeMediaImages } from '../../components/media/MediaGallery'
@@ -77,7 +78,7 @@ const STATUS_OPTIONS: { value: Event['status']; label: string }[] = [
 ]
 
 const TIER_COLORS = ['#FF2D8F', '#7C3AED', '#06B6D4', '#F59E0B', '#10B981', '#EF4444']
-type EventDetailTab = 'details' | 'earnings' | 'complimentary' | 'attendants' | 'chat' | 'reservations'
+type EventDetailTab = 'details' | 'earnings' | 'complimentary' | 'attendants' | 'updates' | 'chat' | 'reservations'
 
 function formatEventDate(startDate: string, endDate: string): string {
   return formatDateRange(
@@ -167,7 +168,7 @@ export default function EventDetailPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [activeTab, setActiveTab] = useState<EventDetailTab>(() => {
     const state = location.state as { tab?: EventDetailTab } | null
-    return state?.tab === 'earnings' || state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'chat' || state?.tab === 'reservations' ? state.tab : 'details'
+    return state?.tab === 'earnings' || state?.tab === 'complimentary' || state?.tab === 'attendants' || state?.tab === 'updates' || state?.tab === 'chat' || state?.tab === 'reservations' ? state.tab : 'details'
   })
 
   function handleStatusChange(newStatus: Event['status']) {
@@ -440,6 +441,13 @@ export default function EventDetailPage() {
           <ComplimentaryTicketPanel event={event} />
         ) : activeTab === 'attendants' ? (
           <TicketAttendantsPanel event={event} />
+        ) : activeTab === 'updates' ? (
+          <EventAttendeeUpdatesPanel
+            event={event}
+            vendorScoped={isVendorRole}
+            purchaseCount={purchasedTickets.length}
+            ticketQuantity={purchasedTickets.reduce((sum, ticket) => sum + ticket.quantity, 0)}
+          />
         ) : activeTab === 'chat' ? (
           <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
             <div className="mb-4 border-b border-admin pb-4">
