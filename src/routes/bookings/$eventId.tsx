@@ -4,7 +4,8 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import { useAdminUser } from '../../app/providers'
 import { ApiError, type AdminEventTicket, useAdminEvent, useAdminEventTickets, useCheckInTicketByQr } from '@glee/api'
 import { Badge, Button, Input, Progress, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
-import { ArrowLeft, CalendarClock, CheckCircle2, MapPin, QrCode, Search, Ticket, UserCheck, Users } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CheckCircle2, MapPin, QrCode, Search, Table2, Ticket, UserCheck, Users } from 'lucide-react'
+import { adminTicketTableBooking } from '../../components/events/eventCheckoutTableBookingUtils'
 
 type CheckInTab = 'remaining' | 'checked-in'
 
@@ -52,7 +53,7 @@ export default function BookingEventPage() {
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState<CheckInTab>('remaining')
 
-  const tickets = ticketData?.tickets ?? []
+  const tickets = useMemo(() => ticketData?.tickets ?? [], [ticketData?.tickets])
   const units = useMemo(() => ticketUnits(tickets), [tickets])
   const checkedInUnits = units.filter(unit => unit.checkedIn)
   const remainingUnits = units.filter(unit => !unit.checkedIn)
@@ -166,7 +167,6 @@ export default function BookingEventPage() {
               onChange={changeEvent => setTicketRef(changeEvent.target.value)}
               placeholder="Scan QR code"
               className="h-12 border-admin bg-admin-input font-mono"
-              autoFocus
             />
             <Button type="submit" disabled={checkInQr.isPending || !ticketRef.trim()} className="w-full gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
               <CheckCircle2 className="h-4 w-4" />
@@ -200,12 +200,13 @@ export default function BookingEventPage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[760px] text-sm">
+                    <table className="w-full min-w-[900px] text-sm">
                       <thead className="bg-admin-overlay text-left text-xs uppercase tracking-wide text-admin-40">
                         <tr>
                           <th className="px-4 py-3 font-medium">QR Ref</th>
                           <th className="px-4 py-3 font-medium">Attendee</th>
                           <th className="px-4 py-3 font-medium">Ticket type</th>
+                          <th className="px-4 py-3 font-medium">Table</th>
                           <th className="px-4 py-3 font-medium">Payment</th>
                           <th className="px-4 py-3 font-medium">Status</th>
                         </tr>
@@ -219,6 +220,7 @@ export default function BookingEventPage() {
                               <p className="text-xs text-admin-40">{unit.ticket.user?.email ?? unit.ticket.guestEmail ?? '-'}</p>
                             </td>
                             <td className="px-4 py-3 text-admin-60">{unit.ticket.ticketCategory?.name ?? 'Event ticket'} #{unit.ticketNumber}</td>
+                            <td className="px-4 py-3">{adminTicketTableBooking(unit.ticket) ? <CheckInTableBookingBadge ticket={unit.ticket} /> : '-'}</td>
                             <td className="px-4 py-3">
                               <Badge className={paymentStatus(unit.ticket) === 'Paid' ? 'border-green-500/25 bg-green-500/10 text-green-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-400'}>
                                 {paymentStatus(unit.ticket)}
@@ -241,6 +243,21 @@ export default function BookingEventPage() {
         </section>
       </div>
     </AdminLayout>
+  )
+}
+
+function CheckInTableBookingBadge({ ticket }: { ticket: AdminEventTicket }) {
+  const tableBooking = adminTicketTableBooking(ticket)
+  if (!tableBooking) return null
+
+  return (
+    <div className="inline-flex items-center gap-2 rounded-lg border border-admin bg-admin-input px-2.5 py-1.5 text-xs text-admin-60">
+      <Table2 className="h-3.5 w-3.5 shrink-0 text-neon-pink" />
+      <span className="max-w-[120px] truncate font-medium text-admin-80">{tableBooking.tableCategory}</span>
+      <span className="font-mono text-admin-40">
+        {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'}
+      </span>
+    </div>
   )
 }
 

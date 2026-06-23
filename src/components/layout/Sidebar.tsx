@@ -2,9 +2,9 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   CalendarDays,
-  Ticket,
   FileText,
   Calendar,
+  Table2,
   BarChart2,
   LogOut,
   X,
@@ -15,6 +15,8 @@ import {
   ScrollText,
   Settings,
   UserCircle,
+  HandCoins,
+  Building2,
 } from 'lucide-react'
 import { cn } from '@glee/ui'
 import { useAdminUser } from '../../app/providers'
@@ -32,10 +34,12 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, active: true },
   { label: 'Events', to: '/dashboard/events', icon: CalendarDays, active: true },
+  { label: 'Locations', to: '/dashboard/locations', icon: Building2, active: true, roles: ['super_admin', 'admin', 'operations_manager', 'vendor', 'vendor_staff'] },
   { label: 'Calendar', to: '/dashboard/calendar', icon: Calendar, active: true, roles: ['super_admin', 'admin', 'operations_manager'] },
-  { label: 'Bookings', to: '/dashboard/bookings', icon: Ticket, active: true, roles: ['vendor', 'vendor_staff', 'admin', 'customer_support'] },
+  { label: 'Bookings', to: '/dashboard/reservations', icon: Table2, active: true, roles: ['super_admin', 'admin', 'operations_manager', 'vendor', 'vendor_staff'] },
   { label: 'Menu & Pricing', to: '/dashboard/menu-pricing', icon: FileText, active: true, roles: ['vendor', 'vendor_staff', 'admin'] },
   { label: 'Sales Reports', to: '/dashboard/sales-reports', icon: BarChart2, active: true, roles: ['vendor', 'vendor_staff'] },
+  { label: 'Payouts', to: '/dashboard/payouts', icon: HandCoins, active: true, roles: ['super_admin', 'admin', 'finance', 'vendor', 'vendor_staff'] },
   { label: 'Financials', to: '/dashboard/financials', icon: BarChart2, active: true, roles: ['super_admin', 'admin', 'finance'] },
   { label: 'Roles & Permissions', to: '/dashboard/roles', icon: ShieldCheck, active: true, roles: ['super_admin'] },
   { label: 'Audit Logs', to: '/dashboard/audit-logs', icon: ScrollText, active: true, roles: ['super_admin'] },
@@ -71,7 +75,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Close navigation"
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={onClose}
         />

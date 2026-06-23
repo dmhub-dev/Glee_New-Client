@@ -7,7 +7,7 @@ import { Badge, Button, Input, Progress, Skeleton } from '@glee/ui'
 import { CalendarClock, MapPin, Search, Ticket, Users } from 'lucide-react'
 import type { Event } from '@glee/types'
 
-const PLACEHOLDER = 'https://placehold.co/320x200/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 function eventDate(event: Event) {
   return new Date(`${event.startDate}T${event.startTime || '00:00'}`).toLocaleDateString('en-KE', {
@@ -98,8 +98,8 @@ export default function BookingsPage() {
 
   return (
     <AdminLayout
-      title={user.role === 'vendor_staff' ? 'Event Check-ins' : 'Bookings'}
-      subtitle={user.role === 'vendor_staff' ? 'Select an event, validate attendee QR codes, and monitor entry progress.' : 'Monitor booking volume and open event check-in tools.'}
+      title="Event Check-ins"
+      subtitle="Select an event, validate attendee QR codes, and monitor entry progress."
     >
       <div className="space-y-4">
         <div className="relative max-w-sm">

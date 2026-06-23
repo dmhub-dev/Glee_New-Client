@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,10 +7,11 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminUser } from '../../app/providers'
 import { useAdminEvent, useCreateEvent, useUpdateEvent, useCategories, useLocations } from '@glee/api'
-import { Button, Input, Textarea, Label, Skeleton, useToast } from '@glee/ui'
-import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
+import { Button, Input, Textarea, Label, Skeleton, Switch, useToast } from '@glee/ui'
+import { ArrowLeft, CalendarClock, Check, ChevronsUpDown, Circle, MapPin, Plus, ShieldCheck, Table2, Trash2, Upload, X } from 'lucide-react'
 import type { Event } from '@glee/types'
 import type { Location } from '@glee/api'
+import { splitBackendDateTime, toDateTimeLocalInputValue } from '@glee/utils'
 
 const tierSchema = z.object({
   id: z.string(),
@@ -279,7 +280,7 @@ function LocationPicker({
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <button type="button" aria-label="Close location menu" className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
           <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin-card">
             <div className="border-b border-admin p-2">
               <Input
@@ -287,7 +288,6 @@ function LocationPicker({
                 onChange={event => setQuery(event.target.value)}
                 placeholder="Search locations..."
                 className="h-9 bg-admin-input border-admin text-sm"
-                autoFocus
               />
             </div>
             <div className="max-h-72 overflow-y-auto p-1">
@@ -358,6 +358,7 @@ export default function EventFormPage() {
   const [portraits,  setPortraits]  = useState<{ url: string; file?: File }[]>([])
   const [mediums,    setMediums]    = useState<{ url: string; file?: File }[]>([])
   const [eventDurationMode, setEventDurationMode] = useState<'single' | 'multi'>('single')
+  const [setupReservationsAfterSave, setSetupReservationsAfterSave] = useState(false)
   const posterInputRef  = useRef<HTMLInputElement>(null)
   const posterTargetRef = useRef<'landscape' | 'portrait' | 'medium'>('landscape')
 
@@ -392,6 +393,11 @@ export default function EventFormPage() {
   const { fields: menuFields, append: appendMenu, remove: removeMenu } = useFieldArray({ control, name: 'menuItems' })
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } = useFieldArray({ control, name: 'schedules' })
   const formValues = watch()
+  const eligibleLocations = useMemo(() => {
+    const rows = locationsData ?? []
+    return rows.filter(location => !location.vendorId || location.approvalStatus === 'APPROVED')
+  }, [locationsData])
+  const selectedLocation = eligibleLocations.find(location => location.id === formValues.locationId)
 
   function addTierToWave(waveIndex: number) {
     const waves = [...(formValues.ticketWaves ?? [])]
@@ -487,8 +493,8 @@ export default function EventFormPage() {
             id: wave.id,
             name: wave.name,
             description: wave.description ?? '',
-            startsAt: new Date(wave.startsAt).toISOString().slice(0, 16),
-            endsAt: new Date(wave.endsAt).toISOString().slice(0, 16),
+            startsAt: toDateTimeLocalInputValue(wave.startsAt),
+            endsAt: toDateTimeLocalInputValue(wave.endsAt),
             ticketTiers: wave.ticketTiers.map(t => ({
               id:                t.id,
               name:              t.name,
@@ -519,21 +525,25 @@ export default function EventFormPage() {
       })),
       schedules: existingEvent.schedules?.length
         ? existingEvent.schedules.map(s => {
-            const start = new Date(s.startDate)
-            const end = new Date(s.endDate)
+            const start = splitBackendDateTime(s.startDate)
+            const end = splitBackendDateTime(s.endDate)
             return {
               name: s.name,
               description: s.description,
-              startDate: start.toISOString().split('T')[0],
-              endDate: end.toISOString().split('T')[0],
-              startTime: start.toTimeString().slice(0, 5),
-              endTime: end.toTimeString().slice(0, 5),
+              startDate: start.date,
+              endDate: end.date || start.date,
+              startTime: start.time,
+              endTime: end.time || start.time,
             }
           })
         : [newSchedule()],
     })
-    if (existingEvent.flyerSquareUrl)   setLandscapes([{ url: existingEvent.flyerSquareUrl }])
-    if (existingEvent.flyerPortraitUrl) setPortraits([{ url: existingEvent.flyerPortraitUrl }])
+    const existingImages = existingEvent.images?.length
+      ? existingEvent.images
+      : [existingEvent.flyerSquareUrl, existingEvent.flyerPortraitUrl].filter((url): url is string => Boolean(url))
+    setLandscapes(existingImages.slice(0, 2).map(url => ({ url })))
+    setPortraits(existingImages.slice(2, 4).map(url => ({ url })))
+    setMediums(existingImages.slice(4, 6).map(url => ({ url })))
   }, [existingEvent, categoriesData, reset])
 
   const POSTER_SETTERS = {
@@ -591,16 +601,21 @@ export default function EventFormPage() {
     }
 
     try {
+      let savedEvent: Event
       if (isNew) {
-        await createMutation.mutateAsync(payload)
+        savedEvent = await createMutation.mutateAsync(payload)
       } else {
-        await updateMutation.mutateAsync({ id: eventId!, data: payload })
+        savedEvent = await updateMutation.mutateAsync({ id: eventId!, data: payload })
       }
       toast({
         title: isVendorRole
           ? (isNew ? 'Event submitted for approval' : 'Event updated')
           : asDraft ? 'Event saved as draft' : values.status === 'active' ? 'Event published' : 'Event saved',
       })
+      if (setupReservationsAfterSave && selectedLocation?.bookingEnabled) {
+        navigate(`/dashboard/events/${savedEvent.id}`, { state: { tab: 'reservations' } })
+        return
+      }
       navigate('/dashboard/events')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Please check the event details and try again.'
@@ -636,6 +651,12 @@ export default function EventFormPage() {
     description: t.description,
   }))
 
+  const previewImages = [
+    ...landscapes.map(poster => poster.url),
+    ...portraits.map(poster => poster.url),
+    ...mediums.map(poster => poster.url),
+  ]
+
   const previewEvent: Event = {
     id: 'preview',
     vendorId: 'admin-001',
@@ -656,8 +677,9 @@ export default function EventFormPage() {
       startDate: `${s.startDate}T${s.startTime}:00`,
       endDate: `${s.endDate}T${s.endTime}:00`,
     })),
-    flyerSquareUrl:   landscapes[0]?.url ?? undefined,
-    flyerPortraitUrl: portraits[0]?.url ?? undefined,
+    images:           previewImages,
+    flyerSquareUrl:   previewImages[0] ?? undefined,
+    flyerPortraitUrl: previewImages[1] ?? previewImages[0] ?? undefined,
     ticketTiers: previewTicketTiers,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -899,7 +921,7 @@ export default function EventFormPage() {
                     control={control}
                     name="locationId"
                     render={({ field }) => (
-                      <LocationPicker value={field.value} onChange={field.onChange} locations={locationsData ?? []} />
+                      <LocationPicker value={field.value} onChange={field.onChange} locations={eligibleLocations} />
                     )}
                   />
                   {errors.locationId && <p className="text-xs text-red-400">{errors.locationId.message}</p>}
@@ -907,19 +929,55 @@ export default function EventFormPage() {
               </div>
             </section>
 
+            {/* Table reservations */}
+            <section className="bg-admin-surface border border-admin rounded-2xl p-5 space-y-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neon-pink/10 text-neon-pink">
+                    <Table2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-heading font-bold text-sm text-foreground">Table Reservations</h2>
+                    <p className="mt-1 text-xs leading-5 text-admin-40">
+                      Send this event to reservation setup after saving so attendees can add a table booking during ticket checkout.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={setupReservationsAfterSave}
+                  onCheckedChange={setSetupReservationsAfterSave}
+                  disabled={!selectedLocation?.bookingEnabled}
+                  className="data-[state=checked]:!bg-neon-pink"
+                />
+              </div>
+              {!selectedLocation ? (
+                <p className="rounded-xl border border-admin bg-admin-overlay px-4 py-3 text-xs text-admin-40">
+                  Select a location before enabling event table reservations.
+                </p>
+              ) : selectedLocation.bookingEnabled ? (
+                <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-300">
+                  {selectedLocation.name} accepts table reservations. After saving, add event-specific reservation slots for attendees.
+                </p>
+              ) : (
+                <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+                  This location does not currently accept table reservations. Enable reservation setup on the location before attaching tables to this event.
+                </p>
+              )}
+            </section>
+
             {/* Media */}
             <section className="bg-admin-surface border border-admin rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-heading font-bold text-sm text-foreground">Event Posters</h2>
-                <span className="text-[11px] text-admin-30">JPEG, PNG, WebP · max 5MB · 2 per format</span>
+                <h2 className="font-heading font-bold text-sm text-foreground">Event Gallery</h2>
+                <span className="text-[11px] text-admin-30">JPEG, PNG, WebP · max 5MB · first image is the cover</span>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 {(
                   [
-                    { key: 'landscape', label: 'Landscape', dim: '1920×1080', list: landscapes },
-                    { key: 'portrait',  label: 'Portrait',  dim: '1080×1920', list: portraits  },
-                    { key: 'medium',    label: 'Medium',    dim: '1200×900',  list: mediums    },
+                    { key: 'landscape', label: 'Cover + gallery', dim: 'Images 1-2', list: landscapes },
+                    { key: 'portrait',  label: 'Gallery',         dim: 'Images 3-4', list: portraits  },
+                    { key: 'medium',    label: 'More images',     dim: 'Images 5-6', list: mediums    },
                   ] as const
                 ).map(({ key, label, dim, list }) => (
                   <div key={key} className="space-y-1.5">
@@ -931,6 +989,11 @@ export default function EventFormPage() {
                       {list.map(({ url }, i) => (
                         <div key={i} className="relative group h-14 flex-1 rounded-lg overflow-hidden bg-admin-overlay border border-admin">
                           <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
+                          {key === 'landscape' && i === 0 && (
+                            <span className="absolute bottom-0.5 left-0.5 rounded-full bg-neon-pink px-1.5 py-0.5 text-[8px] font-black uppercase text-white">
+                              Cover
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => handlePosterRemove(key, i)}
@@ -941,13 +1004,14 @@ export default function EventFormPage() {
                         </div>
                       ))}
                       {list.length < 2 && (
-                        <div
+                        <button
+                          type="button"
                           className="h-14 flex-1 rounded-lg border border-dashed border-admin-md hover:border-neon-pink/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-admin-overlay gap-0.5"
                           onClick={() => triggerPosterPick(key)}
                         >
                           <Upload className="w-3.5 h-3.5 text-admin-20" />
                           <span className="text-[9px] text-admin-20 leading-tight text-center">{dim}</span>
-                        </div>
+                        </button>
                       )}
                     </div>
                   </div>

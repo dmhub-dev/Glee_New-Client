@@ -7,13 +7,11 @@ import PageWrapper from '../../components/layout/PageWrapper'
 import EventGrid from '../../components/events/EventGrid'
 
 const PAGE_SIZE = 12
-type PublicStatusFilter = Extract<Event['status'], 'active' | 'live' | 'cancelled' | 'sold_out'>
+type PublicStatusFilter = Extract<Event['status'], 'active' | 'live'>
 
 const STATUS_FILTERS: Array<{ value: PublicStatusFilter; label: string }> = [
   { value: 'active', label: 'Active' },
   { value: 'live', label: 'Live' },
-  { value: 'sold_out', label: 'Sold Out' },
-  { value: 'cancelled', label: 'Cancelled' },
 ]
 
 export default function PublicEventsPage() {
@@ -24,7 +22,8 @@ export default function PublicEventsPage() {
   const [categoryId, setCategoryId] = useState<string | undefined>()
   const [statusFilter, setStatusFilter] = useState<PublicStatusFilter>('active')
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
-  const statusFilterRef = useRef<HTMLDivElement>(null)
+  const statusFilterButtonRef = useRef<HTMLButtonElement>(null)
+  const statusMenuRef = useRef<HTMLDivElement>(null)
   const { data: categorySourceEvents = [] } = useEvents({ page: 1, limit: 100, status: statusFilter })
   const { data: events = [], isLoading } = useEvents({
     page,
@@ -46,9 +45,9 @@ export default function PublicEventsPage() {
     if (!statusMenuOpen) return
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!statusFilterRef.current?.contains(event.target as Node)) {
-        setStatusMenuOpen(false)
-      }
+      const target = event.target as Node
+      if (statusMenuRef.current?.contains(target) || statusFilterButtonRef.current?.contains(target)) return
+      setStatusMenuOpen(false)
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
@@ -91,6 +90,15 @@ export default function PublicEventsPage() {
     setStatusMenuOpen(false)
   }
 
+  const clearFilters = () => {
+    setPage(1)
+    setSearchInput('')
+    setSearch('')
+    setCategoryId(undefined)
+    setStatusFilter('active')
+    setStatusMenuOpen(false)
+  }
+
   return (
     <PageWrapper
       fullWidthContent={
@@ -100,7 +108,7 @@ export default function PublicEventsPage() {
               <button
                 type="button"
                 onClick={() => navigate('/')}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/8 text-white transition-colors hover:bg-white/12 hover:text-neon-pink"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-white/[0.12] text-white shadow-[0_12px_30px_rgba(0,0,0,0.35)] transition-colors hover:border-neon-pink/50 hover:bg-white/[0.18] hover:text-neon-pink"
                 aria-label="Back to home"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -114,12 +122,12 @@ export default function PublicEventsPage() {
                 <h1 className="mt-2 max-w-sm font-heading text-3xl font-black leading-tight text-white sm:text-4xl">
                   All Events
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/58">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/80">
                   Search every public Glee event and narrow results by category or status.
                 </p>
               </div>
 
-              <div ref={statusFilterRef} className="relative">
+              <div className="relative">
                 <div className="flex min-h-12 items-center gap-3 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-white/45 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
                   <Search className="h-4 w-4 shrink-0" />
                   <input
@@ -129,39 +137,28 @@ export default function PublicEventsPage() {
                     className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/45"
                   />
                   <button
+                    ref={statusFilterButtonRef}
                     type="button"
                     aria-label="Filter events by status"
                     aria-expanded={statusMenuOpen}
                     onClick={() => setStatusMenuOpen(value => !value)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white transition-colors hover:border-neon-pink/50 hover:text-neon-pink sm:hidden"
+                    className={[
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-all duration-200 active:scale-95',
+                      statusMenuOpen
+                        ? 'border-neon-pink/55 bg-neon-pink/18 text-neon-pink shadow-[0_0_18px_rgba(255,0,122,0.28)]'
+                        : 'border-white/12 bg-white/[0.08] text-white hover:border-neon-pink/50 hover:bg-white/[0.12] hover:text-neon-pink',
+                    ].join(' ')}
                   >
                     <Filter className="h-4 w-4" />
                   </button>
-                  <div className="hidden shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/25 p-1 sm:flex">
-                    {STATUS_FILTERS.map(status => {
-                      const active = statusFilter === status.value
-                      return (
-                        <button
-                          key={status.value}
-                          type="button"
-                          onClick={() => selectStatus(status.value)}
-                          className={[
-                            'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
-                            active
-                              ? 'bg-neon-pink text-white shadow-neon'
-                              : 'text-white/58 hover:bg-white/8 hover:text-white',
-                          ].join(' ')}
-                        >
-                          {status.label}
-                        </button>
-                      )
-                    })}
-                  </div>
                 </div>
 
                 {statusMenuOpen && (
-                  <div className="absolute right-0 top-14 z-[80] w-52 overflow-hidden rounded-2xl border border-white/18 bg-[#181827] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)] sm:hidden">
-                    <div className="px-3 pb-2 pt-1 text-[10px] font-black uppercase tracking-widest text-white/70">
+                  <div
+                    ref={statusMenuRef}
+                    className="absolute right-0 top-14 z-[80] w-56 overflow-hidden rounded-2xl border border-white/20 bg-[#171426]/95 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.62),0_0_0_1px_rgba(255,255,255,0.03)] backdrop-blur-xl"
+                  >
+                    <div className="px-3 pb-2 pt-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/55">
                       Status
                     </div>
                     {STATUS_FILTERS.map(status => {
@@ -172,8 +169,10 @@ export default function PublicEventsPage() {
                           type="button"
                           onClick={() => selectStatus(status.value)}
                           className={[
-                            'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors',
-                            active ? 'bg-neon-pink text-white shadow-neon' : 'text-white/90 hover:bg-white/10 hover:text-white',
+                            'flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-all duration-200',
+                            active
+                              ? 'bg-neon-pink text-white shadow-[0_0_18px_rgba(255,0,122,0.34)]'
+                              : 'text-white/90 hover:bg-white/[0.08] hover:text-white',
                           ].join(' ')}
                         >
                           <span>{status.label}</span>
@@ -212,7 +211,21 @@ export default function PublicEventsPage() {
                 <h2 className="font-heading text-lg font-black text-white">{resultTitle}</h2>
                 {page > 1 && <span className="text-xs font-semibold text-white/60">Page {page}</span>}
               </div>
-              <EventGrid events={listedEvents} isLoading={isLoading} />
+              <EventGrid
+                events={listedEvents}
+                isLoading={isLoading}
+                emptyTitle={search || categoryId || statusFilter !== 'active' ? 'No events match your filters' : 'No active events right now'}
+                emptyDescription={search || categoryId || statusFilter !== 'active' ? 'Clear filters to return to active events.' : 'New Glee events will appear here as soon as they go live.'}
+                emptyAction={(search || categoryId || statusFilter !== 'active') ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-full bg-neon-pink px-4 py-2 text-sm font-semibold text-white shadow-neon transition-colors hover:bg-neon-pink/90"
+                  >
+                    Clear filters
+                  </button>
+                ) : undefined}
+              />
               <div className="mt-auto flex items-center justify-end gap-2 pt-6">
                 <button
                   type="button"

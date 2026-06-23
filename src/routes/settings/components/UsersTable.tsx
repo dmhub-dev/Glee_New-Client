@@ -529,7 +529,7 @@ export default function UsersTable() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-admin-80">Role</label>
+            <p className="text-sm font-medium text-admin-80">Role</p>
             <Select value={roleDraft} onValueChange={value => setRoleDraft(value as UserRole)}>
               <SelectTrigger className="bg-admin-input border-admin text-foreground">
                 <SelectValue />

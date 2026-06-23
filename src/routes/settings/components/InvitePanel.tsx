@@ -25,6 +25,15 @@ import {
   FormLabel,
   FormControl,
   FormMessage,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
   useToast,
 } from '@glee/ui'
 import { ApiError } from '@glee/api'
@@ -75,7 +84,6 @@ export default function InvitePanel({ vendorStaffOnly = false }: { vendorStaffOn
   }
 
   async function handleRevoke(inviteId: string, email: string) {
-    if (!window.confirm(`Revoke invite for ${email}?`)) return
     setPendingRevokeId(inviteId)
     try {
       await revokeMutation.mutateAsync(inviteId)
@@ -221,16 +229,36 @@ export default function InvitePanel({ vendorStaffOnly = false }: { vendorStaffOn
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRevoke(inv.id, inv.email)}
-                        disabled={pendingRevokeId === inv.id}
-                        className="gap-1.5 text-xs text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        {pendingRevokeId === inv.id ? 'Revoking...' : 'Revoke'}
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={pendingRevokeId === inv.id}
+                            className="gap-1.5 text-xs text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {pendingRevokeId === inv.id ? 'Revoking...' : 'Revoke'}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="border-admin bg-admin-dialog">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Revoke invite?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {inv.email} will no longer be able to accept this invitation.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleRevoke(inv.id, inv.email)}
+                              className="bg-red-500 text-white hover:bg-red-600"
+                            >
+                              Revoke invite
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </td>
                   </tr>
                 ))}

@@ -1,0 +1,15 @@
+<svg width="900" height="600" viewBox="0 0 900 600" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Glee image fallback">
+  <rect width="900" height="600" fill="#050017"/>
+  <rect width="900" height="600" fill="url(#paint0_radial)"/>
+  <rect x="54" y="54" width="792" height="492" rx="36" stroke="rgba(255,255,255,0.16)" stroke-width="2"/>
+  <path d="M360 258C360 214 392 184 438 184C472 184 497 199 511 223L473 245C466 232 454 225 438 225C414 225 399 240 399 260V341C399 363 413 376 436 376C459 376 475 365 480 344H435V309H522V338C522 385 486 417 436 417C390 417 360 388 360 344V258Z" fill="#FF2D8F"/>
+  <path d="M541 188H580V412H541V188Z" fill="white"/>
+  <text x="450" y="466" text-anchor="middle" fill="rgba(255,255,255,0.52)" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="3">GLEE</text>
+  <defs>
+    <radialGradient id="paint0_radial" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(284 118) rotate(47.7) scale(519 658)">
+      <stop stop-color="#FF2D8F" stop-opacity="0.28"/>
+      <stop offset="0.5" stop-color="#7C3AED" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#050017" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

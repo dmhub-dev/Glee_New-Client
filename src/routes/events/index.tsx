@@ -1,12 +1,27 @@
-import { useState, useMemo, type FormEvent } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAdminEvents, useDeleteEvent, useCategories, useLocations, useCreateLocation } from '@glee/api'
+import { useAdminEvents, useDeleteEvent, useCategories, useLocations } from '@glee/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import AdminEventCard from '../../components/events/AdminEventCard'
 import { useAdminUser } from '../../app/providers'
-import { Skeleton, Input, Progress, Button, Textarea, Label, useToast } from '@glee/ui'
-import { Plus, Search, LayoutGrid, List, MapPin, Calendar, Ticket, Pencil, Trash2, Tags, MapPinned, Building2, ParkingCircle, Wind } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Skeleton,
+  Input,
+  Progress,
+  Button,
+  EmptyState,
+} from '@glee/ui'
+import { Plus, Search, LayoutGrid, List, MapPin, Calendar, CalendarX2, Ticket, Pencil, Trash2, Tags, MapPinned } from 'lucide-react'
 import { cn } from '@glee/ui'
+import { formatDateRange, formatTimeOnly } from '@glee/utils'
 import type { Event } from '@glee/types'
 import type { Location } from '@glee/api'
 import CategoriesTab from '../settings/CategoriesTab'
@@ -56,16 +71,36 @@ const CATEGORY_COLOURS: Record<string, string> = {
   Other:         'bg-admin-overlay text-admin-50 border-admin',
 }
 
-const PLACEHOLDER = 'https://placehold.co/400x400/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
+
+function venueTypeLabel(value?: string | null) {
+  if (value === 'CLUB') return 'Club'
+  if (value === 'RESTAURANT' || value === 'HOTEL_RESTAURANT') return 'Restaurant/Hotel'
+  return 'Other'
+}
+
+function locationApprovalLabel(status?: Location['approvalStatus']) {
+  if (status === 'APPROVED') return 'Approved'
+  if (status === 'REJECTED') return 'Rejected'
+  return 'Pending'
+}
+
+function locationApprovalClass(status?: Location['approvalStatus']) {
+  if (status === 'APPROVED') return 'border-emerald-500/25 bg-emerald-500/15 text-emerald-300'
+  if (status === 'REJECTED') return 'border-red-500/25 bg-red-500/15 text-red-300'
+  return 'border-amber-500/25 bg-amber-500/15 text-amber-300'
+}
 
 function formatListDate(startDate: string, startTime: string, endDate?: string): string {
-  const d = new Date(`${startDate}T${startTime}`)
-  const datePart = endDate && endDate !== startDate
-    ? new Date(startDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) +
-      ' – ' +
-      new Date(endDate).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
-    : d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
-  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const datePart = formatDateRange(
+    startDate,
+    endDate,
+    { day: 'numeric', month: 'short', year: 'numeric' },
+    { day: 'numeric', month: 'short' },
+    { day: 'numeric', month: 'short', year: 'numeric' },
+  )
+  const timePart = formatTimeOnly(startTime)
+  return timePart ? `${datePart} · ${timePart}` : datePart
 }
 
 function ticketsSoldPercent(event: Event): number {
@@ -125,223 +160,73 @@ function LocationReferenceGrid({
   isLoading: boolean
   allowCreate?: boolean
 }) {
-  const { toast } = useToast()
-  const createLocation = useCreateLocation({ vendorScoped: true })
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [form, setForm] = useState({
-    name: '',
-    address: '',
-    description: '',
-    capacity: '100',
-    latitude: '0',
-    longitude: '0',
-    isIndoors: true,
-    isOutdoors: false,
-    isParkingAvailable: false,
-  })
-
-  async function handleCreateLocation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    try {
-      await createLocation.mutateAsync({
-        dto: {
-          name: form.name.trim(),
-          address: form.address.trim(),
-          description: form.description.trim(),
-          capacity: Number(form.capacity),
-          latitude: Number(form.latitude),
-          longitude: Number(form.longitude),
-          isIndoors: form.isIndoors,
-          isOutdoors: form.isOutdoors,
-          isParkingAvailable: form.isParkingAvailable,
-        },
-        pictures: [],
-      })
-      toast({ title: 'Location added' })
-      setForm({
-        name: '',
-        address: '',
-        description: '',
-        capacity: '100',
-        latitude: '0',
-        longitude: '0',
-        isIndoors: true,
-        isOutdoors: false,
-        isParkingAvailable: false,
-      })
-      setIsCreateOpen(false)
-    } catch {
-      toast({ title: 'Failed to add location', variant: 'destructive' })
-    }
-  }
-
-  function updateForm<Key extends keyof typeof form>(key: Key, value: (typeof form)[Key]) {
-    setForm(current => ({ ...current, [key]: value }))
-  }
+  const navigate = useNavigate()
 
   return (
     <section className="space-y-4">
       <div className="flex flex-col gap-3 rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-heading text-base font-bold text-foreground">Event Locations</h2>
-          <p className="mt-1 text-sm text-admin-40">Use Glee-approved locations or add your own venue. Your private locations are only visible to your vendor account.</p>
+          <p className="mt-1 text-sm text-admin-40">Use platform locations or your approved vendor locations for events. New vendor locations stay pending until Glee approves them.</p>
         </div>
         {allowCreate && (
-          <Button onClick={() => setIsCreateOpen(open => !open)} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
+          <Button onClick={() => navigate('/dashboard/locations/new')} className="gap-2 bg-neon-pink text-white hover:bg-neon-pink/90">
             <Plus className="h-4 w-4" />
             Add Location
           </Button>
         )}
       </div>
-      {allowCreate && isCreateOpen && (
-        <form onSubmit={handleCreateLocation} className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin">
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="vendor-location-name">Venue name</Label>
-                <Input
-                  id="vendor-location-name"
-                  required
-                  value={form.name}
-                  onChange={event => updateForm('name', event.target.value)}
-                  className="mt-1 bg-admin-input border-admin"
-                  placeholder="The Social Garden"
-                />
-              </div>
-              <div>
-                <Label htmlFor="vendor-location-address">Address</Label>
-                <Input
-                  id="vendor-location-address"
-                  required
-                  value={form.address}
-                  onChange={event => updateForm('address', event.target.value)}
-                  className="mt-1 bg-admin-input border-admin"
-                  placeholder="Westlands, Nairobi"
-                />
-              </div>
-              <div>
-                <Label htmlFor="vendor-location-description">Description</Label>
-                <Textarea
-                  id="vendor-location-description"
-                  value={form.description}
-                  onChange={event => updateForm('description', event.target.value)}
-                  className="mt-1 min-h-[92px] resize-none bg-admin-input border-admin"
-                  placeholder="Stage setup, gate access, ambience, or notes for event planning"
-                />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label htmlFor="vendor-location-capacity">Capacity</Label>
-                  <Input
-                    id="vendor-location-capacity"
-                    required
-                    min={1}
-                    type="number"
-                    value={form.capacity}
-                    onChange={event => updateForm('capacity', event.target.value)}
-                    className="mt-1 bg-admin-input border-admin"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vendor-location-latitude">Latitude</Label>
-                  <Input
-                    id="vendor-location-latitude"
-                    required
-                    type="number"
-                    step="any"
-                    value={form.latitude}
-                    onChange={event => updateForm('latitude', event.target.value)}
-                    className="mt-1 bg-admin-input border-admin"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vendor-location-longitude">Longitude</Label>
-                  <Input
-                    id="vendor-location-longitude"
-                    required
-                    type="number"
-                    step="any"
-                    value={form.longitude}
-                    onChange={event => updateForm('longitude', event.target.value)}
-                    className="mt-1 bg-admin-input border-admin"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-                {[
-                  { key: 'isIndoors' as const, label: 'Indoor', icon: Building2 },
-                  { key: 'isOutdoors' as const, label: 'Outdoor', icon: Wind },
-                  { key: 'isParkingAvailable' as const, label: 'Parking', icon: ParkingCircle },
-                ].map(option => {
-                  const Icon = option.icon
-                  const checked = Boolean(form[option.key])
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => updateForm(option.key, !checked)}
-                      className={cn(
-                        'flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition-colors',
-                        checked ? 'border-neon-pink/40 bg-neon-pink/10 text-neon-pink' : 'border-admin bg-admin-overlay text-admin-50 hover:text-admin-70',
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
-                        {option.label}
-                      </span>
-                      <span className={cn('h-2.5 w-2.5 rounded-full', checked ? 'bg-neon-pink' : 'bg-admin-30')} />
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="text-admin-50">Cancel</Button>
-                <Button type="submit" disabled={createLocation.isPending} className="bg-neon-pink text-white hover:bg-neon-pink/90">
-                  {createLocation.isPending ? 'Saving...' : 'Save Location'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </form>
-      )}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-44 rounded-xl" />)}
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-48 rounded-xl" />)}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {locations.map(location => (
-            <div key={location.id} className="overflow-hidden rounded-xl border border-admin bg-admin-surface shadow-admin">
-              <div className="h-28 bg-admin-overlay">
+            <article
+              key={location.id}
+              data-testid="location-card"
+              className="group overflow-hidden rounded-2xl border border-admin bg-admin-surface shadow-admin transition duration-200 hover:-translate-y-0.5 hover:border-neon-pink/35 hover:shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+            >
+              <div className="relative h-28 overflow-hidden bg-admin-overlay">
                 {location.pictures?.[0] ? (
-                  <img src={location.pictures[0]} alt={location.name} className="h-full w-full object-cover" />
+                  <img src={location.pictures[0]} alt={location.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-admin-30">No image</div>
+                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top_left,rgba(255,45,143,0.16),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01))] text-admin-30">
+                    <MapPinned className="h-8 w-8" />
+                  </div>
                 )}
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/75 to-transparent" />
+                <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                  <span className="rounded-full border border-neon-pink/25 bg-black/55 px-2.5 py-1 text-[10px] font-semibold text-neon-pink backdrop-blur">
+                    {venueTypeLabel(location.venueType)}
+                  </span>
+                  {location.vendorId && (
+                    <span className={cn('rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur', locationApprovalClass(location.approvalStatus))}>
+                      {locationApprovalLabel(location.approvalStatus)}
+                    </span>
+                  )}
+                </div>
+                <span className={cn(
+                  'absolute bottom-3 right-3 rounded-full border px-2.5 py-1 text-[10px] font-semibold backdrop-blur',
+                  location.vendorId ? 'border-neon-pink/25 bg-neon-pink/15 text-neon-pink' : 'border-white/10 bg-black/45 text-white/75',
+                )}>
+                  {location.vendorId ? 'My Location' : 'Glee'}
+                </span>
               </div>
               <div className="space-y-3 p-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{location.name}</h3>
-                    <span className={cn(
-                      'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                      location.vendorId ? 'border-neon-pink/25 bg-neon-pink/10 text-neon-pink' : 'border-admin bg-admin-overlay text-admin-40',
-                    )}>
-                      {location.vendorId ? 'My Location' : 'Glee'}
-                    </span>
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-xs text-admin-40">{location.address}</p>
+                  <h3 className="line-clamp-1 font-heading text-base font-black text-foreground">{location.name}</h3>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-admin-40">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-neon-pink" />
+                    <span className="truncate">{location.address}</span>
+                  </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">{location.capacity.toLocaleString()} capacity</span>
-                  {location.isParkingAvailable && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Parking</span>}
-                  {location.isIndoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Indoor</span>}
-                  {location.isOutdoors && <span className="rounded-full border border-admin bg-admin-overlay px-2 py-0.5 text-xs text-admin-50">Outdoor</span>}
-                </div>
+                <Button size="sm" onClick={() => navigate(`/dashboard/locations/${location.id}`)} className="h-9 w-full rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
+                  Open Location
+                </Button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
@@ -361,6 +246,7 @@ export default function EventsListPage() {
   const [activeTab, setActiveTab] = useState<StatusTab>('pending_approval')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const { data: categories, isLoading: categoriesLoading } = useCategories()
   const { data: locations, isLoading: locationsLoading } = useLocations({ vendorScoped: isVendorRole })
   const rawSection = searchParams.get('section')
@@ -390,11 +276,24 @@ export default function EventsListPage() {
       return acc
     }, {} as Record<StatusTab, number>)
   }, [events])
+  const pendingDeleteEvent = useMemo(
+    () => events?.find(event => event.id === pendingDeleteId) ?? null,
+    [events, pendingDeleteId],
+  )
+  const activeTabLabel = STATUS_TABS.find(tab => tab.key === activeTab)?.label.toLowerCase() ?? 'selected'
+  const emptyTitle = search ? 'No events match your search' : 'No events in this status'
+  const emptyDescription = search
+    ? `No events matched "${search}". Clear search or try another term.`
+    : `There are no ${activeTabLabel} events to show right now.`
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Delete this event? This cannot be undone.')) {
-      deleteMutation.mutate(id)
-    }
+    setPendingDeleteId(id)
+  }
+
+  const confirmDelete = () => {
+    if (!pendingDeleteId) return
+    deleteMutation.mutate(pendingDeleteId)
+    setPendingDeleteId(null)
   }
 
   return (
@@ -405,7 +304,7 @@ export default function EventsListPage() {
       subtitle={isVendorRole ? 'Create events and reference approved categories and locations' : 'Manage event inventory, categories, and locations from one place'}
     >
       <div className="space-y-4">
-        <div className="flex gap-1 overflow-x-auto border-b border-admin">
+        <div className="flex gap-1 overflow-x-auto border-b border-admin [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {EVENT_SECTIONS.map(section => {
             const Icon = section.icon
             return (
@@ -431,7 +330,7 @@ export default function EventsListPage() {
           <CategoryReferenceGrid categories={categories ?? []} isLoading={categoriesLoading} />
         ) : <CategoriesTab />)}
         {activeSection === 'locations' && (isVendorRole ? (
-          <LocationReferenceGrid locations={locations ?? []} isLoading={locationsLoading} allowCreate />
+          <LocationReferenceGrid locations={locations ?? []} isLoading={locationsLoading} allowCreate={canCreateEvents} />
         ) : <LocationsTab />)}
         {activeSection === 'events' && (
           <>
@@ -479,7 +378,7 @@ export default function EventsListPage() {
         </div>
 
         {/* Status tabs */}
-        <div className="flex gap-0 border-b border-admin overflow-x-auto">
+        <div className="flex gap-0 overflow-x-auto border-b border-admin [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {STATUS_TABS.map(tab => (
             <button
               key={tab.key}
@@ -516,19 +415,22 @@ export default function EventsListPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-14 h-14 rounded-2xl bg-neon-pink/10 flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-6 h-6 text-neon-pink/50" />
-            </div>
-            <p className="text-admin-40 text-sm mb-3">
-              {search ? `No events matching "${search}"` : `No ${STATUS_TABS.find(t => t.key === activeTab)?.label.toLowerCase()} events`}
-            </p>
-            {activeTab === 'active' && !search && canCreateEvents && (
-              <button onClick={() => navigate('/dashboard/events/new')} className="text-sm text-neon-pink hover:underline font-medium">
-                Create your first event →
-              </button>
-            )}
-          </div>
+          <EmptyState
+            icon={<CalendarX2 className="h-6 w-6" />}
+            title={emptyTitle}
+            description={emptyDescription}
+            variant="admin"
+            action={search ? (
+              <Button type="button" variant="outline" onClick={() => setSearch('')} className="rounded-full border-admin bg-admin-overlay text-foreground hover:bg-admin-overlay-lg">
+                Clear search
+              </Button>
+            ) : activeTab === 'active' && canCreateEvents ? (
+              <Button type="button" onClick={() => navigate('/dashboard/events/new')} className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
+                <Plus className="mr-2 h-4 w-4" />
+                Create event
+              </Button>
+            ) : undefined}
+          />
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {filtered.map(event => (
@@ -646,6 +548,22 @@ export default function EventsListPage() {
           </>
         )}
       </div>
+      <AlertDialog open={Boolean(pendingDeleteId)} onOpenChange={open => { if (!open) setPendingDeleteId(null) }}>
+        <AlertDialogContent className="border-admin bg-admin-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeleteEvent ? `"${pendingDeleteEvent.title}" will be permanently removed.` : 'This event will be permanently removed.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-500 text-white hover:bg-red-600">
+              Delete event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,10 +7,19 @@ import {
   Button, Skeleton, useToast, Separator,
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@glee/ui'
+import { formatDateOnly, formatTimeOnly, parseDateOnly } from '@glee/utils'
 import { checkoutSchema, type CheckoutFormValues } from '../../lib/schemas/checkout'
 import { initiateGuestPurchase, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
+import EventCheckoutTableBooking from '../../../components/events/EventCheckoutTableBooking'
+import {
+  combinedCheckoutTotal,
+  selectedTableBookingPayload,
+  type CheckoutTableBookingSelection,
+} from '../../../components/events/eventCheckoutTableBookingUtils'
+import EventReservationPanel from '../../../customer/events/EventReservationPanel'
+import { AutoMediaHero, normalizeMediaImages } from '../../../components/media/MediaGallery'
 
-const PLACEHOLDER = 'https://placehold.co/400x600/0B0B10/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 const PUBLIC_DETAIL_STATUSES = ['active', 'live', 'cancelled', 'sold_out']
 
 export default function EventDetailPage() {
@@ -25,6 +34,7 @@ export default function EventDetailPage() {
   const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set())
   const [aboutExpanded, setAboutExpanded] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [tableBooking, setTableBooking] = useState<CheckoutTableBookingSelection | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
 
@@ -35,6 +45,11 @@ export default function EventDetailPage() {
   })
 
   const watchedValues = form.watch()
+
+  useEffect(() => {
+    setTableBooking(null)
+    setCheckoutOpen(false)
+  }, [event?.id])
 
   const selectedItems = event
     ? event.ticketTiers
@@ -48,7 +63,8 @@ export default function EventDetailPage() {
     : []
   const ticketTotal = selectedItems.reduce((sum, { tier, quantity }) => sum + tier.price * quantity, 0)
   const menuTotal = selectedMenuItems.reduce((sum, { item, quantity }) => sum + item.price * quantity, 0)
-  const totalPrice = ticketTotal + menuTotal
+  const totalPrice = combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking })
+  const tableBookingPayload = selectedTableBookingPayload(tableBooking)
 
   if (isLoading) {
     return (
@@ -78,7 +94,8 @@ export default function EventDetailPage() {
   const toggleDesc = (tierId: string) => {
     setExpandedDescs(prev => {
       const next = new Set(prev)
-      next.has(tierId) ? next.delete(tierId) : next.add(tierId)
+      if (next.has(tierId)) next.delete(tierId)
+      else next.add(tierId)
       return next
     })
   }
@@ -103,6 +120,7 @@ export default function EventDetailPage() {
         menuItems: selectedMenuItems.length
           ? selectedMenuItems.map(({ item, quantity }) => ({ id: item.id, quantity }))
           : undefined,
+        tableBooking: tableBookingPayload,
       })
       if (!intent.authorization_url) {
         throw new Error('Paystack did not return a checkout URL')
@@ -125,11 +143,13 @@ export default function EventDetailPage() {
     }
   }
 
-  const eventDate = new Date(event.startDate)
-  const startDt = new Date(`${event.startDate}T${event.startTime}`)
-  const endDt = event.endTime ? new Date(`${event.endDate}T${event.endTime}`) : null
+  const eventDate = parseDateOnly(event.startDate)
+  const eventDateLong = formatDateOnly(event.startDate, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const eventDateShort = formatDateOnly(event.startDate, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  const eventStartTime = formatTimeOnly(event.startTime, { hour: '2-digit', minute: '2-digit', hour12: true })
+  const eventEndTime = event.endTime ? formatTimeOnly(event.endTime, { hour: '2-digit', minute: '2-digit', hour12: true }) : ''
   const locationLabel = event.location ?? event.venueId ?? 'Location TBA'
-  const posterSrc = event.flyerPortraitUrl ?? event.flyerSquareUrl ?? PLACEHOLDER
+  const eventImages = normalizeMediaImages(event.images ?? [event.flyerPortraitUrl, event.flyerSquareUrl], PLACEHOLDER)
   const activeWaveTiers = (() => {
     if (event.ticketWaves?.length) {
       const activeWave = event.ticketWaves.find(w => w.status === 'active')
@@ -163,14 +183,13 @@ export default function EventDetailPage() {
       </div>
 
       {/* Hero */}
-      <section className="relative h-[45vh] min-h-[360px] w-full overflow-hidden sm:h-[52vh] sm:min-h-[430px]">
-        <img
-          src={posterSrc}
-          alt={event.title}
-          className="h-full w-full object-cover"
-          onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#10101d] via-black/28 to-black/5" />
+      <AutoMediaHero
+        images={eventImages}
+        alt={event.title}
+        fallback={PLACEHOLDER}
+        className="h-[45vh] min-h-[360px] w-full sm:h-[52vh] sm:min-h-[430px]"
+        overlayClassName="bg-gradient-to-t from-[#10101d] via-black/28 to-black/5"
+      >
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-md px-5 pb-6 md:max-w-3xl lg:max-w-5xl">
           <div className="max-w-xl">
             <span className="inline-flex rounded-full bg-neon-pink px-3 py-1 text-xs font-black uppercase tracking-wide text-white shadow-neon">
@@ -181,17 +200,16 @@ export default function EventDetailPage() {
             </h1>
           </div>
         </div>
-      </section>
+      </AutoMediaHero>
 
       <div className="relative z-10 mx-auto -mt-5 flex max-w-md flex-col gap-6 px-5 md:max-w-3xl lg:max-w-5xl">
-
         {/* Info grid */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl border border-white/15 bg-white/[0.10] p-4 shadow-[0_12px_38px_rgba(0,0,0,0.24)] backdrop-blur-md">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 flex-col overflow-hidden rounded-xl border border-neon-pink/40 text-center">
                 <div className="bg-neon-pink py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
-                  {eventDate.toLocaleDateString('en-KE', { month: 'short' })}
+                  {formatDateOnly(event.startDate, { month: 'short' })}
                 </div>
                 <div className="flex flex-1 items-center justify-center text-base font-black text-white">
                   {eventDate.getDate()}
@@ -199,11 +217,11 @@ export default function EventDetailPage() {
               </div>
               <div>
                 <p className="font-heading text-sm font-black leading-tight text-white">
-                  {startDt.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  {eventDateLong}
                 </p>
                 <p className="mt-1 font-mono text-xs text-white/75">
-                  {startDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                  {endDt && ` – ${endDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}`}
+                  {eventStartTime}
+                  {eventEndTime && ` – ${eventEndTime}`}
                 </p>
               </div>
             </div>
@@ -431,10 +449,13 @@ export default function EventDetailPage() {
             </div>
           )}
         </section>
+
+        <EventReservationPanel eventId={event.id} menuItems={event.menuItems} />
+
       </div>
 
       {/* Sticky bottom action bar */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-glee-bg/90 px-4 py-3 backdrop-blur-xl">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-glee-bg/90 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-3 md:max-w-3xl lg:max-w-5xl">
           <div className="min-w-0 pr-2">
             <p className="text-xs text-white/45">{selectedItems.length > 0 ? 'Order total' : 'Starting from'}</p>
@@ -454,19 +475,23 @@ export default function EventDetailPage() {
             onClick={() => setCheckoutOpen(true)}
             className="ml-auto h-11 rounded-full bg-neon-pink px-5 font-semibold text-white shadow-neon transition-all hover:bg-neon-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none sm:ml-0 sm:px-7"
           >
-            {!isPurchasable ? 'Unavailable' : selectedItems.length === 0 ? 'Select a Ticket' : 'Buy Tickets'}
+            {!isPurchasable ? 'Unavailable' : selectedItems.length === 0 ? 'Select tickets' : 'Continue to payment'}
           </Button>
         </div>
       </div>
 
       {/* Checkout overlay */}
       {checkoutOpen && (
-        <div
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={e => { if (e.target === e.currentTarget && !isProcessing) setCheckoutOpen(false) }}
-        >
-          <div className="bg-[#0f0f15] border border-white/15 rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto p-8 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <button
+            type="button"
+            aria-label="Close checkout"
+            className="absolute inset-0"
+            disabled={isProcessing}
+            onClick={() => setCheckoutOpen(false)}
+          />
+          <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-[#0f0f15] sm:rounded-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4 sm:px-8">
               <h2 className="font-heading font-bold text-2xl text-white">Complete Your Order</h2>
               <button
                 onClick={() => !isProcessing && setCheckoutOpen(false)}
@@ -476,134 +501,149 @@ export default function EventDetailPage() {
               </button>
             </div>
 
-            {/* Order summary */}
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-4">
-              {/* Event identity row */}
-              <div className="flex items-center gap-3">
-                {(event.flyerPortraitUrl ?? event.flyerSquareUrl) && (
-                  <img
-                    src={event.flyerPortraitUrl ?? event.flyerSquareUrl}
-                    alt={event.title}
-                    className="h-16 w-12 rounded-lg object-cover shrink-0 border border-white/10"
-                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                  />
-                )}
-                <div className="min-w-0">
-                  <p className="font-semibold text-white leading-tight truncate">{event.title}</p>
-                  <p className="text-xs text-white/45 mt-0.5 truncate">
-                    📍 {locationLabel}
-                  </p>
-                  <p className="text-xs text-white/45 font-mono mt-0.5">
-                    {startDt.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                    {' · '}
-                    {startDt.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                  </p>
+            <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-8">
+              {/* Order summary */}
+              <div className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-4">
+                {/* Event identity row */}
+                <div className="flex items-center gap-3">
+                  {eventImages[0] && (
+                    <img
+                      src={eventImages[0]}
+                      alt={event.title}
+                      className="h-16 w-12 rounded-lg object-cover shrink-0 border border-white/10"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white leading-tight truncate">{event.title}</p>
+                    <p className="text-xs text-white/45 mt-0.5 truncate">
+                      📍 {locationLabel}
+                    </p>
+                    <p className="text-xs text-white/45 font-mono mt-0.5">
+                      {eventDateShort}
+                      {' · '}
+                      {eventStartTime}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator className="bg-white/10" />
+
+                {/* Line items */}
+                <div className="flex flex-col gap-2">
+                  {selectedItems.map(({ tier, quantity }) => (
+                    <div key={tier.id} className="flex flex-col gap-0.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/70">{tier.name} × {quantity}</span>
+                        <span className="font-mono text-white">KSh {(tier.price * quantity).toLocaleString()}</span>
+                      </div>
+                      {tier.description && (
+                        <p className="text-xs text-white/35 italic leading-relaxed">{tier.description}</p>
+                      )}
+                    </div>
+                  ))}
+                  {selectedMenuItems.map(({ item, quantity }) => (
+                    <div key={item.id} className="flex items-center justify-between text-sm">
+                      <span className="text-white/70">{item.name} × {quantity}</span>
+                      <span className="font-mono text-white">KSh {(item.price * quantity).toLocaleString()}</span>
+                    </div>
+                  ))}
+                  {tableBooking?.enabled && (
+                    <div className="flex flex-col gap-0.5 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                        <span className="font-mono text-white">KSh {tableBooking.depositAmount.toLocaleString()}</span>
+                      </div>
+                      <p className="text-xs leading-relaxed text-white/35">
+                        {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend KSh {tableBooking.minimumSpend.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <Separator className="bg-white/10" />
+
+                {/* Total */}
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-white">Total</span>
+                  <span className="font-mono font-bold text-neon-pink text-lg">KSh {totalPrice.toLocaleString()}</span>
                 </div>
               </div>
 
-              <Separator className="bg-white/10" />
+              <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
 
-              {/* Line items */}
-              <div className="flex flex-col gap-2">
-                {selectedItems.map(({ tier, quantity }) => (
-                  <div key={tier.id} className="flex flex-col gap-0.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/70">{tier.name} × {quantity}</span>
-                      <span className="font-mono text-white">KSh {(tier.price * quantity).toLocaleString()}</span>
-                    </div>
-                    {tier.description && (
-                      <p className="text-xs text-white/35 italic leading-relaxed">{tier.description}</p>
+              {/* Buyer form */}
+              <Form {...form}>
+                <div className="flex flex-col gap-5">
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white/70">Full Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Jane Doe"
+                            className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
-                ))}
-                {selectedMenuItems.map(({ item, quantity }) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">{item.name} × {quantity}</span>
-                    <span className="font-mono text-white">KSh {(item.price * quantity).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white/70">Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="jane@example.com"
+                            className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white/70">Phone Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder="+254 700 000 000"
+                            className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </Form>
 
-              <Separator className="bg-white/10" />
-
-              {/* Total */}
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">Total</span>
-                <span className="font-mono font-bold text-neon-pink text-lg">KSh {totalPrice.toLocaleString()}</span>
-              </div>
+              <Button
+                onClick={handlePayNow}
+                disabled={isPreparing || isProcessing}
+                className="rounded-full w-full bg-neon-pink hover:bg-neon-hover text-white font-semibold text-base h-12 shadow-neon disabled:opacity-40 transition-all hover:scale-[1.01] active:scale-[0.99]"
+              >
+                {isPreparing
+                  ? 'Preparing payment...'
+                  : isProcessing
+                    ? 'Opening Paystack...'
+                    : 'Continue to payment'}
+              </Button>
+              <p className="text-xs text-white/30 text-center -mt-2">Secured by Paystack</p>
             </div>
-
-            {/* Buyer form */}
-            <Form {...form}>
-              <div className="flex flex-col gap-5">
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/70">Full Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Jane Doe"
-                          className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/70">Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="jane@example.com"
-                          className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white/70">Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="tel"
-                          placeholder="+254 700 000 000"
-                          className="bg-white/5 border-white/15 text-white placeholder:text-white/30 rounded-xl h-12 focus:border-neon-pink"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </Form>
-
-            <Button
-              onClick={handlePayNow}
-              disabled={isPreparing || isProcessing}
-              className="rounded-full w-full bg-neon-pink hover:bg-neon-hover text-white font-semibold text-base h-12 shadow-neon disabled:opacity-40 transition-all hover:scale-[1.01] active:scale-[0.99]"
-            >
-              {isPreparing
-                ? 'Preparing payment…'
-                : isProcessing
-                  ? 'Opening Paystack…'
-                  : 'Proceed to Pay'}
-            </Button>
-            <p className="text-xs text-white/30 text-center -mt-2">Secured by Paystack</p>
           </div>
         </div>
       )}
@@ -611,41 +651,6 @@ export default function EventDetailPage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/10 mt-4 py-12 px-8">
         <div className="max-w-6xl mx-auto flex flex-col items-center gap-8">
-
-          {/* Social icons — brand colours */}
-          <div className="flex items-center gap-4">
-            {/* Instagram — gradient purple→pink */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram"
-              className="group w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-              style={{ background: 'linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" className="w-5 h-5">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                <circle cx="12" cy="12" r="4" />
-                <circle cx="17.5" cy="6.5" r="0.8" fill="white" stroke="none" />
-              </svg>
-            </a>
-            {/* X / Twitter — black */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="X"
-              className="group w-11 h-11 rounded-full bg-black border border-white/20 flex items-center justify-center transition-all hover:scale-110 hover:border-white/50 active:scale-95">
-              <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-            </a>
-            {/* Facebook — blue */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook"
-              className="group w-11 h-11 rounded-full bg-[#1877F2] flex items-center justify-center transition-all hover:scale-110 hover:bg-[#0e65d9] active:scale-95">
-              <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-            </a>
-            {/* TikTok — white on black */}
-            <a href="#" target="_blank" rel="noopener noreferrer" aria-label="TikTok"
-              className="group w-11 h-11 rounded-full bg-black border border-white/20 flex items-center justify-center transition-all hover:scale-110 hover:border-white/50 active:scale-95">
-              <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
-                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.2 8.2 0 004.79 1.54V6.78a4.85 4.85 0 01-1.02-.09z" />
-              </svg>
-            </a>
-          </div>
 
           {/* Legal links */}
           <div className="flex flex-wrap gap-x-8 gap-y-2 justify-center">

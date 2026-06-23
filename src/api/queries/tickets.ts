@@ -1,6 +1,25 @@
 import { apiFetch } from '../client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+export interface TicketTableBookingPayload {
+  eventSlotId: string
+  tableCategory: string
+  guestCount: number
+}
+
+export interface EventTicketTableBooking {
+  id: string
+  reference?: string | null
+  eventSlotId?: string | null
+  tableCategory: string
+  guestCount: number
+  depositAmount: string | number
+  minimumSpend: string | number
+  status: string
+  startDateTime?: string | null
+  endDateTime?: string | null
+}
+
 export interface InitiateGuestPurchaseParams {
   eventId: string
   ticketCategoryId?: string
@@ -9,6 +28,7 @@ export interface InitiateGuestPurchaseParams {
   guestEmail: string
   guestPhone: string
   menuItems?: { id: string; quantity: number }[]
+  tableBooking?: TicketTableBookingPayload
   callbackUrl?: string
 }
 
@@ -44,6 +64,7 @@ export interface PurchaseTicketParams {
   ticketCategoryId?: string
   noOfTickets: number
   preOrderMenu?: { id: string; quantity: number }[]
+  tableBooking?: TicketTableBookingPayload
   useWallet?: boolean
   walletPaymentType?: 'FULL' | 'INSTALLMENT'
   installmentCount?: number
@@ -93,6 +114,8 @@ export interface AdminEventTicket {
   guestName?: string | null
   guestEmail?: string | null
   guestPhone?: string | null
+  tableBooking?: EventTicketTableBooking | null
+  reservation?: EventTicketTableBooking | null
   user: {
     id?: string
     name?: string | null

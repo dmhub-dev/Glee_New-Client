@@ -37,7 +37,9 @@ export function SlidePanel({ open, onClose, title, children, width = 'sm:max-w-l
   return (
     <>
       {/* Backdrop */}
-      <div
+      <button
+        type="button"
+        aria-label="Close panel"
         onClick={onClose}
         className={cn(
           'fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300',

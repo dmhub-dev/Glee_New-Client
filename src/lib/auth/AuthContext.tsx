@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import type { AuthUser } from '../../api'
-import { apiLogin, apiLogout, apiMe, apiVerifyLoginTwoFactor } from '../../api'
+import { apiLogin, apiLogout, apiMe, apiRefreshSession, apiVerifyLoginTwoFactor } from '../../api'
 import { ALL_USER_ROLES } from '../../types'
 import { tokens } from '../../utils'
 
@@ -35,19 +35,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // On mount: verify stored token, hydrate user
+  // On mount: refresh from the httpOnly cookie, then hydrate the user.
   useEffect(() => {
-    if (!tokens.getAccess()) {
-      setIsLoading(false)
-      return
-    }
-    apiMe()
-      .then(me => {
+    let cancelled = false
+
+    async function hydrateSession() {
+      try {
+        const accessToken = tokens.getAccess() ?? await apiRefreshSession()
+        if (!accessToken) {
+          tokens.clear()
+          setUser(null)
+          return
+        }
+        const me = await apiMe()
+        if (cancelled) return
         if (AUTH_ROLES.has(me.role)) setUser(me)
         else tokens.clear()
-      })
-      .catch(() => tokens.clear())
-      .finally(() => setIsLoading(false))
+      } catch {
+        tokens.clear()
+        setUser(null)
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    hydrateSession()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
@@ -62,23 +78,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('Access denied — your account does not have access.')
     }
     tokens.setAccess(result.accessToken)
-    tokens.setRefresh(result.refreshToken)
     setUser(result.user)
     return { requiresTwoFactor: false, role: result.user.role, passwordChangeRequired: result.user.passwordChangeRequired }
   }, [])
 
   const verifyTwoFactor = useCallback(async (email: string, otp: string) => {
-    const { accessToken, refreshToken, user: me } = await apiVerifyLoginTwoFactor(email, otp)
+    const { accessToken, user: me } = await apiVerifyLoginTwoFactor(email, otp)
     if (!AUTH_ROLES.has(me.role)) {
       throw new Error('Access denied — your account does not have access.')
     }
     tokens.setAccess(accessToken)
-    tokens.setRefresh(refreshToken)
     setUser(me)
     return { role: me.role, passwordChangeRequired: me.passwordChangeRequired }
   }, [])
 
   const refreshUser = useCallback(async () => {
+    if (!tokens.getAccess()) {
+      const accessToken = await apiRefreshSession()
+      if (!accessToken) {
+        tokens.clear()
+        setUser(null)
+        return null
+      }
+    }
     const me = await apiMe()
     if (AUTH_ROLES.has(me.role)) {
       setUser(me)

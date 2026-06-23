@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { UserRole } from '../../types'
-import { apiFetch } from '../client'
+import { ApiError, apiFetch } from '../client'
 
 export interface ProfileData {
   id: string
@@ -13,6 +13,7 @@ export interface ProfileData {
   address?: string
   profileStatus?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -30,6 +31,7 @@ interface BackendMeUser {
   address?: string | null
   profileStatus?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -61,6 +63,7 @@ export interface SecurityInfo {
   lastLoginIp: string | null
   activeSessions: ActiveSession[]
   passwordChangeRequired: boolean
+  passwordRotationEnabled: boolean
   passwordRotationDays: number
   passwordChangedAt: string | null
   passwordExpiresAt: string | null
@@ -73,10 +76,54 @@ export interface NotificationPreferences {
   weeklyReport: boolean
 }
 
+const NOTIFICATION_PREFS_KEY = 'glee-notification-preferences'
+const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  bookingAlerts: true,
+  eventAlerts: true,
+  systemAlerts: true,
+  weeklyReport: false,
+}
+
 export const profileKeys = {
   me:            ['profile', 'me']            as const,
   security:      ['profile', 'security']      as const,
   notifications: ['profile', 'notifications'] as const,
+}
+
+function isMissingEndpoint(error: unknown) {
+  return error instanceof ApiError && error.status === 404
+}
+
+function normalizeNotificationPreferences(value?: Partial<NotificationPreferences> | null): NotificationPreferences {
+  return {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    ...(value ?? {}),
+  }
+}
+
+function readLocalNotificationPreferences(): NotificationPreferences {
+  try {
+    const raw = localStorage.getItem(NOTIFICATION_PREFS_KEY)
+    if (!raw) return DEFAULT_NOTIFICATION_PREFERENCES
+    return normalizeNotificationPreferences(JSON.parse(raw) as Partial<NotificationPreferences>)
+  } catch {
+    return DEFAULT_NOTIFICATION_PREFERENCES
+  }
+}
+
+function writeLocalNotificationPreferences(value: NotificationPreferences) {
+  try {
+    localStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(value))
+  } catch {
+    // Preferences still update in memory through the query cache even if storage is unavailable.
+  }
+}
+
+function unwrapData<T>(value: T | { data?: T }): T {
+  if (value && typeof value === 'object' && 'data' in value && value.data !== undefined) {
+    return value.data as T
+  }
+  return value as T
 }
 
 export function getProfile(): Promise<ProfileData> {
@@ -94,6 +141,7 @@ export function getProfile(): Promise<ProfileData> {
       address: r.data.address ?? '',
       profileStatus: r.data.profileStatus ?? true,
       passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+      passwordRotationEnabled: r.data.passwordRotationEnabled ?? false,
       passwordRotationDays: r.data.passwordRotationDays ?? 30,
       passwordChangedAt: r.data.passwordChangedAt ?? null,
       passwordExpiresAt: r.data.passwordExpiresAt ?? null,
@@ -125,16 +173,32 @@ export function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
 }
 
 export function getSecurityInfo(): Promise<SecurityInfo> {
-  return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me').then(r => ({
-    twoFactorEnabled: r.data.twoFactorEnabled ?? false,
-    lastLoginAt: r.data.lastLoginAt ?? null,
-    lastLoginIp: null,
-    activeSessions: [],
-    passwordChangeRequired: r.data.passwordChangeRequired ?? false,
-    passwordRotationDays: r.data.passwordRotationDays ?? 30,
-    passwordChangedAt: r.data.passwordChangedAt ?? null,
-    passwordExpiresAt: r.data.passwordExpiresAt ?? null,
-  }))
+  return apiFetch<{ success: boolean; data: Partial<SecurityInfo> }>('/api/v1/profile/me/security')
+    .then(r => ({
+      twoFactorEnabled: r.data.twoFactorEnabled ?? false,
+      lastLoginAt: r.data.lastLoginAt ?? null,
+      lastLoginIp: r.data.lastLoginIp ?? null,
+      activeSessions: r.data.activeSessions ?? [],
+      passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+      passwordRotationEnabled: r.data.passwordRotationEnabled ?? false,
+      passwordRotationDays: r.data.passwordRotationDays ?? 30,
+      passwordChangedAt: r.data.passwordChangedAt ?? null,
+      passwordExpiresAt: r.data.passwordExpiresAt ?? null,
+    }))
+    .catch(error => {
+      if (!isMissingEndpoint(error)) throw error
+      return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me').then(r => ({
+        twoFactorEnabled: r.data.twoFactorEnabled ?? false,
+        lastLoginAt: r.data.lastLoginAt ?? null,
+        lastLoginIp: null,
+        activeSessions: [],
+        passwordChangeRequired: r.data.passwordChangeRequired ?? false,
+        passwordRotationEnabled: r.data.passwordRotationEnabled ?? false,
+        passwordRotationDays: r.data.passwordRotationDays ?? 30,
+        passwordChangedAt: r.data.passwordChangedAt ?? null,
+        passwordExpiresAt: r.data.passwordExpiresAt ?? null,
+      }))
+    })
 }
 
 export function enableTwoFactor(): Promise<void> {
@@ -151,10 +215,16 @@ export function disableTwoFactor(): Promise<void> {
   })
 }
 
-export function updatePasswordRotationDays(days: number): Promise<SecurityInfo> {
+export type PasswordRotationDays = 7 | 14 | 30 | 45 | 60
+
+export type UpdatePasswordRotationPreferenceDto =
+  | { enabled: true; days: PasswordRotationDays }
+  | { enabled: false; days?: never }
+
+export function updatePasswordRotationPreference(dto: UpdatePasswordRotationPreferenceDto): Promise<SecurityInfo> {
   return apiFetch<{ success: boolean; data: BackendMeUser }>('/api/v1/me/password-rotation', {
     method: 'PATCH',
-    body: JSON.stringify({ days }),
+    body: JSON.stringify(dto),
   }).then(() => getSecurityInfo())
 }
 
@@ -167,16 +237,31 @@ export function revokeAllOtherSessions(): Promise<void> {
 }
 
 export function getNotificationPreferences(): Promise<NotificationPreferences> {
-  return Promise.resolve({
-    bookingAlerts: true,
-    eventAlerts: true,
-    systemAlerts: true,
-    weeklyReport: false,
-  })
+  return apiFetch<{ success?: boolean; data?: Partial<NotificationPreferences> } | Partial<NotificationPreferences>>('/api/v1/profile/me/notifications')
+    .then(raw => normalizeNotificationPreferences(unwrapData(raw)))
+    .catch(error => {
+      if (!isMissingEndpoint(error)) throw error
+      return readLocalNotificationPreferences()
+    })
 }
 
 export function updateNotificationPreferences(dto: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
-  return getNotificationPreferences().then(current => ({ ...current, ...dto }))
+  return apiFetch<{ success?: boolean; data?: Partial<NotificationPreferences> } | Partial<NotificationPreferences>>('/api/v1/profile/me/notifications', {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  })
+    .then(raw => {
+      if (raw == null) {
+        return getNotificationPreferences().then(current => normalizeNotificationPreferences({ ...current, ...dto }))
+      }
+      return normalizeNotificationPreferences(unwrapData(raw))
+    })
+    .catch(error => {
+      if (!isMissingEndpoint(error)) throw error
+      const next = normalizeNotificationPreferences({ ...readLocalNotificationPreferences(), ...dto })
+      writeLocalNotificationPreferences(next)
+      return next
+    })
 }
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
@@ -217,10 +302,10 @@ export function useToggle2FA() {
   })
 }
 
-export function useUpdatePasswordRotationDays() {
+export function useUpdatePasswordRotationPreference() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (days: number) => updatePasswordRotationDays(days),
+    mutationFn: (dto: UpdatePasswordRotationPreferenceDto) => updatePasswordRotationPreference(dto),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: profileKeys.security })
       qc.invalidateQueries({ queryKey: profileKeys.me })

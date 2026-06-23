@@ -1,11 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useEvent, useEventCheckoutSettings, usePurchaseTicket, useWallet, ticketCheckoutContextStorageKey, ticketVerificationStorageKey } from '@glee/api'
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, useToast } from '@glee/ui'
+import { formatDateOnly, formatTimeOnly, splitBackendDateTime } from '@glee/utils'
 import { Calendar, CheckCircle2, MapPin, Share2, ShoppingBag, Ticket } from 'lucide-react'
 import CustomerLayout from '../CustomerLayout'
+import EventCheckoutTableBooking from '../../components/events/EventCheckoutTableBooking'
+import EventReservationPanel from './EventReservationPanel'
+import {
+  combinedCheckoutTotal,
+  selectedTableBookingPayload,
+  tableBookingDeposit,
+  type CheckoutTableBookingSelection,
+} from '../../components/events/eventCheckoutTableBookingUtils'
+import { AutoMediaHero, normalizeMediaImages } from '../../components/media/MediaGallery'
 
-const PLACEHOLDER = 'https://placehold.co/900x1200/141419/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 type FeeType = 'PERCENTAGE' | 'FIXED'
 
 function money(value: number) {
@@ -13,13 +23,10 @@ function money(value: number) {
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('en-KE', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const { date, time } = splitBackendDateTime(value)
+  const dateLabel = formatDateOnly(date, { weekday: 'short', day: 'numeric', month: 'short' })
+  const timeLabel = formatTimeOnly(time, { hour: '2-digit', minute: '2-digit' })
+  return [dateLabel, timeLabel].filter(Boolean).join(', ')
 }
 
 function formatDate(value: Date) {
@@ -52,6 +59,7 @@ function formatSettingLabel(type: FeeType, percent: number, amount: number) {
 function buildInstallmentPlan(
   ticketTotal: number,
   menuTotal: number,
+  tableDeposit: number,
   eventStartDate: string | undefined,
   count: number,
   depositType: FeeType,
@@ -65,8 +73,8 @@ function buildInstallmentPlan(
   if (!finalDueDate) return null
   const deposit = calculateFee(ticketTotal, depositType, depositPercent, depositAmount, true)
   const securityFee = calculateFee(ticketTotal, securityFeeType, securityFeePercent, securityFeeAmount)
-  const dueNow = Math.round((deposit + menuTotal + securityFee) * 100) / 100
-  const remaining = Math.round((ticketTotal + menuTotal - deposit) * 100) / 100
+  const dueNow = Math.round((deposit + menuTotal + tableDeposit + securityFee) * 100) / 100
+  const remaining = Math.round((ticketTotal - deposit) * 100) / 100
   const baseAmount = Math.round((remaining / count) * 100) / 100
   const today = new Date()
   const days = Math.max(1, Math.floor((finalDueDate.getTime() - today.getTime()) / 86400000))
@@ -104,6 +112,11 @@ export default function CustomerEventDetailPage() {
   const [installmentCount, setInstallmentCount] = useState(2)
   const [aboutExpanded, setAboutExpanded] = useState(false)
   const [showMenuAddons, setShowMenuAddons] = useState(false)
+  const [tableBooking, setTableBooking] = useState<CheckoutTableBookingSelection | null>(null)
+
+  useEffect(() => {
+    setTableBooking(null)
+  }, [eventId])
 
   // Get active wave tiers (fallback to ticketTiers if no waves defined)
   const activeWaveTiers = useMemo(() => {
@@ -133,7 +146,9 @@ export default function CustomerEventDetailPage() {
     [activeWaveTiers, tierQtys],
   )
   const menuTotal = selectedMenu.reduce((sum, row) => sum + row.item.price * row.quantity, 0)
-  const total = ticketTotal + menuTotal
+  const tableDeposit = tableBookingDeposit(tableBooking)
+  const total = combinedCheckoutTotal({ ticketTotal, menuTotal, tableBooking })
+  const tableBookingPayload = selectedTableBookingPayload(tableBooking)
   const depositType = checkoutSettings?.walletInstallmentDepositType ?? 'PERCENTAGE'
   const depositPercent = checkoutSettings?.walletInstallmentDepositPercent ?? 30
   const depositAmount = checkoutSettings?.walletInstallmentDepositAmount ?? 0
@@ -152,6 +167,7 @@ export default function CustomerEventDetailPage() {
     () => buildInstallmentPlan(
       ticketTotal,
       menuTotal,
+      tableDeposit,
       event?.startDate,
       installmentCount,
       depositType,
@@ -161,13 +177,13 @@ export default function CustomerEventDetailPage() {
       securityFeePercent,
       securityFeeAmount,
     ),
-    [ticketTotal, menuTotal, event?.startDate, installmentCount, depositType, depositPercent, depositAmount, securityFeeType, securityFeePercent, securityFeeAmount],
+    [ticketTotal, menuTotal, tableDeposit, event?.startDate, installmentCount, depositType, depositPercent, depositAmount, securityFeeType, securityFeePercent, securityFeeAmount],
   )
   const walletMinimumDue = walletPaymentType === 'INSTALLMENT' && selectedInstallmentPlan ? selectedInstallmentPlan.dueNow : total
   const walletCanPayFull = walletBalance >= total
   const installmentDueNow = selectedInstallmentPlan?.dueNow ?? 0
   const walletCanStartInstallment = installmentOptions.length > 0 && (!selectedInstallmentPlan || walletBalance >= selectedInstallmentPlan.dueNow)
-  const posterSrc = event?.flyerPortraitUrl ?? event?.flyerSquareUrl ?? PLACEHOLDER
+  const eventImages = normalizeMediaImages(event?.images ?? [event?.flyerPortraitUrl, event?.flyerSquareUrl], PLACEHOLDER)
   const isSoldOut = event?.status === 'sold_out' || Boolean(activeWaveTiers.length && activeWaveTiers.every(tier => tier.quantityRemaining <= 0))
   const selectedTierSoldOut = !selectedTier || selectedTier.quantityRemaining <= 0
   const anyTierSelected = Object.values(tierQtys).some(q => q > 0)
@@ -187,6 +203,7 @@ export default function CustomerEventDetailPage() {
         ticketCategoryId: selectedTier.id,
         noOfTickets: quantity,
         preOrderMenu: selectedMenu.length ? selectedMenu.map(({ item, quantity }) => ({ id: item.id, quantity })) : undefined,
+        tableBooking: tableBookingPayload,
         useWallet,
         walletPaymentType: useWallet ? paymentType : undefined,
         installmentCount: paymentType === 'INSTALLMENT' ? installmentCount : undefined,
@@ -262,15 +279,13 @@ export default function CustomerEventDetailPage() {
           </button>
         </div>
 
-        <section className="relative h-[46vh] min-h-[360px] overflow-hidden">
-          <img
-            src={posterSrc}
-            alt={event.title}
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={e => { (e.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050017] via-[#050017]/35 to-black/20" />
-        </section>
+        <AutoMediaHero
+          images={eventImages}
+          alt={event.title}
+          fallback={PLACEHOLDER}
+          className="h-[46vh] min-h-[360px]"
+          overlayClassName="bg-gradient-to-t from-[#050017] via-[#050017]/35 to-black/20"
+        />
 
         <div className="relative z-10 mx-auto -mt-16 w-full max-w-7xl space-y-5 px-4 lg:px-8">
           <section className="space-y-4">
@@ -346,8 +361,16 @@ export default function CustomerEventDetailPage() {
                   return (
                     <div
                       key={tier.id}
+                      role="button"
+                      tabIndex={soldOut ? -1 : 0}
+                      aria-disabled={soldOut}
                       onClick={() => {
                         if (soldOut) return
+                        if (qty === 0) setTierQtys(prev => ({ ...prev, [tier.id]: 1 }))
+                      }}
+                      onKeyDown={event => {
+                        if (soldOut || (event.key !== 'Enter' && event.key !== ' ')) return
+                        event.preventDefault()
                         if (qty === 0) setTierQtys(prev => ({ ...prev, [tier.id]: 1 }))
                       }}
                       className={[
@@ -373,7 +396,7 @@ export default function CustomerEventDetailPage() {
                       )}
                       <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-auto">
                         <p className="font-mono font-bold text-white">{money(tier.price)}</p>
-                        <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
                             disabled={qty <= 0 || soldOut}
@@ -419,6 +442,10 @@ export default function CustomerEventDetailPage() {
                 </button>
               )}
             </section>
+
+            <EventCheckoutTableBooking eventId={event.id} value={tableBooking} onChange={setTableBooking} />
+
+            <EventReservationPanel eventId={event.id} menuItems={event.menuItems} />
 
             {/* Menu add-on items — public style */}
             {showMenuAddons && (event.menuItems ?? []).length > 0 && (
@@ -522,7 +549,7 @@ export default function CustomerEventDetailPage() {
             </Tabs>
           </div>
 
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050017]/88 px-4 py-3 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050017]/88 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl">
             <div className="mx-auto flex max-w-7xl items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">Order total</p>
@@ -534,7 +561,7 @@ export default function CustomerEventDetailPage() {
                 className="h-12 rounded-full bg-neon-pink px-6 text-white hover:bg-neon-pink/90 disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 disabled:opacity-100 disabled:shadow-none"
               >
                 <Ticket className="mr-2 h-4 w-4" />
-                {canPurchase ? 'Pay Now' : isSoldOut ? 'Sold Out' : 'Select a Ticket'}
+                {canPurchase ? 'Continue to payment' : isSoldOut ? 'Sold out' : 'Select tickets'}
               </Button>
             </div>
           </div>
@@ -566,7 +593,7 @@ export default function CustomerEventDetailPage() {
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
         <DialogContent className="mx-auto max-h-[90vh] max-w-sm overflow-y-auto rounded-3xl border-white/15 bg-[#050017] text-white">
           <DialogHeader>
-            <DialogTitle className="text-white">Choose Payment</DialogTitle>
+            <DialogTitle className="text-white">Choose payment</DialogTitle>
             <DialogDescription className="text-white/60">
               Pick how you want to pay for this order.
             </DialogDescription>
@@ -583,6 +610,18 @@ export default function CustomerEventDetailPage() {
                 <p className="mt-1 font-heading text-xl font-black text-neon-pink">{money(total)}</p>
               </div>
             </div>
+
+            {tableBooking?.enabled && (
+              <div className="rounded-2xl border border-neon-pink/20 bg-neon-pink/[0.08] p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                  <span className="font-mono font-semibold text-white">{money(tableDeposit)} due now</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-white/45">
+                  {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend {money(tableBooking.minimumSpend)}
+                </p>
+              </div>
+            )}
 
             {!walletCanPayFull && (
               <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
@@ -601,7 +640,7 @@ export default function CustomerEventDetailPage() {
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-white">Pay with Wallet</p>
+                  <p className="font-semibold text-white">Pay with wallet</p>
                   <p className="mt-1 text-sm text-white/55">{walletCanPayFull ? `Deduct ${money(total)} from wallet.` : `Need ${money(total - walletBalance)} more.`}</p>
                 </div>
                 <WalletBadge enabled={walletCanPayFull} />
@@ -619,7 +658,7 @@ export default function CustomerEventDetailPage() {
               }}
               className="w-full rounded-2xl border border-white/10 bg-white/[0.07] p-4 text-left transition hover:border-neon-pink/40 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-45"
             >
-              <p className="font-semibold text-white">Pay in Installments</p>
+              <p className="font-semibold text-white">Pay in installments</p>
               <p className="mt-1 text-sm text-white/55">
                 {installmentOptions.length ? `Reserve now from ${money(installmentDueNow)} due today.` : 'Installments are closed for this event.'}
               </p>
@@ -631,7 +670,7 @@ export default function CustomerEventDetailPage() {
               onClick={() => handlePurchase(false)}
               className="w-full rounded-2xl border border-neon-pink/30 bg-neon-pink p-4 text-left text-white transition hover:bg-neon-pink/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <p className="font-semibold">Pay Directly</p>
+              <p className="font-semibold">Pay directly</p>
               <p className="mt-1 text-sm text-white/75">Use card, M-Pesa, or checkout payment page.</p>
             </button>
           </div>
@@ -657,6 +696,17 @@ export default function CustomerEventDetailPage() {
                 <span className="text-white/55">Order total</span>
                 <span className="font-mono font-semibold text-neon-pink">{money(total)}</span>
               </div>
+              {tableBooking?.enabled && (
+                <div className="mt-3 rounded-xl border border-neon-pink/20 bg-neon-pink/[0.08] p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                    <span className="font-mono font-semibold text-white">{money(tableDeposit)} due now</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-white/45">
+                    {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend {money(tableBooking.minimumSpend)}
+                  </p>
+                </div>
+              )}
               <div className="mt-3 border-t border-white/10 pt-3 flex items-center justify-between text-sm">
                 <span className="text-white/55">Wallet after payment</span>
                 <span className="font-mono font-semibold text-white">{money(walletBalance - total)}</span>
@@ -668,7 +718,7 @@ export default function CustomerEventDetailPage() {
                 Cancel
               </Button>
               <Button disabled={!canPurchase || purchase.isPending || !walletCanPayFull} onClick={() => handlePurchase(true, 'FULL')} className="rounded-full bg-neon-pink text-white hover:bg-neon-pink/90">
-                {purchase.isPending ? 'Processing...' : 'Confirm Pay'}
+                {purchase.isPending ? 'Processing...' : 'Confirm payment'}
               </Button>
             </div>
           </div>
@@ -678,7 +728,7 @@ export default function CustomerEventDetailPage() {
       <Dialog open={installmentModalOpen} onOpenChange={setInstallmentModalOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto border-white/15 bg-[#151523] text-white sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Pay in Installments</DialogTitle>
+            <DialogTitle className="text-white">Pay in installments</DialogTitle>
             <DialogDescription className="text-white/60">
               Reserve your ticket now, then complete the remaining payments before the event.
             </DialogDescription>
@@ -700,13 +750,25 @@ export default function CustomerEventDetailPage() {
               </div>
             </div>
 
+            {tableBooking?.enabled && (
+              <div className="rounded-xl border border-neon-pink/20 bg-neon-pink/[0.08] p-4 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-white/70">Table booking · {tableBooking.tableCategory}</span>
+                  <span className="font-mono font-semibold text-white">{money(tableDeposit)} due now</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-white/45">
+                  {tableBooking.guestCount} guest{tableBooking.guestCount === 1 ? '' : 's'} · Minimum spend {money(tableBooking.minimumSpend)}
+                </p>
+              </div>
+            )}
+
             <div className="rounded-xl border border-neon-pink/25 bg-neon-pink/10 p-4">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-neon-pink" />
                 <p className="font-semibold text-white">Installment reservation</p>
               </div>
               <p className="mt-2 text-sm text-white/60">
-                Reserve with {formatSettingLabel(depositType, depositPercent, depositAmount)} of ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{(securityFeeType === 'FIXED' ? securityFeeAmount > 0 : securityFeePercent > 0) ? ` and a ${formatSettingLabel(securityFeeType, securityFeePercent, securityFeeAmount)} security fee` : ''}.
+                Reserve with {formatSettingLabel(depositType, depositPercent, depositAmount)} of ticket price now{menuTotal > 0 ? ' plus selected menu items' : ''}{tableDeposit > 0 ? ' plus table booking deposit' : ''}{(securityFeeType === 'FIXED' ? securityFeeAmount > 0 : securityFeePercent > 0) ? ` and a ${formatSettingLabel(securityFeeType, securityFeePercent, securityFeeAmount)} security fee` : ''}.
               </p>
             </div>
 
@@ -727,7 +789,7 @@ export default function CustomerEventDetailPage() {
                   </Badge>
                 </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <div className={tableDeposit > 0 ? 'mt-4 grid gap-2 sm:grid-cols-4' : 'mt-4 grid gap-2 sm:grid-cols-3'}>
                   <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                     <p className="text-xs text-white/40">Deposit</p>
                     <p className="mt-1 font-mono text-sm font-semibold text-white">{money(selectedInstallmentPlan.deposit)}</p>
@@ -736,6 +798,12 @@ export default function CustomerEventDetailPage() {
                     <p className="text-xs text-white/40">Menu now</p>
                     <p className="mt-1 font-mono text-sm font-semibold text-white">{money(menuTotal)}</p>
                   </div>
+                  {tableDeposit > 0 && (
+                    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs text-white/40">Table booking</p>
+                      <p className="mt-1 font-mono text-sm font-semibold text-white">{money(tableDeposit)}</p>
+                    </div>
+                  )}
                   <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                     <p className="text-xs text-white/40">Security fee</p>
                     <p className="mt-1 font-mono text-sm font-semibold text-white">{money(selectedInstallmentPlan.securityFee)}</p>
@@ -747,6 +815,7 @@ export default function CustomerEventDetailPage() {
                     const plan = buildInstallmentPlan(
                       ticketTotal,
                       menuTotal,
+                      tableDeposit,
                       event?.startDate,
                       option,
                       depositType,
@@ -808,7 +877,7 @@ export default function CustomerEventDetailPage() {
                 onClick={() => handlePurchase(true, 'INSTALLMENT')}
                 className="bg-neon-pink text-white hover:bg-neon-pink/90 disabled:opacity-50"
               >
-                {purchase.isPending ? 'Processing...' : 'Confirm Reservation'}
+                {purchase.isPending ? 'Processing...' : 'Confirm reservation'}
               </Button>
             </div>
           </div>

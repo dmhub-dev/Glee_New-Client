@@ -1,5 +1,5 @@
 import type { UserRole } from '../../types'
-import { apiFetch } from '../client'
+import { apiFetch, refreshAccessToken } from '../client'
 
 export interface AuthUser {
   id: string
@@ -10,6 +10,7 @@ export interface AuthUser {
   profileStatus?: boolean
   twoFactorEnabled?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -17,7 +18,6 @@ export interface AuthUser {
 
 export interface LoginResponse {
   accessToken: string
-  refreshToken: string
   user: AuthUser
 }
 
@@ -55,6 +55,7 @@ interface BackendUser {
   twoFactorEnabled?: boolean
   profileStatus?: boolean
   passwordChangeRequired?: boolean
+  passwordRotationEnabled?: boolean
   passwordRotationDays?: number
   passwordChangedAt?: string | null
   passwordExpiresAt?: string | null
@@ -70,7 +71,6 @@ interface BackendLoginResponse {
   }
   user: BackendUser
   accessToken: string
-  refreshToken: string
 }
 
 interface BackendMeResponse {
@@ -89,6 +89,7 @@ function toAuthUser(raw: BackendUser): AuthUser {
     profileStatus: raw.profileStatus ?? true,
     twoFactorEnabled: raw.twoFactorEnabled ?? false,
     passwordChangeRequired: raw.passwordChangeRequired ?? false,
+    passwordRotationEnabled: raw.passwordRotationEnabled ?? false,
     passwordRotationDays: raw.passwordRotationDays,
     passwordChangedAt: raw.passwordChangedAt ?? null,
     passwordExpiresAt: raw.passwordExpiresAt ?? null,
@@ -111,7 +112,6 @@ export function apiLogin(email: string, password: string): Promise<LoginResult> 
     }
     return {
       accessToken: raw.accessToken,
-      refreshToken: raw.refreshToken,
       user: toAuthUser(raw.user),
     }
   })
@@ -124,7 +124,6 @@ export function apiVerifyLoginTwoFactor(email: string, otp: string): Promise<Log
     skipAuth: true,
   }).then(raw => ({
     accessToken: raw.accessToken,
-    refreshToken: raw.refreshToken,
     user: toAuthUser(raw.user),
   }))
 }
@@ -189,7 +188,13 @@ export function apiAcceptInvitation(token: string, password: string): Promise<vo
 }
 
 export function apiLogout(): Promise<void> {
-  return Promise.resolve()
+  return apiFetch<void>('/api/v1/logout', {
+    method: 'POST',
+  })
+}
+
+export function apiRefreshSession(): Promise<string | null> {
+  return refreshAccessToken()
 }
 
 export function apiMe(): Promise<AuthUser> {

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Event, EventMenuItem, EventSchedule } from '../../types'
+import { splitBackendDateTime } from '../../utils'
 import { apiFetch } from '../client'
 
 // ── Backend shapes ─────────────────────────────────────────────────────────────
@@ -103,14 +104,26 @@ const WAVE_STATUS_TO_CLIENT: Record<string, 'upcoming' | 'active' | 'completed' 
 
 // ── Mapper ─────────────────────────────────────────────────────────────────────
 
+function normalizeEventImages(images: Array<string | null | undefined> = []) {
+  const seen = new Set<string>()
+  return images
+    .map(image => image?.trim())
+    .filter((image): image is string => Boolean(image))
+    .filter(image => {
+      if (seen.has(image)) return false
+      seen.add(image)
+      return true
+    })
+}
+
 function mapBackendToEvent(raw: BackendEvent): Event {
-  const start    = raw.startDate ? new Date(raw.startDate) : null
-  const end      = raw.endDate   ? new Date(raw.endDate)   : null
+  const start = splitBackendDateTime(raw.startDate)
+  const end   = splitBackendDateTime(raw.endDate)
   const locationStr = (raw.location?.name
     ?? raw.locationName
     ?? [raw.city, raw.state, raw.country].filter(Boolean).join(', '))
     || undefined
-  const photos = raw.photos ?? raw.bannerImages ?? []
+  const photos = normalizeEventImages(raw.photos?.length ? raw.photos : raw.bannerImages)
 
   const mapTicketCategory = (tc: BackendTicketCategory, wave?: BackendTicketWave) => ({
         id:                tc.id,
@@ -152,10 +165,10 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     venueId:          locationStr ?? raw.location?.id ?? '',
     title:            raw.name,
     description:      raw.description ?? '',
-    startDate:        start ? start.toISOString().split('T')[0] : '',
-    endDate:          end   ? end.toISOString().split('T')[0]   : (start ? start.toISOString().split('T')[0] : ''),
-    startTime:        start ? start.toTimeString().slice(0, 5) : '',
-    endTime:          end   ? end.toTimeString().slice(0, 5)   : undefined,
+    startDate:        start.date,
+    endDate:          end.date || start.date,
+    startTime:        start.time,
+    endTime:          end.time || undefined,
     ticketTiers,
     menuItems: raw.menuItems?.map((m): EventMenuItem => ({
       id:          m.id,
@@ -173,6 +186,7 @@ function mapBackendToEvent(raw: BackendEvent): Event {
     })) ?? [],
     flyerSquareUrl:   photos[0] ?? undefined,
     flyerPortraitUrl: photos[1] ?? photos[0] ?? undefined,
+    images:           photos,
     status:           BACKEND_TO_STATUS[raw.status] ?? 'draft',
     ticketWaves,
     activeTicketWave,
@@ -235,6 +249,35 @@ export interface EventApiPayload {
     endTime: string
   }>
   posterFiles?: File[]
+}
+
+export type EventAttendeeUpdateChannel = 'EMAIL' | 'SMS'
+
+export interface SendEventAttendeeUpdatePayload {
+  channels: EventAttendeeUpdateChannel[]
+  subject?: string
+  message: string
+}
+
+export interface EventAttendeeUpdateSummary {
+  totalTickets: number
+  uniqueRecipients: number
+  email: {
+    attempted: number
+    sent: number
+    skipped: number
+    failed: number
+  }
+  sms: {
+    provider: string
+    enabled: boolean
+    configured: boolean
+    attempted: number
+    sent: number
+    skipped: number
+    failed: number
+    error?: string
+  }
 }
 
 function combineDateTime(date: string, time?: string) {
@@ -437,6 +480,18 @@ export async function endAdminEvent(id: string): Promise<Event> {
   return mapBackendToEvent(res.data)
 }
 
+export async function sendEventAttendeeUpdate(
+  id: string,
+  payload: SendEventAttendeeUpdatePayload,
+  vendorScoped = false,
+): Promise<EventAttendeeUpdateSummary> {
+  const res = await apiFetch<{ success: boolean; data: EventAttendeeUpdateSummary }>(
+    `${vendorScoped ? '/api/v2' : '/api/v1'}/admin/event/${id}/attendee-updates`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+  return res.data
+}
+
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 
 export function useEvents(filters?: PublicEventFilters) {
@@ -534,5 +589,12 @@ export function useEndEvent(options?: { vendorScoped?: boolean }) {
       qc.invalidateQueries({ queryKey: eventKeys.admin.all(scope) })
       qc.invalidateQueries({ queryKey: eventKeys.admin.byId(id, scope) })
     },
+  })
+}
+
+export function useSendEventAttendeeUpdate(options?: { vendorScoped?: boolean }) {
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SendEventAttendeeUpdatePayload }) =>
+      sendEventAttendeeUpdate(id, data, Boolean(options?.vendorScoped)),
   })
 }

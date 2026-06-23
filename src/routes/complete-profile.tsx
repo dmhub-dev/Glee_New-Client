@@ -46,7 +46,7 @@ export default function CompleteProfilePage() {
       phone: profile.phone ?? '',
       address: profile.address ?? '',
     })
-  }, [profile])
+  }, [form, profile])
 
   async function onSubmit(values: CompleteProfileValues) {
     try {

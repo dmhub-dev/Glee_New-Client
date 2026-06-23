@@ -3,17 +3,21 @@ import { MapPin } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Event } from '@glee/types'
 import { Button, Skeleton } from '@glee/ui'
+import { formatDateRange, formatTimeOnly } from '@glee/utils'
+import { RotatingMediaCover, normalizeMediaImages } from '../../../components/media/MediaGallery'
 
-const PLACEHOLDER = 'https://placehold.co/900x1200/0B0B10/FF2D8F?text=Glee'
+const PLACEHOLDER = '/glee-image-fallback.svg'
 
 function formatCarouselDate(startDate: string, endDate: string, startTime: string): string {
-  const d = new Date(`${startDate}T${startTime}`)
-  const datePart = endDate !== startDate
-    ? new Date(startDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' }) +
-      ' – ' +
-      new Date(endDate).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
-    : d.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  return datePart + ' · ' + d.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const datePart = formatDateRange(
+    startDate,
+    endDate,
+    { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' },
+    { weekday: 'short', day: 'numeric', month: 'short' },
+    { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' },
+  )
+  const timePart = formatTimeOnly(startTime)
+  return timePart ? `${datePart} · ${timePart}` : datePart
 }
 
 interface FeaturedCarouselProps {
@@ -51,10 +55,20 @@ export default function FeaturedCarousel({ events, isLoading }: FeaturedCarousel
           {events.map((e, i) => {
             const active = i === current
             const lowestPrice = Math.min(...e.ticketTiers.map(tier => tier.price))
+            const mediaImages = normalizeMediaImages(e.images ?? [e.flyerPortraitUrl, e.flyerSquareUrl], PLACEHOLDER)
             return (
               <div
                 key={e.id}
+                role="button"
+                tabIndex={active ? 0 : -1}
+                aria-label={`View details for ${e.title}`}
                 onClick={() => {
+                  setCurrent(i)
+                  navigate(`/events/${e.id}`)
+                }}
+                onKeyDown={event => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return
+                  event.preventDefault()
                   setCurrent(i)
                   navigate(`/events/${e.id}`)
                 }}
@@ -63,12 +77,7 @@ export default function FeaturedCarousel({ events, isLoading }: FeaturedCarousel
                   active ? 'opacity-100' : 'opacity-0',
                 ].join(' ')}
               >
-                <img
-                  src={e.flyerPortraitUrl ?? e.flyerSquareUrl ?? PLACEHOLDER}
-                  alt={e.title}
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  onError={ev => { (ev.currentTarget as HTMLImageElement).src = PLACEHOLDER }}
-                />
+                <RotatingMediaCover images={mediaImages} alt={e.title} fallback={PLACEHOLDER} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
                 <div className="absolute left-3 top-3 rounded-full bg-white/20 px-3 py-1 text-xs font-black uppercase tracking-wide text-white backdrop-blur-md">
                   {e.categoryName ?? 'Event'}

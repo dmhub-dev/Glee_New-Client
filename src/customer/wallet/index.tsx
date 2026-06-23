@@ -45,7 +45,8 @@ export default function CustomerWalletPage() {
     const value = Number(amount)
     if (!value || value < 1) return
     try {
-      const intent = await topUp.mutateAsync(value)
+      const callbackUrl = `${window.location.origin}/app/wallet/callback`
+      const intent = await topUp.mutateAsync({ amount: value, callbackUrl })
       if (intent.authorization_url) window.location.href = intent.authorization_url
       else toast({ title: 'Top-up initiated' })
     } catch (error) {

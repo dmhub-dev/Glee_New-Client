@@ -94,7 +94,7 @@ export function ProfileForm() {
 
           {/* Email — read-only */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Email</label>
+            <p className="text-sm font-medium text-foreground">Email</p>
             <Input
               value={profile?.email ?? ''}
               disabled
@@ -106,7 +106,7 @@ export function ProfileForm() {
 
           {/* Role — read-only */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Role</label>
+            <p className="text-sm font-medium text-foreground">Role</p>
             <div className="flex items-center h-10 px-3 rounded-md border border-admin bg-admin-input opacity-60">
               {profile?.role && (
                 <Badge className={`text-xs border ${roleBadgeClass(profile.role)}`}>

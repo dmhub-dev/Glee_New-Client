@@ -18,7 +18,7 @@ export default function CustomerEventChatPage() {
           eventImage={event?.flyerSquareUrl ?? event?.flyerPortraitUrl}
           tone="customer"
           className="flex-1 overflow-hidden"
-          onBack={() => navigate(`/app/events/${eventId ?? ''}`)}
+          onBack={() => navigate('/app/tickets')}
         />
       </div>
     </CustomerLayout>

@@ -2,7 +2,21 @@ import AdminLayout from '../../components/layout/AdminLayout'
 import UsersTab from '../settings/UsersTab'
 import { useAdminUser } from '../../app/providers'
 import { ApiError, useDeleteUser, useSetUserStatus, useUsers } from '@glee/api'
-import { Badge, Button, Skeleton, useToast } from '@glee/ui'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  Badge,
+  Button,
+  Skeleton,
+  useToast,
+} from '@glee/ui'
 import { Mail, ShieldCheck, Trash2, UserCheck, UserRoundCheck, UserX } from 'lucide-react'
 import { ROLE_LABELS } from '../settings/components/roleConstants'
 
@@ -29,7 +43,6 @@ function VendorStaffList() {
   }
 
   async function handleDelete(userId: string, email: string) {
-    if (!window.confirm(`Delete staff account for ${email}?`)) return
     try {
       await deleteMutation.mutateAsync(userId)
       toast({ title: 'Staff deleted', description: email })
@@ -128,16 +141,36 @@ function VendorStaffList() {
                           Restore
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => handleDelete(member.id, member.email)}
-                        className="gap-1.5 text-xs text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={deleteMutation.isPending}
+                            className="gap-1.5 text-xs text-red-400/80 hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="border-admin bg-admin-dialog">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete staff account?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {member.email} will lose access to this vendor dashboard.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(member.id, member.email)}
+                              className="bg-red-500 text-white hover:bg-red-600"
+                            >
+                              Delete staff
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </td>
                 </tr>

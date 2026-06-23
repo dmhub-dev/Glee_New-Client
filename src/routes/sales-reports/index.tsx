@@ -6,6 +6,8 @@ import { Progress, Skeleton } from '@glee/ui'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CalendarDays, DollarSign, Ticket, TrendingUp } from 'lucide-react'
 import type { Event } from '@glee/types'
+import { AdminAnalyticsCard } from '../../components/admin/AdminAnalyticsCard'
+import { temporaryAnalyticsTrend } from '../../components/admin/temporaryAnalyticsTrend'
 
 const TOOLTIP_STYLE = {
   background: '#111118',
@@ -43,18 +45,7 @@ function StatCard({
   icon: typeof Ticket
 }) {
   return (
-    <div className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
-      <div className="flex items-center gap-4">
-        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-neon-pink/10">
-          <Icon className="h-5 w-5 text-neon-pink" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs text-admin-40">{label}</p>
-          <p className="font-heading text-2xl font-black text-foreground">{value}</p>
-          <p className="mt-1 truncate text-xs text-admin-40">{detail}</p>
-        </div>
-      </div>
-    </div>
+    <AdminAnalyticsCard label={label} value={value} detail={detail} icon={Icon} trend={temporaryAnalyticsTrend(label, value)} />
   )
 }
 
@@ -62,7 +53,7 @@ export default function SalesReportsPage() {
   const user = useAdminUser()
   const isVendorRole = user.role === 'vendor' || user.role === 'vendor_staff'
   const { data: events, isLoading } = useAdminEvents({ vendorScoped: isVendorRole })
-  const eventList = events ?? []
+  const eventList = useMemo(() => events ?? [], [events])
 
   const totals = useMemo(() => {
     const revenue = eventList.reduce((sum, event) => sum + eventRevenue(event), 0)
@@ -93,7 +84,7 @@ export default function SalesReportsPage() {
       <div className="space-y-5">
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-lg" />)}
+            {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28 rounded-2xl" />)}
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -104,15 +95,15 @@ export default function SalesReportsPage() {
           </div>
         )}
 
-        <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
           <div className="mb-4">
             <h2 className="font-heading text-sm font-bold text-foreground">Revenue By Event</h2>
             <p className="mt-1 text-xs text-admin-40">Top events by estimated ticket revenue.</p>
           </div>
           {isLoading ? (
-            <Skeleton className="h-72 rounded-lg" />
+            <Skeleton className="h-72 rounded-2xl" />
           ) : chartData.length === 0 ? (
-            <div className="rounded-lg border border-admin bg-admin-overlay p-10 text-center text-sm text-admin-40">No sales data yet.</div>
+            <div className="rounded-xl border border-admin bg-admin-overlay p-10 text-center text-sm text-admin-40">No sales data yet.</div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData} barCategoryGap="28%">
@@ -126,7 +117,7 @@ export default function SalesReportsPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-admin bg-admin-surface p-5 shadow-admin">
+        <section className="rounded-2xl border border-admin bg-admin-surface p-5 shadow-admin-card">
           <div className="mb-4">
             <h2 className="font-heading text-sm font-bold text-foreground">Event Sell-through</h2>
             <p className="mt-1 text-xs text-admin-40">Ticket progress for each accessible event.</p>
@@ -137,7 +128,7 @@ export default function SalesReportsPage() {
               const sold = eventSold(event)
               const pct = capacity > 0 ? Math.round((sold / capacity) * 100) : 0
               return (
-                <div key={event.id} className="rounded-lg border border-admin bg-admin-overlay p-3">
+                <div key={event.id} className="rounded-xl border border-admin bg-admin-overlay p-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <p className="truncate text-sm font-medium text-admin-80">{event.title}</p>
                     <p className="shrink-0 font-mono text-xs text-neon-pink">{pct}%</p>
